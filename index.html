@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>configlab · template studio ({{variables}})</title>
+    <style>
+        /* (Same styles as before – compact version) */
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 1000px; margin: 2rem auto; padding: 0 1.5rem; background: #f8fafc; color: #0f172a; line-height: 1.5; }
+        .container { background: white; border-radius: 16px; padding: 2rem; box-shadow: 0 8px 20px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+        h1 { font-size: 2rem; font-weight: 600; margin-top: 0; margin-bottom: 0.5rem; color: #0a0f1c; }
+        h2 { font-size: 1.3rem; font-weight: 500; margin: 2rem 0 1rem; border-bottom: 2px solid #e9edf2; padding-bottom: 0.3rem; }
+        .card { background: #f1f5f9; padding: 1.5rem; border-radius: 12px; margin: 1.5rem 0; }
+        .flex-row { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+        textarea, input[type="text"] { width: 100%; padding: 0.8rem 1rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; background: white; box-sizing: border-box; font-family: 'Fira Code', monospace; }
+        textarea { min-height: 150px; resize: vertical; }
+        button { background: #2563eb; color: white; border: none; padding: 0.7rem 1.5rem; border-radius: 8px; font-size: 1rem; font-weight: 500; cursor: pointer; transition: background 0.1s; }
+        button:hover { background: #1d4ed8; }
+        button.secondary { background: #475569; }
+        button.secondary:hover { background: #334155; }
+        .form-grid { display: grid; gap: 1.2rem; margin: 1.5rem 0; }
+        .form-group label { font-weight: 500; display: block; margin-bottom: 0.3rem; color: #1e293b; }
+        .output-area { background: #0f172a; color: #e2e8f0; padding: 1.2rem; border-radius: 8px; font-family: 'Fira Code', monospace; white-space: pre-wrap; word-break: break-all; border: 1px solid #334155; }
+        .embed-box { background: #f1f5f9; padding: 1rem; border-radius: 8px; margin: 1rem 0; }
+        .embed-box textarea { background: #0f172a; color: #a5f3fc; border: 1px solid #334155; font-size: 0.85rem; margin-top: 0.5rem; }
+        .template-selector { display: flex; gap: 1rem; align-items: center; margin: 1rem 0 1.5rem; flex-wrap: wrap; }
+        .template-selector select { flex: 1; min-width: 250px; padding: 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1; background: white; }
+        .info-note { background: #e6f0ff; border-left: 4px solid #2563eb; padding: 0.8rem 1.2rem; border-radius: 0 8px 8px 0; font-size: 0.95rem; margin: 1rem 0; }
+        hr { border: none; border-top: 2px dashed #cbd5e1; margin: 2rem 0; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>📄 configlab · template studio ({{variables}})</h1>
+    <p class="info-note">
+        ✅ <strong>Server‑saved templates – now sorted A→Z!</strong> Use <code>{{double curly braces}}</code> for variables.
+        Create, load, and share templates – they persist for everyone.
+    </p>
+
+    <!-- Template selector / quick load -->
+    <div class="template-selector">
+        <label for="template-list" style="font-weight:500;">📂 Load saved template:</label>
+        <select id="template-list">
+            <option value="">-- Select a template --</option>
+        </select>
+        <button id="load-selected" class="secondary">Load</button>
+        <button id="delete-selected" class="secondary" style="background:#b91c1c;">Delete</button>
+        <button id="refresh-list" class="secondary">🔄 Refresh list</button>
+    </div>
+
+    <!-- Create new template area -->
+    <div class="card">
+        <h2 style="margin-top:0;">➕ Create new template</h2>
+        <p>Enter your template text below. Use <code>{{variable name}}</code> for placeholders.</p>
+        <textarea id="new-template-text" placeholder="e.g. Hello {{name}}, your code is {{code}}"></textarea>
+        <div class="flex-row" style="margin-top:1rem;">
+            <button id="save-template-btn">💾 Save as new template</button>
+            <button id="reset-default-btn" class="secondary">↺ Reset to router example</button>
+        </div>
+    </div>
+
+    <!-- Current template display -->
+    <h2>📋 Current template</h2>
+    <pre id="current-template-pre" style="background:#f1f5f9; color:#0f172a; border:1px solid #cbd5e1;"></pre>
+
+    <!-- Dynamic form for variables -->
+    <div id="dynamic-form-container" class="form-grid"></div>
+
+    <div style="margin: 1.5rem 0 0.5rem;">
+        <button id="generate-btn">⚡ Generate Filled Template</button>
+    </div>
+
+    <h2>📎 Filled result</h2>
+    <div id="output" class="output-area">✨ Click generate to see the completed template.</div>
+
+    <hr />
+
+    <h2>🔗 Sharing</h2>
+    <p><em>Fill out the form and share a link that pre‑fills values and loads the same template:</em>
+        <a href="#" id="share-link">📋 Copy shareable link</a>
+    </p>
+
+    <div class="embed-box">
+        <strong>📎 Embed full tool (with this template):</strong>
+        <textarea id="embed-full" rows="3" readonly></textarea>
+    </div>
+
+    <div class="embed-box">
+        <strong>📎 Embed only the variables form:</strong>
+        <textarea id="embed-vars" rows="3" readonly></textarea>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // --------------------------------------------------------------
+        // Configuration – change if your backend runs elsewhere
+        const API_BASE = '/api';  // Relative path works behind Nginx proxy
+
+        // Default template (router config)
+        const DEFAULT_TEMPLATE = `interface Fa0/0
+ ip address {{IP Address}} {{Subnet Mask}}
+ no shutdown
+ip route 0.0.0.0 0.0.0.0 {{Default Gateway}}`;
+
+        // Currently active template ID and text
+        let currentTemplateId = 'default';
+        let currentTemplateText = DEFAULT_TEMPLATE;
+
+        // In-memory list of templates (for dropdown)
+        let templatesList = [];  // each item: { id, template_id, name }
+
+        // --------------------------------------------------------------
+        // Helper: extract variable names from template using {{...}}
+        function extractVariables(template) {
+            const regex = /{{\s*([^}]+?)\s*}}/g;
+            let matches;
+            const vars = [];
+            while ((matches = regex.exec(template)) !== null) {
+                const varName = matches[1].trim();
+                if (!vars.includes(varName)) {
+                    vars.push(varName);
+                }
+            }
+            return vars;
+        }
+
+        // --------------------------------------------------------------
+        // Render form fields based on variable list
+        function renderForm(variables) {
+            const container = document.getElementById('dynamic-form-container');
+            if (!variables || variables.length === 0) {
+                container.innerHTML = '<p class="small-note">No variables found in this template.</p>';
+                return;
+            }
+            let html = '';
+            variables.forEach(name => {
+                const id = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                html += `<div class="form-group">
+                    <label for="${id}">${name}:</label>
+                    <input type="text" id="${id}" name="${id}" placeholder="Enter value" />
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        // --------------------------------------------------------------
+        // Get current form values as object { varName: value }
+        function getFormValues() {
+            const vars = extractVariables(currentTemplateText);
+            const values = {};
+            vars.forEach(name => {
+                const id = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                const input = document.getElementById(id);
+                values[name] = input ? input.value : '';
+            });
+            return values;
+        }
+
+        // --------------------------------------------------------------
+        // Set form values from object
+        function setFormValues(values) {
+            const vars = extractVariables(currentTemplateText);
+            vars.forEach(name => {
+                const id = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                const input = document.getElementById(id);
+                if (input && values[name] !== undefined) {
+                    input.value = values[name];
+                }
+            });
+        }
+
+        // --------------------------------------------------------------
+        // Fill template with values
+        function fillTemplate(template, values) {
+            let result = template;
+            const vars = extractVariables(template);
+            vars.forEach(name => {
+                const regex = new RegExp(`{{\\s*${escapeRegExp(name)}\\s*}}`, 'g');
+                const value = values[name] || '';
+                result = result.replace(regex, value);
+            });
+            return result;
+        }
+
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        // --------------------------------------------------------------
+        // Update output based on current form
+        function updateOutput() {
+            const values = getFormValues();
+            const filled = fillTemplate(currentTemplateText, values);
+            document.getElementById('output').innerText = filled;
+        }
+
+        // --------------------------------------------------------------
+        // Update the whole UI for a new template
+        function setCurrentTemplate(templateText, templateId = 'default') {
+            currentTemplateText = templateText;
+            currentTemplateId = templateId;
+
+            document.getElementById('current-template-pre').innerText = templateText;
+
+            const vars = extractVariables(templateText);
+            renderForm(vars);
+
+            // Clear input fields
+            vars.forEach(name => {
+                const id = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                const input = document.getElementById(id);
+                if (input) input.value = '';
+            });
+
+            document.getElementById('output').innerText = '✨ Click generate to see the completed template.';
+            updateEmbedCodes();
+        }
+
+        // --------------------------------------------------------------
+        // API calls
+
+        async function fetchTemplatesList() {
+            try {
+                const res = await fetch(`${API_BASE}/templates`);
+                if (!res.ok) throw new Error('Failed to fetch list');
+                templatesList = await res.json();
+                populateTemplateSelect(templatesList);
+            } catch (err) {
+                console.error(err);
+                alert('Could not load template list from server.');
+            }
+        }
+
+        function populateTemplateSelect(list) {
+            // ✨ NEW: Sort alphabetically by template name
+            const sortedList = [...list].sort((a, b) => a.name.localeCompare(b.name));
+            const select = document.getElementById('template-list');
+            select.innerHTML = '<option value="">-- Select a template --</option>';
+            sortedList.forEach(t => {
+                const option = document.createElement('option');
+                option.value = t.template_id;
+                option.textContent = t.name + ' (id: ' + t.template_id.substr(0,6) + '…)';
+                select.appendChild(option);
+            });
+        }
+
+        async function loadTemplateById(id) {
+            try {
+                const res = await fetch(`${API_BASE}/templates/${id}`);
+                if (!res.ok) throw new Error('Template not found');
+                const tpl = await res.json();
+                setCurrentTemplate(tpl.template_text, tpl.template_id);
+                // Update URL
+                const url = new URL(window.location);
+                url.searchParams.set('template', id);
+                window.history.replaceState({}, '', url);
+            } catch (err) {
+                alert('Error loading template: ' + err.message);
+            }
+        }
+
+        async function saveNewTemplate(name, templateText) {
+            try {
+                const res = await fetch(`${API_BASE}/templates`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, template_text: templateText })
+                });
+                if (!res.ok) throw new Error('Save failed');
+                const newTpl = await res.json();
+                templatesList.push({ template_id: newTpl.template_id, name: newTpl.name });
+                populateTemplateSelect(templatesList);
+                return newTpl.template_id;
+            } catch (err) {
+                alert('Error saving template: ' + err.message);
+                return null;
+            }
+        }
+
+        async function deleteTemplateById(id) {
+            try {
+                const res = await fetch(`${API_BASE}/templates/${id}`, {
+                    method: 'DELETE'
+                });
+                if (!res.ok) throw new Error('Delete failed');
+                // Remove from local list
+                templatesList = templatesList.filter(t => t.template_id !== id);
+                populateTemplateSelect(templatesList);
+                if (currentTemplateId === id) {
+                    // revert to default
+                    setCurrentTemplate(DEFAULT_TEMPLATE, 'default');
+                    const url = new URL(window.location);
+                    url.searchParams.delete('template');
+                    window.history.replaceState({}, '', url);
+                }
+            } catch (err) {
+                alert('Error deleting template: ' + err.message);
+            }
+        }
+
+        // --------------------------------------------------------------
+        // Embed codes
+        function updateEmbedCodes() {
+            const baseUrl = window.location.href.split('?')[0];
+            let templateParam = '';
+            if (currentTemplateId !== 'default') {
+                templateParam = `?template=${currentTemplateId}`;
+            }
+            const fullEmbed = `<iframe src="${baseUrl}${templateParam}" width="100%" height="600" style="border:1px solid #ccc; border-radius:8px;" title="configlab template tool"></iframe>`;
+            const varsEmbed = `<iframe src="${baseUrl}${templateParam}&embed=form" width="100%" height="320" style="border:1px solid #ccc; border-radius:8px;" title="configlab variables form"></iframe>`;
+
+            document.getElementById('embed-full').value = fullEmbed;
+            document.getElementById('embed-vars').value = varsEmbed;
+        }
+
+        // --------------------------------------------------------------
+        // Load from URL on page load
+        async function loadFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const templateId = urlParams.get('template');
+            if (templateId && templateId !== 'default') {
+                await loadTemplateById(templateId);
+            } else {
+                setCurrentTemplate(DEFAULT_TEMPLATE, 'default');
+            }
+
+            // Pre-fill form if values are in URL
+            const vars = extractVariables(currentTemplateText);
+            const prefill = {};
+            vars.forEach(name => {
+                const val = urlParams.get(name);
+                if (val) prefill[name] = val;
+            });
+            if (Object.keys(prefill).length > 0) {
+                setFormValues(prefill);
+                updateOutput();
+            }
+        }
+
+        // --------------------------------------------------------------
+        // Event handlers
+        document.getElementById('generate-btn').addEventListener('click', updateOutput);
+
+        document.getElementById('save-template-btn').addEventListener('click', async function() {
+            const newText = document.getElementById('new-template-text').value.trim();
+            if (!newText) {
+                alert('Please enter a template.');
+                return;
+            }
+            let name = prompt('Give this template a name:', newText.split('\n')[0].substring(0,30) || 'Unnamed');
+            if (name === null) return;
+            if (name.trim() === '') name = 'Unnamed';
+
+            const newId = await saveNewTemplate(name, newText);
+            if (newId) {
+                if (confirm('Template saved. Switch to this new template now?')) {
+                    await loadTemplateById(newId);
+                }
+                document.getElementById('new-template-text').value = '';
+            }
+        });
+
+        document.getElementById('reset-default-btn').addEventListener('click', () => {
+            setCurrentTemplate(DEFAULT_TEMPLATE, 'default');
+            const url = new URL(window.location);
+            url.searchParams.delete('template');
+            window.history.replaceState({}, '', url);
+        });
+
+        document.getElementById('load-selected').addEventListener('click', async function() {
+            const select = document.getElementById('template-list');
+            const id = select.value;
+            if (!id) {
+                alert('Select a template from the list.');
+                return;
+            }
+            await loadTemplateById(id);
+        });
+
+        document.getElementById('delete-selected').addEventListener('click', async function() {
+            const select = document.getElementById('template-list');
+            const id = select.value;
+            if (!id) {
+                alert('Select a template to delete.');
+                return;
+            }
+            if (confirm('Delete this template? This cannot be undone.')) {
+                await deleteTemplateById(id);
+            }
+        });
+
+        document.getElementById('refresh-list').addEventListener('click', fetchTemplatesList);
+
+        document.getElementById('share-link').addEventListener('click', function(e) {
+            e.preventDefault();
+            const url = new URL(window.location);
+            url.searchParams.delete('template');
+            if (currentTemplateId !== 'default') {
+                url.searchParams.set('template', currentTemplateId);
+            }
+            const values = getFormValues();
+            Object.entries(values).forEach(([key, val]) => {
+                if (val.trim() !== '') {
+                    url.searchParams.set(key, val);
+                }
+            });
+            const shareUrl = url.toString();
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                alert('✅ Shareable link copied to clipboard!\n' + shareUrl);
+            }).catch(() => {
+                alert('📋 Copy this link manually:\n' + shareUrl);
+            });
+        });
+
+        // Initialise
+        window.addEventListener('load', async function() {
+            await fetchTemplatesList();
+            await loadFromUrl();
+            updateEmbedCodes();
+        });
+    })();
+</script>
+</body>
+</html>

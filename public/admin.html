@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>configify · Admin</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; color: #0f172a; margin: 0; }
+  nav { background: #0f172a; color: white; padding: 0 1.5rem; height: 56px; display: flex; align-items: center; gap: 1.5rem; }
+  nav .brand { font-weight: 700; font-size: 1.1rem; color: #38bdf8; }
+  nav a { color: #94a3b8; text-decoration: none; font-size: 0.9rem; }
+  nav a:hover { color: white; }
+  nav .spacer { flex: 1; }
+  nav .user-badge { background: #1e3a5f; padding: 0.35rem 0.9rem; border-radius: 20px; font-size: 0.85rem; color: #7dd3fc; }
+  .container { max-width: 1100px; margin: 2rem auto; padding: 0 1.5rem; }
+  h1 { font-size: 1.6rem; font-weight: 600; margin-bottom: 0.25rem; }
+  .tabs { display: flex; gap: 0.5rem; margin: 1.5rem 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 0; }
+  .tab { padding: 0.6rem 1.2rem; border: none; background: none; cursor: pointer; font-size: 0.95rem; color: #64748b; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+  .tab.active { color: #2563eb; border-bottom-color: #2563eb; font-weight: 500; }
+  .panel { display: none; } .panel.active { display: block; }
+  .card { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; margin-bottom: 1.5rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th { text-align: left; padding: 0.75rem 1rem; background: #f1f5f9; border-bottom: 1px solid #e2e8f0; color: #475569; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  td { padding: 0.75rem 1rem; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  tr:hover td { background: #f8fafc; }
+  .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+  .badge-admin { background: #fef3c7; color: #92400e; }
+  .badge-user  { background: #e0f2fe; color: #0c4a6e; }
+  .badge-active   { background: #dcfce7; color: #166534; }
+  .badge-inactive { background: #fee2e2; color: #991b1b; }
+  .badge-local { background: #f1f5f9; color: #475569; }
+  .badge-ldap  { background: #ede9fe; color: #4c1d95; }
+  .badge-saml  { background: #fce7f3; color: #9d174d; }
+  button { border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; }
+  .btn-primary  { background: #2563eb; color: white; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-danger   { background: #dc2626; color: white; }
+  .btn-danger:hover { background: #b91c1c; }
+  .btn-secondary { background: #e2e8f0; color: #475569; }
+  .btn-secondary:hover { background: #cbd5e1; }
+  .btn-sm { padding: 0.3rem 0.7rem; font-size: 0.8rem; }
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; display: none; }
+  .modal-backdrop.open { display: flex; }
+  .modal { background: white; border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 500px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+  .modal h3 { margin-top: 0; }
+  label { display: block; font-size: 0.85rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem; margin-top: 0.75rem; }
+  input, select, textarea { width: 100%; padding: 0.6rem 0.8rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem; outline: none; }
+  input:focus, select:focus, textarea:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.1); }
+  textarea { min-height: 80px; font-family: 'Fira Code', monospace; font-size: 0.8rem; resize: vertical; }
+  .flex { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+  .flex-end { justify-content: flex-end; }
+  .toggle-wrap { display: flex; align-items: center; gap: 0.75rem; margin: 1rem 0; }
+  .toggle { width: 44px; height: 24px; background: #d1d5db; border-radius: 12px; position: relative; cursor: pointer; transition: background 0.2s; }
+  .toggle.on { background: #2563eb; }
+  .toggle::after { content: ''; position: absolute; width: 18px; height: 18px; background: white; border-radius: 50%; top: 3px; left: 3px; transition: transform 0.2s; }
+  .toggle.on::after { transform: translateX(20px); }
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+  .info-note { background: #eff6ff; border-left: 3px solid #2563eb; padding: 0.75rem 1rem; border-radius: 0 6px 6px 0; font-size: 0.85rem; color: #1e40af; margin-bottom: 1rem; }
+  .warn-note { background: #fffbeb; border-left: 3px solid #f59e0b; padding: 0.75rem 1rem; border-radius: 0 6px 6px 0; font-size: 0.85rem; color: #92400e; margin-bottom: 1rem; }
+  #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #166534; color: white; padding: 0.75rem 1.25rem; border-radius: 8px; font-size: 0.9rem; display: none; z-index: 200; }
+</style>
+</head>
+<body>
+<nav>
+  <span class="brand">📄 configify</span>
+  <a href="/">Templates</a>
+  <a href="/devices.html">Devices</a>
+  <a href="/admin.html" style="color:white;font-weight:500;">Admin</a>
+  <div class="spacer"></div>
+  <span class="user-badge" id="user-badge">…</span>
+  <button class="btn-secondary btn-sm" onclick="logout()">Sign out</button>
+</nav>
+
+<div class="container">
+  <h1>⚙️ Administration</h1>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="users">👥 Users</button>
+    <button class="tab" data-tab="auth">🔐 Auth Providers</button>
+  </div>
+
+  <!-- ── Users panel ── -->
+  <div id="panel-users" class="panel active">
+    <div class="card">
+      <div class="section-header">
+        <strong>User accounts</strong>
+        <button class="btn-primary" onclick="openCreateUser()">＋ New user</button>
+      </div>
+      <table id="users-table">
+        <thead><tr>
+          <th>Username</th><th>Email</th><th>Role</th>
+          <th>Provider</th><th>Status</th><th>Last login</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="users-tbody"><tr><td colspan="7" style="color:#94a3b8">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Auth Providers panel ── -->
+  <div id="panel-auth" class="panel">
+    <!-- LDAP -->
+    <div class="card">
+      <div class="section-header">
+        <strong>🏢 LDAP / LDAPS (Active Directory)</strong>
+        <div class="toggle-wrap" style="margin:0">
+          <span id="ldap-status-label" style="font-size:0.85rem;color:#64748b">Disabled</span>
+          <div class="toggle" id="ldap-toggle" onclick="toggleProvider('ldap')"></div>
+        </div>
+      </div>
+      <div class="info-note">Changes take effect after server restart. Bind credentials are stored encrypted.</div>
+      <div id="ldap-form">
+        <label>LDAP URL (use ldaps:// for TLS)</label>
+        <input id="ldap-url" placeholder="ldap://dc.example.com:389" />
+        <label>Bind DN</label>
+        <input id="ldap-binddn" placeholder="cn=svc-configify,ou=ServiceAccounts,dc=example,dc=com" />
+        <label>Bind Password</label>
+        <input type="password" id="ldap-bindpw" placeholder="leave blank to keep existing" />
+        <label>Search Base</label>
+        <input id="ldap-base" placeholder="ou=Users,dc=example,dc=com" />
+        <label>Search Filter</label>
+        <input id="ldap-filter" placeholder="(sAMAccountName={{username}})" />
+        <label>Admin Group DN (members get admin role)</label>
+        <input id="ldap-admingroup" placeholder="CN=configify-admins,ou=Groups,dc=example,dc=com" />
+        <label>Group Search Base</label>
+        <input id="ldap-groupbase" placeholder="ou=Groups,dc=example,dc=com" />
+        <div class="toggle-wrap">
+          <input type="checkbox" id="ldap-reject-unauth" style="width:auto" checked>
+          <label for="ldap-reject-unauth" style="margin:0">Reject unauthorized TLS certificates</label>
+        </div>
+        <div class="flex flex-end" style="margin-top:1rem">
+          <button class="btn-secondary" onclick="loadAuthConfig('ldap')">↺ Reset</button>
+          <button class="btn-primary" onclick="saveLdap()">💾 Save LDAP config</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SAML -->
+    <div class="card">
+      <div class="section-header">
+        <strong>🔐 SAML 2.0 (SSO)</strong>
+        <div class="toggle-wrap" style="margin:0">
+          <span id="saml-status-label" style="font-size:0.85rem;color:#64748b">Disabled</span>
+          <div class="toggle" id="saml-toggle" onclick="toggleProvider('saml')"></div>
+        </div>
+      </div>
+      <div class="warn-note">SAML requires a restart and your SP metadata must be registered with your IdP. Callback URL: <strong id="saml-callback-url">/auth/saml/callback</strong></div>
+      <div id="saml-form">
+        <label>IdP Entry Point (SSO URL)</label>
+        <input id="saml-entry" placeholder="https://idp.example.com/saml/sso" />
+        <label>Issuer (SP Entity ID)</label>
+        <input id="saml-issuer" placeholder="configify" />
+        <label>Callback URL</label>
+        <input id="saml-callback" placeholder="https://configify.yourdomain.com/auth/saml/callback" />
+        <label>IdP Certificate (PEM, without headers)</label>
+        <textarea id="saml-cert" placeholder="MIID..."></textarea>
+        <label>SP Private Key (PEM, optional – for signed requests)</label>
+        <textarea id="saml-privatekey" placeholder="leave blank to keep existing"></textarea>
+        <label>Name ID Format</label>
+        <select id="saml-nameid">
+          <option value="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress">Email address</option>
+          <option value="urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified">Unspecified</option>
+          <option value="urn:oasis:names:tc:SAML:2.0:nameid-format:persistent">Persistent</option>
+        </select>
+        <label>Email attribute path</label>
+        <input id="saml-attr-email" placeholder="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" />
+        <label>Username attribute path</label>
+        <input id="saml-attr-user" placeholder="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name" />
+        <label>Role/Group attribute path</label>
+        <input id="saml-attr-role" placeholder="http://schemas.xmlsoap.org/claims/Group" />
+        <label>Admin group value (in role attribute)</label>
+        <input id="saml-admin-group" placeholder="configify-admins" />
+        <div class="flex flex-end" style="margin-top:1rem">
+          <button class="btn-secondary" onclick="loadAuthConfig('saml')">↺ Reset</button>
+          <button class="btn-primary" onclick="saveSaml()">💾 Save SAML config</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create/Edit User Modal -->
+<div class="modal-backdrop" id="user-modal">
+  <div class="modal">
+    <h3 id="modal-title">Create user</h3>
+    <input type="hidden" id="edit-user-id">
+    <label>Username</label>
+    <input id="m-username" placeholder="jsmith" />
+    <label>Email</label>
+    <input id="m-email" type="email" placeholder="j.smith@example.com" />
+    <label id="m-password-label">Password (min 8 chars)</label>
+    <input id="m-password" type="password" placeholder="••••••••" />
+    <label>Role</label>
+    <select id="m-role">
+      <option value="user">User</option>
+      <option value="admin">Admin</option>
+    </select>
+    <label>Status</label>
+    <select id="m-active">
+      <option value="true">Active</option>
+      <option value="false">Inactive</option>
+    </select>
+    <div class="flex flex-end" style="margin-top:1.25rem">
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveUser()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = '/api/users';
+
+// ── Init ──────────────────────────────────────────────────────
+(async function() {
+  const me = await (await fetch('/auth/me')).json();
+  if (me.role !== 'admin') { document.body.innerHTML = '<p style="padding:2rem;color:red">Access denied — admin only.</p>'; return; }
+  document.getElementById('user-badge').textContent = me.username + ' (' + me.role + ')';
+  document.getElementById('saml-callback-url').textContent = window.location.origin + '/auth/saml/callback';
+  loadUsers();
+  loadAuthConfig('ldap');
+  loadAuthConfig('saml');
+
+  document.querySelectorAll('.tabs .tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tabs .tab, .panel').forEach(el => el.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+    });
+  });
+})();
+
+// ── Users ─────────────────────────────────────────────────────
+async function loadUsers() {
+  const users = await (await fetch(API)).json();
+  const tbody = document.getElementById('users-tbody');
+  if (!users.length) { tbody.innerHTML = '<tr><td colspan="7" style="color:#94a3b8">No users</td></tr>'; return; }
+  tbody.innerHTML = users.map(u => `
+    <tr>
+      <td><strong>${u.username}</strong></td>
+      <td>${u.email || '—'}</td>
+      <td><span class="badge badge-${u.role}">${u.role}</span></td>
+      <td><span class="badge badge-${u.auth_provider}">${u.auth_provider}</span></td>
+      <td><span class="badge badge-${u.is_active ? 'active' : 'inactive'}">${u.is_active ? 'Active' : 'Disabled'}</span></td>
+      <td style="font-size:0.8rem;color:#64748b">${u.last_login ? new Date(u.last_login).toLocaleString() : 'Never'}</td>
+      <td>
+        ${u.auth_provider === 'local' ? `<button class="btn-secondary btn-sm" onclick="openEditUser(${u.id},'${u.username}','${u.email||''}','${u.role}',${u.is_active})">Edit</button>` : ''}
+        <button class="btn-danger btn-sm" onclick="deleteUser(${u.id},'${u.username}')">Delete</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function openCreateUser() {
+  document.getElementById('modal-title').textContent = 'Create user';
+  document.getElementById('edit-user-id').value = '';
+  document.getElementById('m-username').value = '';
+  document.getElementById('m-email').value = '';
+  document.getElementById('m-password').value = '';
+  document.getElementById('m-password-label').textContent = 'Password (min 8 chars)';
+  document.getElementById('m-role').value = 'user';
+  document.getElementById('m-active').value = 'true';
+  document.getElementById('m-username').disabled = false;
+  document.getElementById('user-modal').classList.add('open');
+}
+
+function openEditUser(id, username, email, role, active) {
+  document.getElementById('modal-title').textContent = 'Edit user';
+  document.getElementById('edit-user-id').value = id;
+  document.getElementById('m-username').value = username;
+  document.getElementById('m-username').disabled = true;
+  document.getElementById('m-email').value = email;
+  document.getElementById('m-password').value = '';
+  document.getElementById('m-password-label').textContent = 'New Password (leave blank to keep)';
+  document.getElementById('m-role').value = role;
+  document.getElementById('m-active').value = String(active);
+  document.getElementById('user-modal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('user-modal').classList.remove('open'); }
+
+async function saveUser() {
+  const id = document.getElementById('edit-user-id').value;
+  const body = {
+    username: document.getElementById('m-username').value.trim(),
+    email:    document.getElementById('m-email').value.trim() || null,
+    role:     document.getElementById('m-role').value,
+    is_active: document.getElementById('m-active').value === 'true'
+  };
+  const pwd = document.getElementById('m-password').value;
+  if (pwd) body.password = pwd;
+
+  let res;
+  if (id) {
+    res = await fetch(`${API}/${id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  } else {
+    if (!body.password) return toast('Password required for new user', true);
+    res = await fetch(API, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  }
+  const data = await res.json();
+  if (!res.ok) return toast(data.error, true);
+  closeModal();
+  toast('User saved');
+  loadUsers();
+}
+
+async function deleteUser(id, name) {
+  if (!confirm(`Delete user "${name}"? This cannot be undone.`)) return;
+  const res = await fetch(`${API}/${id}`, { method: 'DELETE' });
+  if (!res.ok) { const d = await res.json(); return toast(d.error, true); }
+  toast('User deleted');
+  loadUsers();
+}
+
+// ── Auth config ───────────────────────────────────────────────
+async function loadAuthConfig(provider) {
+  const res = await fetch(`/api/users/auth-config/${provider}`);
+  if (!res.ok) return;
+  const { enabled, config } = await res.json();
+  const toggle = document.getElementById(`${provider}-toggle`);
+  const label  = document.getElementById(`${provider}-status-label`);
+  if (enabled) { toggle.classList.add('on'); label.textContent = 'Enabled'; }
+  else         { toggle.classList.remove('on'); label.textContent = 'Disabled'; }
+
+  if (provider === 'ldap') {
+    document.getElementById('ldap-url').value         = config.url        || '';
+    document.getElementById('ldap-binddn').value      = config.bindDN     || '';
+    document.getElementById('ldap-bindpw').placeholder= 'leave blank to keep existing';
+    document.getElementById('ldap-base').value        = config.searchBase || '';
+    document.getElementById('ldap-filter').value      = config.searchFilter || '';
+    document.getElementById('ldap-admingroup').value  = config.adminGroup || '';
+    document.getElementById('ldap-groupbase').value   = config.groupSearchBase || '';
+    document.getElementById('ldap-reject-unauth').checked = config.tlsOptions?.rejectUnauthorized !== false;
+  } else {
+    document.getElementById('saml-entry').value       = config.entryPoint       || '';
+    document.getElementById('saml-issuer').value      = config.issuer           || '';
+    document.getElementById('saml-callback').value    = config.callbackUrl      || window.location.origin + '/auth/saml/callback';
+    document.getElementById('saml-cert').value        = config.cert             || '';
+    document.getElementById('saml-nameid').value      = config.identifierFormat || 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress';
+    const am = config.attributeMapping || {};
+    document.getElementById('saml-attr-email').value  = am.email       || '';
+    document.getElementById('saml-attr-user').value   = am.username    || '';
+    document.getElementById('saml-attr-role').value   = am.role        || '';
+    document.getElementById('saml-admin-group').value = am.adminGroupValue || '';
+  }
+}
+
+async function toggleProvider(provider) {
+  const toggle  = document.getElementById(`${provider}-toggle`);
+  const enabled = !toggle.classList.contains('on');
+  const res = await fetch(`/api/users/auth-config/${provider}`, {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ enabled, config: {} })
+  });
+  if (!res.ok) return toast('Save failed', true);
+  toggle.classList.toggle('on', enabled);
+  document.getElementById(`${provider}-status-label`).textContent = enabled ? 'Enabled' : 'Disabled';
+  toast(`${provider.toUpperCase()} ${enabled ? 'enabled' : 'disabled'} — restart server to apply`);
+}
+
+async function saveLdap() {
+  const pw = document.getElementById('ldap-bindpw').value;
+  const cfg = {
+    url:             document.getElementById('ldap-url').value,
+    bindDN:          document.getElementById('ldap-binddn').value,
+    searchBase:      document.getElementById('ldap-base').value,
+    searchFilter:    document.getElementById('ldap-filter').value,
+    adminGroup:      document.getElementById('ldap-admingroup').value,
+    groupSearchBase: document.getElementById('ldap-groupbase').value,
+    tlsOptions:      { rejectUnauthorized: document.getElementById('ldap-reject-unauth').checked }
+  };
+  if (pw) cfg.bindCredentials = pw; else cfg.bindCredentials = '••••••••';
+  const res = await fetch('/api/users/auth-config/ldap', {
+    method: 'PUT', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ config: cfg })
+  });
+  if (!res.ok) return toast('Save failed', true);
+  toast('LDAP config saved — restart server to apply');
+}
+
+async function saveSaml() {
+  const pk = document.getElementById('saml-privatekey').value;
+  const cfg = {
+    entryPoint:       document.getElementById('saml-entry').value,
+    issuer:           document.getElementById('saml-issuer').value,
+    callbackUrl:      document.getElementById('saml-callback').value,
+    cert:             document.getElementById('saml-cert').value,
+    identifierFormat: document.getElementById('saml-nameid').value,
+    attributeMapping: {
+      email:          document.getElementById('saml-attr-email').value,
+      username:       document.getElementById('saml-attr-user').value,
+      role:           document.getElementById('saml-attr-role').value,
+      adminGroupValue:document.getElementById('saml-admin-group').value
+    }
+  };
+  if (pk) cfg.privateKey = pk; else cfg.privateKey = '••••••••';
+  const res = await fetch('/api/users/auth-config/saml', {
+    method: 'PUT', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ config: cfg })
+  });
+  if (!res.ok) return toast('Save failed', true);
+  toast('SAML config saved — restart server to apply');
+}
+
+async function logout() {
+  await fetch('/auth/logout', { method: 'POST' });
+  window.location.href = '/login.html';
+}
+
+function toast(msg, err = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = err ? '#7f1d1d' : '#166534';
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 3500);
+}
+</script>
+</body>
+</html>

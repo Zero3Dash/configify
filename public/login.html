@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>configify · Login</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    color: #f1f5f9;
+  }
+  .card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 16px;
+    padding: 2.5rem 2rem;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.4);
+  }
+  .logo { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.25rem; color: #f8fafc; }
+  .logo span { color: #38bdf8; }
+  .subtitle { color: #94a3b8; font-size: 0.9rem; margin-bottom: 2rem; }
+  .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+  .tab {
+    flex: 1; padding: 0.6rem; border: 1px solid #334155; border-radius: 8px;
+    background: #0f172a; color: #94a3b8; cursor: pointer; font-size: 0.9rem;
+    text-align: center; transition: all 0.15s;
+  }
+  .tab.active { background: #2563eb; border-color: #2563eb; color: white; }
+  .tab:hover:not(.active) { border-color: #475569; color: #e2e8f0; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  label { display: block; font-size: 0.85rem; font-weight: 500; color: #cbd5e1; margin-bottom: 0.3rem; }
+  input {
+    width: 100%; padding: 0.75rem 1rem; border: 1px solid #334155; border-radius: 8px;
+    background: #0f172a; color: #f1f5f9; font-size: 1rem; margin-bottom: 1rem;
+    outline: none; transition: border-color 0.15s;
+  }
+  input:focus { border-color: #2563eb; }
+  .btn {
+    width: 100%; padding: 0.8rem; border: none; border-radius: 8px;
+    font-size: 1rem; font-weight: 600; cursor: pointer; transition: background 0.15s;
+  }
+  .btn-primary { background: #2563eb; color: white; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-primary:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+  .btn-saml { background: #0f172a; color: #38bdf8; border: 1px solid #38bdf8; margin-top: 0.5rem; }
+  .btn-saml:hover { background: #164e63; }
+  .error {
+    background: #450a0a; border: 1px solid #7f1d1d; border-radius: 8px;
+    padding: 0.75rem 1rem; color: #fca5a5; font-size: 0.9rem;
+    margin-bottom: 1rem; display: none;
+  }
+  .divider { text-align: center; color: #475569; font-size: 0.85rem; margin: 1rem 0; position: relative; }
+  .divider::before, .divider::after {
+    content: ''; position: absolute; top: 50%; width: 42%; height: 1px; background: #334155;
+  }
+  .divider::before { left: 0; } .divider::after { right: 0; }
+  .hidden { display: none !important; }
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .info { color: #94a3b8; font-size: 0.8rem; margin-top: 1.5rem; text-align: center; }
+  .info a { color: #38bdf8; text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">📄 config<span>ify</span></div>
+  <div class="subtitle">Template studio · Sign in to continue</div>
+
+  <div id="error-box" class="error"></div>
+
+  <!-- Provider tabs — shown dynamically -->
+  <div id="tabs" class="tabs">
+    <div class="tab active" data-tab="local">🔑 Local</div>
+    <div class="tab hidden" id="tab-ldap" data-tab="ldap">🏢 LDAP/AD</div>
+  </div>
+
+  <!-- Local login -->
+  <div id="panel-local" class="panel active">
+    <label>Username</label>
+    <input type="text" id="local-username" autocomplete="username" placeholder="admin" />
+    <label>Password</label>
+    <input type="password" id="local-password" autocomplete="current-password" placeholder="••••••••" />
+    <button class="btn btn-primary" id="local-login-btn" onclick="doLocalLogin()">Sign in</button>
+  </div>
+
+  <!-- LDAP login -->
+  <div id="panel-ldap" class="panel">
+    <label>Username (sAMAccountName)</label>
+    <input type="text" id="ldap-username" autocomplete="username" placeholder="jsmith" />
+    <label>Password</label>
+    <input type="password" id="ldap-password" autocomplete="current-password" placeholder="••••••••" />
+    <button class="btn btn-primary" id="ldap-login-btn" onclick="doLdapLogin()">Sign in via LDAP</button>
+  </div>
+
+  <!-- SAML SSO -->
+  <div id="saml-section" class="hidden">
+    <div class="divider">or</div>
+    <a href="/auth/saml/login">
+      <button class="btn btn-saml" style="width:100%">🔐 Sign in with SSO (SAML)</button>
+    </a>
+  </div>
+
+  <p class="info">configify · <a href="https://github.com/" target="_blank">documentation</a></p>
+</div>
+
+<script>
+(async function init() {
+  // Detect URL error params
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('error') === 'saml') showError('SAML authentication failed. Please try again.');
+
+  // Fetch enabled providers
+  try {
+    const res = await fetch('/auth/providers');
+    const providers = await res.json();
+    if (providers.ldap)  { document.getElementById('tab-ldap').classList.remove('hidden'); }
+    if (providers.saml)  { document.getElementById('saml-section').classList.remove('hidden'); }
+  } catch {}
+
+  // Tab switching
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      if (tab.classList.contains('hidden')) return;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+    });
+  });
+
+  // Enter key support
+  ['local-username','local-password'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doLocalLogin(); });
+  });
+  ['ldap-username','ldap-password'].forEach(id => {
+    document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') doLdapLogin(); });
+  });
+})();
+
+function showError(msg) {
+  const el = document.getElementById('error-box');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function setLoading(btnId, loading) {
+  const btn = document.getElementById(btnId);
+  btn.disabled = loading;
+  btn.innerHTML = loading ? '<span class="spinner"></span>Signing in…' : btn.getAttribute('data-label') || 'Sign in';
+}
+
+async function doLocalLogin() {
+  const username = document.getElementById('local-username').value.trim();
+  const password = document.getElementById('local-password').value;
+  if (!username || !password) return showError('Please enter username and password.');
+  document.getElementById('error-box').style.display = 'none';
+  setLoading('local-login-btn', true);
+  try {
+    const res = await fetch('/auth/login/local', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) { showError(data.error || 'Login failed'); setLoading('local-login-btn', false); return; }
+    window.location.href = '/';
+  } catch { showError('Network error. Please try again.'); setLoading('local-login-btn', false); }
+}
+
+async function doLdapLogin() {
+  const username = document.getElementById('ldap-username').value.trim();
+  const password = document.getElementById('ldap-password').value;
+  if (!username || !password) return showError('Please enter username and password.');
+  document.getElementById('error-box').style.display = 'none';
+  setLoading('ldap-login-btn', true);
+  try {
+    const res = await fetch('/auth/login/ldap', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) { showError(data.error || 'LDAP login failed'); setLoading('ldap-login-btn', false); return; }
+    window.location.href = '/';
+  } catch { showError('Network error. Please try again.'); setLoading('ldap-login-btn', false); }
+}
+</script>
+</body>
+</html>

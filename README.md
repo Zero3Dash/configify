@@ -70,7 +70,7 @@ PostgreSQL               ← templates, users, devices, credentials, logs
 ### Clone from GitHub
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/configify.git
+git clone https://github.com/Zero3Dash/configify.git
 cd configify
 ```
 
@@ -78,7 +78,7 @@ If deploying directly onto a server, clone there:
 
 ```bash
 ssh user@your-server-ip
-git clone https://github.com/YOUR_USERNAME/configify.git /var/www/configify
+git clone https://github.com/Zero3Dash/configify.git /var/www/configify
 cd /var/www/configify
 ```
 
@@ -106,7 +106,7 @@ All schema files use `CREATE TABLE IF NOT EXISTS` and `ON CONFLICT DO NOTHING` t
 Clone the repo then run the included bootstrap script. It handles everything end-to-end with no manual steps.
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/configify.git
+git clone https://github.com/Zero3Dash/configify.git
 cd configify
 sudo bash setup.sh
 ```
@@ -139,7 +139,7 @@ Follow this path if you need more control, are deploying to an existing server, 
 ### 1 — Get the code
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/configify.git
+git clone https://github.com/Zero3Dash/configify.git
 sudo mv configify /var/www/configify
 sudo chown -R $USER:$USER /var/www/configify
 cd /var/www/configify

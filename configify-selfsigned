@@ -2,7 +2,7 @@
 server {
     listen 80;
     listen [::]:80;
-    server_name configlab.yourdomain.com;   # or your server's IP
+    server_name configify.yourdomain.com;   # or your server's IP
 
     location / {
         return 301 https://$server_name$request_uri;
@@ -13,11 +13,11 @@ server {
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
-    server_name configlab.yourdomain.com;   # or your server's IP
+    server_name configify.yourdomain.com;   # or your server's IP
 
     # Path to self‑signed certificates (we'll generate them next)
-    ssl_certificate /etc/ssl/certs/configlab.crt;
-    ssl_certificate_key /etc/ssl/private/configlab.key;
+    ssl_certificate /etc/ssl/certs/configify.crt;
+    ssl_certificate_key /etc/ssl/private/configify.key;
 
     # Basic SSL settings (you can adjust these)
     ssl_protocols TLSv1.2 TLSv1.3;
@@ -29,8 +29,8 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
 
     # Logs
-    access_log /var/log/nginx/configlab_access.log;
-    error_log /var/log/nginx/configlab_error.log;
+    access_log /var/log/nginx/configify_access.log;
+    error_log /var/log/nginx/configify_error.log;
 
     # Proxy to Node.js
     location / {

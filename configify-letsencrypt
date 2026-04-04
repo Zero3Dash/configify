@@ -2,7 +2,7 @@
 server {
     listen 80;
     listen [::]:80;
-    server_name configlab.yourdomain.com;
+    server_name configify.yourdomain.com;
 
     # Redirect all HTTP requests to HTTPS
     location / {
@@ -14,11 +14,11 @@ server {
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
-    server_name configlab.yourdomain.com;
+    server_name configify.yourdomain.com;
 
     # SSL certificates (will be added by Certbot later)
-    ssl_certificate /etc/letsencrypt/live/configlab.yourdomain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/configlab.yourdomain.com/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/configify.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/configify.yourdomain.com/privkey.pem;
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
@@ -28,12 +28,12 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
 
     # Logs
-    access_log /var/log/nginx/configlab_access.log;
-    error_log /var/log/nginx/configlab_error.log;
+    access_log /var/log/nginx/configify_access.log;
+    error_log /var/log/nginx/configify_error.log;
 
     # Static files (if any – not used now, but kept for future)
     location /static/ {
-        alias /var/www/configlab/public/;
+        alias /var/www/configify/public/;
         expires 30d;
     }
 

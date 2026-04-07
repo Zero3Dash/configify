@@ -24,6 +24,8 @@ const app    = express();
 const server = http.createServer(app);
 const PORT   = process.env.PORT || 3000;
 
+app.set('trust proxy', 1);
+
 // ── Session store in PostgreSQL ────────────────────────────────
 const sessionMiddleware = session({
     store: new pgSession({

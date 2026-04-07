@@ -90,7 +90,7 @@
     <input type="text" id="local-username" autocomplete="username" placeholder="admin" />
     <label>Password</label>
     <input type="password" id="local-password" autocomplete="current-password" placeholder="••••••••" />
-    <button class="btn btn-primary" id="local-login-btn" onclick="doLocalLogin()">Sign in</button>
+    <button class="btn btn-primary" id="local-login-btn" data-label="Sign in" onclick="doLocalLogin()">Sign in</button>
   </div>
 
   <!-- LDAP login -->
@@ -99,7 +99,7 @@
     <input type="text" id="ldap-username" autocomplete="username" placeholder="jsmith" />
     <label>Password</label>
     <input type="password" id="ldap-password" autocomplete="current-password" placeholder="••••••••" />
-    <button class="btn btn-primary" id="ldap-login-btn" onclick="doLdapLogin()">Sign in via LDAP</button>
+    <button class="btn btn-primary" id="ldap-login-btn" data-label="Sign in via LDAP" onclick="doLdapLogin()">Sign in via LDAP</button>
   </div>
 
   <!-- SAML SSO -->

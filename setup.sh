@@ -82,18 +82,25 @@ ufw --force enable >/dev/null
 
 # ── 3. Database ───────────────────────────────────────────────
 info "Creating database and user…"
+
+# Verify DB_PASS was actually generated before continuing
+if [[ -z "${DB_PASS}" ]]; then
+    DB_PASS="$(openssl rand -base64 24)"
+fi
+
 sudo -u postgres psql -v ON_ERROR_STOP=1 <<SQL
 DO \$\$ BEGIN
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '${DB_USER}') THEN
-    CREATE USER ${DB_USER} WITH PASSWORD '${DB_PASS}';
+    CREATE USER "${DB_USER}" WITH PASSWORD '${DB_PASS}';
   END IF;
 END \$\$;
-CREATE DATABASE ${DB_NAME} OWNER ${DB_USER} ENCODING 'UTF8'
-  TEMPLATE template0
-  LC_COLLATE 'en_US.UTF-8' LC_CTYPE 'en_US.UTF-8';
-GRANT ALL PRIVILEGES ON DATABASE ${DB_NAME} TO ${DB_USER};
-\c ${DB_NAME}
-GRANT ALL ON SCHEMA public TO ${DB_USER};
+CREATE DATABASE "${DB_NAME}"
+  OWNER "${DB_USER}"
+  ENCODING 'UTF8'
+  TEMPLATE template0;
+GRANT ALL PRIVILEGES ON DATABASE "${DB_NAME}" TO "${DB_USER}";
+\c "${DB_NAME}"
+GRANT ALL ON SCHEMA public TO "${DB_USER}";
 SQL
 
 # ── 4. App directory ──────────────────────────────────────────

@@ -1,6 +1,6 @@
 # configify — Deployment & Operations Guide
 
-**configify** is a self-hosted template studio inspired by 4peg.com. Write any text with `{{variable}}` placeholders, save templates to a shared PostgreSQL database, fill them in via an auto-generated form, and execute the result over SSH against a managed device inventory — all from the browser.
+**configify** is a self-hosted template studio. Write any text with `{{variable}}` placeholders, save templates to a shared PostgreSQL database, fill them in via an auto-generated form, and execute the result over SSH against a managed device inventory all from the browser.
 
 **Features:** local accounts · LDAP/AD · SAML 2.0 SSO · AES-256-GCM credential vault · live SSH streaming · device groups · shareable template links · iframe embed
 
@@ -24,44 +24,44 @@ PostgreSQL               ← templates, users, devices, credentials, logs
 
 ### Pages
 
-| URL | Description |
-|-----|-------------|
-| `/` | Template studio + SSH execution panel |
-| `/login.html` | Login (local / LDAP / SAML) |
-| `/devices.html` | Device + credential vault manager |
-| `/admin.html` | User admin + auth provider config |
+| URL               | Description                           |
+| ----------------- | ------------------------------------- |
+| `/`             | Template studio + SSH execution panel |
+| `/login.html`   | Login (local / LDAP / SAML)           |
+| `/devices.html` | Device + credential vault manager     |
+| `/admin.html`   | User admin + auth provider config     |
 
 ### API routes
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | `/auth/login/local` | public | Local login |
-| POST | `/auth/login/ldap` | public | LDAP login |
-| GET | `/auth/saml/login` | public | SAML redirect to IdP |
-| POST | `/auth/saml/callback` | public | SAML ACS callback |
-| GET | `/auth/me` | user | Current user info |
-| POST | `/auth/logout` | user | Destroy session |
-| GET | `/api/templates` | user | List templates |
-| POST | `/api/templates` | user | Create template |
-| DELETE | `/api/templates/:id` | user | Delete template |
-| GET | `/api/devices` | user | List devices |
-| POST | `/api/devices` | user | Add device |
-| PATCH | `/api/devices/:id` | user | Edit device |
-| DELETE | `/api/devices/:id` | **admin** | Delete device |
-| GET | `/api/devices/groups` | user | List groups |
-| POST | `/api/devices/groups` | user | Add group |
-| DELETE | `/api/devices/groups/:id` | **admin** | Delete group |
-| GET | `/api/devices/credentials` | user | List credentials (no secrets returned) |
-| POST | `/api/devices/credentials` | user | Add credential |
-| DELETE | `/api/devices/credentials/:id` | **admin** | Delete credential |
-| POST | `/api/ssh/execute` | user | Start SSH job → `{ logId }` |
-| GET | `/api/devices/:id/logs` | user | Execution history for a device |
-| GET | `/api/users` | **admin** | List users |
-| POST | `/api/users` | **admin** | Create local user |
-| PATCH | `/api/users/:id` | **admin** | Edit user |
-| DELETE | `/api/users/:id` | **admin** | Delete user |
-| GET | `/api/users/auth-config/:provider` | **admin** | Get LDAP/SAML config |
-| PUT | `/api/users/auth-config/:provider` | **admin** | Update LDAP/SAML config |
+| Method | Path                                 | Auth            | Description                            |
+| ------ | ------------------------------------ | --------------- | -------------------------------------- |
+| POST   | `/auth/login/local`                | public          | Local login                            |
+| POST   | `/auth/login/ldap`                 | public          | LDAP login                             |
+| GET    | `/auth/saml/login`                 | public          | SAML redirect to IdP                   |
+| POST   | `/auth/saml/callback`              | public          | SAML ACS callback                      |
+| GET    | `/auth/me`                         | user            | Current user info                      |
+| POST   | `/auth/logout`                     | user            | Destroy session                        |
+| GET    | `/api/templates`                   | user            | List templates                         |
+| POST   | `/api/templates`                   | user            | Create template                        |
+| DELETE | `/api/templates/:id`               | user            | Delete template                        |
+| GET    | `/api/devices`                     | user            | List devices                           |
+| POST   | `/api/devices`                     | user            | Add device                             |
+| PATCH  | `/api/devices/:id`                 | user            | Edit device                            |
+| DELETE | `/api/devices/:id`                 | **admin** | Delete device                          |
+| GET    | `/api/devices/groups`              | user            | List groups                            |
+| POST   | `/api/devices/groups`              | user            | Add group                              |
+| DELETE | `/api/devices/groups/:id`          | **admin** | Delete group                           |
+| GET    | `/api/devices/credentials`         | user            | List credentials (no secrets returned) |
+| POST   | `/api/devices/credentials`         | user            | Add credential                         |
+| DELETE | `/api/devices/credentials/:id`     | **admin** | Delete credential                      |
+| POST   | `/api/ssh/execute`                 | user            | Start SSH job →`{ logId }`          |
+| GET    | `/api/devices/:id/logs`            | user            | Execution history for a device         |
+| GET    | `/api/users`                       | **admin** | List users                             |
+| POST   | `/api/users`                       | **admin** | Create local user                      |
+| PATCH  | `/api/users/:id`                   | **admin** | Edit user                              |
+| DELETE | `/api/users/:id`                   | **admin** | Delete user                            |
+| GET    | `/api/users/auth-config/:provider` | **admin** | Get LDAP/SAML config                   |
+| PUT    | `/api/users/auth-config/:provider` | **admin** | Update LDAP/SAML config                |
 
 ---
 
@@ -328,15 +328,15 @@ Managed through **Admin → Users**. Passwords are bcrypt-hashed at cost 12. Onl
 1. Log in as admin → **Admin → Auth Providers → LDAP/AD**
 2. Enter your directory settings:
 
-| Field | Example |
-|-------|---------|
-| LDAP URL | `ldap://dc.corp.example.com:389` or `ldaps://dc.corp.example.com:636` |
-| Bind DN | `cn=svc-configify,ou=ServiceAccounts,dc=corp,dc=example,dc=com` |
-| Bind Password | service account password |
-| Search Base | `ou=Users,dc=corp,dc=example,dc=com` |
-| Search Filter | `(sAMAccountName={{username}})` |
-| Admin Group DN | `CN=configify-admins,ou=Groups,dc=corp,dc=example,dc=com` |
-| Group Search Base | `ou=Groups,dc=corp,dc=example,dc=com` |
+| Field             | Example                                                                   |
+| ----------------- | ------------------------------------------------------------------------- |
+| LDAP URL          | `ldap://dc.corp.example.com:389` or `ldaps://dc.corp.example.com:636` |
+| Bind DN           | `cn=svc-configify,ou=ServiceAccounts,dc=corp,dc=example,dc=com`         |
+| Bind Password     | service account password                                                  |
+| Search Base       | `ou=Users,dc=corp,dc=example,dc=com`                                    |
+| Search Filter     | `(sAMAccountName={{username}})`                                         |
+| Admin Group DN    | `CN=configify-admins,ou=Groups,dc=corp,dc=example,dc=com`               |
+| Group Search Base | `ou=Groups,dc=corp,dc=example,dc=com`                                   |
 
 3. Enable the toggle → **Save LDAP config**
 4. Restart: `pm2 restart configify-app`
@@ -349,10 +349,10 @@ Managed through **Admin → Users**. Passwords are bcrypt-hashed at cost 12. Onl
 ### SAML 2.0 (SSO)
 
 1. Register configify as a Service Provider in your IdP:
+
    - **Entity ID / Issuer:** `configify` (or any string — must match what you enter in step 2)
    - **ACS URL:** `https://configify.yourdomain.com/auth/saml/callback`
    - **Name ID format:** Email address (recommended)
-
 2. Log in as admin → **Admin → Auth Providers → SAML 2.0**
 3. Fill in the IdP details and attribute mapping
 4. Paste the IdP signing certificate — PEM body only, without the `-----BEGIN CERTIFICATE-----` / `-----END CERTIFICATE-----` wrapper lines
@@ -361,12 +361,12 @@ Managed through **Admin → Users**. Passwords are bcrypt-hashed at cost 12. Onl
 
 **Attribute mapping — Azure AD / Entra ID:**
 
-| Field | Claim URI |
-|-------|-----------|
-| Email | `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress` |
-| Username | `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name` |
-| Role/Group | `http://schemas.microsoft.com/ws/2008/06/identity/claims/groups` |
-| Admin group value | Object ID of the admin group in Azure AD |
+| Field             | Claim URI                                                              |
+| ----------------- | ---------------------------------------------------------------------- |
+| Email             | `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress` |
+| Username          | `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name`         |
+| Role/Group        | `http://schemas.microsoft.com/ws/2008/06/identity/claims/groups`     |
+| Admin group value | Object ID of the admin group in Azure AD                               |
 
 ---
 
@@ -376,11 +376,11 @@ Managed through **Admin → Users**. Passwords are bcrypt-hashed at cost 12. Onl
 
 All passwords and private keys are encrypted at rest using **AES-256-GCM** keyed from `VAULT_SECRET`. The API never returns plaintext secrets after initial storage — only metadata (name, username, auth method, creation date) is readable.
 
-| Auth method | When to use |
-|-------------|-------------|
-| Password | Standard SSH password auth |
-| SSH Private Key | RSA or Ed25519 PEM key, no passphrase |
-| SSH Private Key + Passphrase | Encrypted private key |
+| Auth method                  | When to use                           |
+| ---------------------------- | ------------------------------------- |
+| Password                     | Standard SSH password auth            |
+| SSH Private Key              | RSA or Ed25519 PEM key, no passphrase |
+| SSH Private Key + Passphrase | Encrypted private key                 |
 
 ### Devices
 
@@ -453,30 +453,30 @@ pm2 monit                     # live CPU / memory dashboard
 
 ### Log locations
 
-| Log | Path |
-|-----|------|
-| App stdout | `/var/log/configify/out.log` |
-| App stderr | `/var/log/configify/err.log` |
-| App combined | `/var/log/configify/combined.log` |
-| Nginx access | `/var/log/nginx/configify_access.log` |
-| Nginx errors | `/var/log/nginx/configify_error.log` |
-| PostgreSQL | `/var/log/postgresql/postgresql-17-main.log` |
+| Log          | Path                                           |
+| ------------ | ---------------------------------------------- |
+| App stdout   | `/var/log/configify/out.log`                 |
+| App stderr   | `/var/log/configify/err.log`                 |
+| App combined | `/var/log/configify/combined.log`            |
+| Nginx access | `/var/log/nginx/configify_access.log`        |
+| Nginx errors | `/var/log/nginx/configify_error.log`         |
+| PostgreSQL   | `/var/log/postgresql/postgresql-17-main.log` |
 
 ---
 
 ## Troubleshooting
 
-| Symptom | Likely cause | Fix |
-|---------|-------------|-----|
-| 502 Bad Gateway | Node app not running | `pm2 status` → `pm2 start ecosystem.config.js` |
-| Login fails with correct password | Schema not applied or stale session | Re-run `schema_v2.sql`; clear browser cookies |
-| LDAP login fails | Wrong bind DN, filter, or URL | Check `err.log` — passport-ldapauth logs the exact LDAP error |
-| SAML redirect loop or error page | ACS URL mismatch or wrong cert | Confirm the callback URL in your IdP exactly matches `APP_URL/auth/saml/callback` |
-| SSH execution fails immediately | No credential assigned to device | Go to Devices, edit the device, assign a default credential |
-| SSH "Credential not found" | `VAULT_SECRET` was changed | Restore the original `VAULT_SECRET` — credentials encrypted with a different key cannot be decrypted |
-| WebSocket disconnects instantly | Nginx missing upgrade headers | Confirm `proxy_set_header Upgrade $http_upgrade` and `Connection 'upgrade'` in Nginx config |
-| `VAULT_SECRET must be 64-char` on startup | Missing or malformed `.env` | Run `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` and paste result |
-| 401 on all API calls | Session store not initialised | Check `err.log` for DB connection errors; `user_sessions` table is created automatically on first start |
+| Symptom                                     | Likely cause                        | Fix                                                                                                         |
+| ------------------------------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| 502 Bad Gateway                             | Node app not running                | `pm2 status` → `pm2 start ecosystem.config.js`                                                         |
+| Login fails with correct password           | Schema not applied or stale session | Re-run `schema_v2.sql`; clear browser cookies                                                             |
+| LDAP login fails                            | Wrong bind DN, filter, or URL       | Check `err.log` — passport-ldapauth logs the exact LDAP error                                            |
+| SAML redirect loop or error page            | ACS URL mismatch or wrong cert      | Confirm the callback URL in your IdP exactly matches `APP_URL/auth/saml/callback`                         |
+| SSH execution fails immediately             | No credential assigned to device    | Go to Devices, edit the device, assign a default credential                                                 |
+| SSH "Credential not found"                  | `VAULT_SECRET` was changed        | Restore the original `VAULT_SECRET` — credentials encrypted with a different key cannot be decrypted     |
+| WebSocket disconnects instantly             | Nginx missing upgrade headers       | Confirm `proxy_set_header Upgrade $http_upgrade` and `Connection 'upgrade'` in Nginx config             |
+| `VAULT_SECRET must be 64-char` on startup | Missing or malformed `.env`       | Run `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` and paste result           |
+| 401 on all API calls                        | Session store not initialised       | Check `err.log` for DB connection errors; `user_sessions` table is created automatically on first start |
 
 ---
 

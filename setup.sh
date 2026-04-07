@@ -162,9 +162,17 @@ sudo -u "${APP_USER}" pm2 start "${APP_DIR}/ecosystem.config.js" || \
 sudo -u "${APP_USER}" pm2 restart configify-app
 
 sudo -u "${APP_USER}" pm2 save
-# Enable startup script
-PM2_STARTUP="$(sudo -u "${APP_USER}" pm2 startup systemd -u "${APP_USER}" --hp "/home/${APP_USER}" | tail -1)"
-eval "${PM2_STARTUP}" 2>/dev/null || true
+# Enable startup script — capture output safely, avoiding pipefail exit
+PM2_STARTUP_CMD=""
+while IFS= read -r line; do
+    PM2_STARTUP_CMD="${line}"
+done < <(sudo -u "${APP_USER}" pm2 startup systemd -u "${APP_USER}" --hp "/home/${APP_USER}" 2>/dev/null | grep -E "^sudo ")
+
+if [[ -n "${PM2_STARTUP_CMD}" ]]; then
+    eval "${PM2_STARTUP_CMD}" 2>/dev/null || warn "PM2 startup script registration failed — run manually: pm2 startup"
+else
+    warn "Could not extract PM2 startup command — run 'pm2 startup' manually after install."
+fi
 
 # ── 9. Self-signed SSL cert ───────────────────────────────────
 info "Generating self-signed SSL certificate…"

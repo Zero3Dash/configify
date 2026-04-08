@@ -10,7 +10,6 @@ const session        = require('express-session');
 const pgSession      = require('connect-pg-simple')(session);
 const cors           = require('cors');
 const WebSocket      = require('ws');
-const url            = require('url');
 
 const db             = require('./db');
 const { passport, initAuth } = require('./auth');
@@ -97,16 +96,49 @@ app.use((req, res) => {
 const wss = new WebSocket.Server({ noServer: true });
 sshRoutes.attachSshWebSocket(wss);
 
+/**
+ * Build a minimal response-like object that satisfies express-session
+ * and passport without binding to a real HTTP socket.
+ *
+ * express-session calls res.on('finish', ...) via the on-headers package
+ * (which wraps res.writeHead) and may also call res.getHeader /
+ * res.setHeader.  Passing a plain `{}` causes "res.on is not a function",
+ * which silently swallows the callback and leaves req.session undefined —
+ * so every WebSocket is rejected as "Not authenticated".
+ */
+function makeFakeRes() {
+    const fakeRes = {
+        on:           () => fakeRes,
+        once:         () => fakeRes,
+        off:          () => fakeRes,
+        emit:         () => false,
+        end:          () => fakeRes,
+        write:        () => fakeRes,
+        writeHead:    () => fakeRes,
+        getHeader:    () => undefined,
+        getHeaders:   () => ({}),
+        setHeader:    () => fakeRes,
+        removeHeader: () => {},
+        finished:     false,
+        headersSent:  false,
+        statusCode:   200,
+    };
+    return fakeRes;
+}
+
 // Upgrade handler — share express session with WS
 server.on('upgrade', (req, socket, head) => {
     if (!req.url.startsWith('/ws/ssh/')) {
         socket.destroy();
         return;
     }
-    // Parse session so we can auth the WS connection
-    sessionMiddleware(req, {}, () => {
-        passport.initialize()(req, {}, () => {
-            passport.session()(req, {}, () => {
+
+    const res = makeFakeRes();
+
+    // Restore the session so req.session.passport.user is populated
+    sessionMiddleware(req, res, () => {
+        passport.initialize()(req, res, () => {
+            passport.session()(req, res, () => {
                 wss.handleUpgrade(req, socket, head, (ws) => {
                     wss.emit('connection', ws, req);
                 });

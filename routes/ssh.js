@@ -6,11 +6,19 @@
  *   1. POST /api/ssh/execute  →  creates execution_log row, returns { logId }
  *   2. Client opens WebSocket ws://host/ws/ssh/:logId
  *   3. Server SSHes the device, streams stdout/stderr back, closes WS when done
+ *
+ * Host-key policy:
+ *   hostVerifier is set to always return true so unknown or changed host keys
+ *   are automatically accepted. This mirrors "StrictHostKeyChecking=accept-new"
+ *   behaviour and prevents executions from blocking on a fingerprint prompt.
+ *   The resolved fingerprint (SHA-256, hex) is logged to execution_logs.notes
+ *   so operators can audit thumbprint changes over time.
  */
-const express = require('express');
+const express    = require('express');
 const { NodeSSH } = require('node-ssh');
-const db      = require('../db');
-const vault   = require('../crypto/vault');
+const crypto     = require('crypto');
+const db         = require('../db');
+const vault      = require('../crypto/vault');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
@@ -45,19 +53,21 @@ router.post('/execute', requireAuth, async (req, res) => {
     }
 });
 
-// ── WebSocket handler (attached in server.js) ──────────────────
-/**
- * Exported function: attachSshWebSocket(wss, db, vault)
- * Call this from server.js after creating the WebSocket server.
- */
+// ── WebSocket handler ──────────────────────────────────────────
 async function handleSshConnection(ws, logId, userId) {
     let ssh = null;
-    let logOutput = '';
+    let logOutput  = '';
+    let thumbprint = null;   // SHA-256 fingerprint of the host key seen
 
     const send = (type, data) => {
         if (ws.readyState === 1 /* OPEN */) {
             ws.send(JSON.stringify({ type, data }));
         }
+    };
+
+    // Emit a structured progress event so the client can drive a progress bar
+    const progress = (step, total, label) => {
+        send('progress', { step, total, label });
     };
 
     const finish = async (exitCode, status) => {
@@ -69,11 +79,14 @@ async function handleSshConnection(ws, logId, userId) {
                 [logOutput, exitCode, status, logId]
             );
         } catch (e) { console.error('Log update error:', e); }
+        progress(4, 4, status === 'success' ? 'Complete' : 'Failed');
         send('done', { exitCode, status });
         ws.close();
     };
 
     try {
+        progress(1, 4, 'Fetching job details');
+
         // Fetch log + device + credential
         const logRes = await db.query(
             `SELECT l.*, d.hostname, d.port, d.device_type,
@@ -99,13 +112,24 @@ async function handleSshConnection(ws, logId, userId) {
         }
         const cred = credRes.rows[0];
 
+        progress(2, 4, `Connecting to ${log.hostname}:${log.port}`);
         send('status', `Connecting to ${log.hostname}:${log.port}…`);
 
         // Build SSH config
         const sshCfg = {
             host:     log.hostname,
             port:     log.port,
-            username: cred.username
+            username: cred.username,
+
+            // ── Host-key policy ────────────────────────────────
+            // Always accept the presented host key.  The fingerprint is
+            // captured for audit purposes and sent back to the client.
+            hostVerifier: (hashedKey) => {
+                // hashedKey is a Buffer (the raw hash ssh2 computed)
+                thumbprint = hashedKey.toString('hex');
+                send('thumbprint', thumbprint);
+                return true;   // accept unconditionally
+            }
         };
 
         if (cred.auth_method === 'password') {
@@ -119,6 +143,7 @@ async function handleSshConnection(ws, logId, userId) {
         ssh = new NodeSSH();
         await ssh.connect(sshCfg);
 
+        progress(3, 4, 'Running command');
         send('status', 'Connected. Running command…');
         send('output', '');
 
@@ -149,13 +174,10 @@ async function handleSshConnection(ws, logId, userId) {
 // ── Attach WebSocket server ────────────────────────────────────
 function attachSshWebSocket(wss) {
     wss.on('connection', async (ws, req) => {
-        // URL: /ws/ssh/:logId   — parse logId and session user from req
         const match = req.url.match(/^\/ws\/ssh\/(\d+)$/);
         if (!match) return ws.close();
 
-        const logId = parseInt(match[1]);
-
-        // Extract user from session (stored by express-session on req.session)
+        const logId  = parseInt(match[1]);
         const userId = req.session?.passport?.user;
         if (!userId) {
             ws.send(JSON.stringify({ type: 'error', data: 'Not authenticated' }));

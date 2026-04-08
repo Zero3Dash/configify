@@ -42,7 +42,7 @@
   .info-note { background: #e6f0ff; border-left: 4px solid #2563eb; padding: 0.8rem 1.2rem; border-radius: 0 8px 8px 0; font-size: 0.9rem; margin: 1rem 0; }
   hr { border: none; border-top: 2px dashed #cbd5e1; margin: 2rem 0; }
 
-  /* SSH panel */
+  /* ── SSH panel ──────────────────────────────────────────────── */
   .ssh-panel { background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; height: fit-content; position: sticky; top: 72px; }
   .ssh-panel h2 { font-size: 1.1rem; margin-top: 0; }
   .ssh-panel select, .ssh-panel input { width: 100%; padding: 0.55rem 0.8rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.88rem; margin-bottom: 0.75rem; background: white; outline: none; }
@@ -57,6 +57,50 @@
   .run-btn { width: 100%; padding: 0.75rem; font-size: 0.95rem; margin-top: 0.5rem; background: #16a34a; }
   .run-btn:hover { background: #15803d; }
   .run-btn:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+
+  /* ── Progress indicator ─────────────────────────────────────── */
+  #ssh-progress { display: none; margin-top: 0.75rem; }
+  #ssh-progress.visible { display: block; }
+  .progress-steps { display: flex; align-items: center; gap: 0; margin-bottom: 0.5rem; }
+  .progress-step {
+    flex: 1; display: flex; flex-direction: column; align-items: center; position: relative;
+  }
+  .progress-step:not(:last-child)::after {
+    content: ''; position: absolute; top: 11px; left: 50%; width: 100%;
+    height: 2px; background: #334155; z-index: 0;
+    transition: background 0.3s;
+  }
+  .progress-step.done:not(:last-child)::after  { background: #16a34a; }
+  .progress-step.active:not(:last-child)::after { background: #334155; }
+  .step-dot {
+    width: 22px; height: 22px; border-radius: 50%; background: #334155;
+    border: 2px solid #475569; display: flex; align-items: center; justify-content: center;
+    font-size: 0.6rem; color: #94a3b8; z-index: 1; position: relative;
+    transition: background 0.3s, border-color 0.3s;
+  }
+  .progress-step.done   .step-dot { background: #16a34a; border-color: #16a34a; color: white; }
+  .progress-step.active .step-dot { background: #2563eb; border-color: #38bdf8; color: white; animation: pulse-dot 1s infinite; }
+  .progress-step.error  .step-dot { background: #dc2626; border-color: #f87171; color: white; }
+  @keyframes pulse-dot { 0%,100% { box-shadow: 0 0 0 0 rgba(56,189,248,0.4); } 50% { box-shadow: 0 0 0 5px rgba(56,189,248,0); } }
+  .step-label { font-size: 0.65rem; color: #64748b; margin-top: 0.25rem; text-align: center; white-space: nowrap; }
+  .progress-step.done   .step-label { color: #4ade80; }
+  .progress-step.active .step-label { color: #38bdf8; }
+  .progress-step.error  .step-label { color: #f87171; }
+
+  /* track bar */
+  .progress-track { height: 4px; background: #1e293b; border-radius: 2px; overflow: hidden; margin-bottom: 0.4rem; }
+  .progress-fill  { height: 100%; background: linear-gradient(90deg,#2563eb,#38bdf8); border-radius: 2px; width: 0%; transition: width 0.4s ease; }
+  .progress-fill.done  { background: linear-gradient(90deg,#16a34a,#4ade80); }
+  .progress-fill.error { background: #dc2626; }
+
+  /* thumbprint badge */
+  #thumbprint-row { display: none; align-items: center; gap: 0.4rem; margin-top: 0.4rem; }
+  #thumbprint-row.visible { display: flex; }
+  .fp-label { font-size: 0.68rem; color: #64748b; white-space: nowrap; }
+  .fp-value { font-family: 'Fira Code', monospace; font-size: 0.65rem; color: #38bdf8; background: #0f172a; border: 1px solid #334155; border-radius: 4px; padding: 0.15rem 0.4rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; cursor: pointer; title: "Click to copy"; }
+  .fp-copy { font-size: 0.65rem; padding: 0.15rem 0.4rem; background: #334155; color: #94a3b8; border: none; border-radius: 4px; cursor: pointer; flex-shrink: 0; }
+  .fp-copy:hover { background: #475569; color: white; }
+
   .group-header { font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.4rem 0.5rem; pointer-events: none; }
   #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #166534; color: white; padding: 0.75rem 1.25rem; border-radius: 8px; font-size: 0.9rem; display: none; z-index: 200; }
   .copy-btn { float: right; font-size: 0.75rem; padding: 0.25rem 0.6rem; background: #334155; color: #94a3b8; border: none; border-radius: 4px; cursor: pointer; margin-top: -0.25rem; }
@@ -129,6 +173,23 @@
     <select id="ssh-cred-select"><option value="">— Use device default —</option></select>
 
     <button class="run-btn" id="run-ssh-btn" onclick="runSsh()" disabled>▶ Run on device</button>
+
+    <!-- ── Progress indicator ── -->
+    <div id="ssh-progress">
+      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+      <div class="progress-steps" id="progress-steps">
+        <div class="progress-step" id="ps-1"><div class="step-dot">1</div><div class="step-label">Fetch</div></div>
+        <div class="progress-step" id="ps-2"><div class="step-dot">2</div><div class="step-label">Connect</div></div>
+        <div class="progress-step" id="ps-3"><div class="step-dot">3</div><div class="step-label">Run</div></div>
+        <div class="progress-step" id="ps-4"><div class="step-dot">✓</div><div class="step-label">Done</div></div>
+      </div>
+      <!-- Host key fingerprint -->
+      <div id="thumbprint-row">
+        <span class="fp-label">🔑 Host key:</span>
+        <span class="fp-value" id="fp-value" title="Click to copy" onclick="copyThumbprint()"></span>
+        <button class="fp-copy" onclick="copyThumbprint()">copy</button>
+      </div>
+    </div>
 
     <div class="ssh-terminal" id="ssh-terminal">Select a device above, fill the template, then click Run.</div>
 
@@ -280,6 +341,60 @@ async function loadFromUrl() {
   if (Object.keys(prefill).length) { setFormValues(prefill); updateOutput(); }
 }
 
+// ── Progress indicator ────────────────────────────────────────
+const STEP_LABELS = ['Fetch', 'Connect', 'Run', 'Done'];
+
+function resetProgress() {
+  document.getElementById('ssh-progress').classList.remove('visible');
+  document.getElementById('progress-fill').style.width = '0%';
+  document.getElementById('progress-fill').className = 'progress-fill';
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById(`ps-${i}`);
+    el.className = 'progress-step';
+    el.querySelector('.step-dot').textContent = i === 4 ? '✓' : i;
+  }
+  document.getElementById('thumbprint-row').classList.remove('visible');
+  document.getElementById('fp-value').textContent = '';
+}
+
+function setProgress(step, total, failed = false) {
+  document.getElementById('ssh-progress').classList.add('visible');
+  const pct = Math.round((step / total) * 100);
+  const fill = document.getElementById('progress-fill');
+  fill.style.width = pct + '%';
+  fill.className = 'progress-fill' + (failed ? ' error' : step === total && !failed ? ' done' : '');
+
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById(`ps-${i}`);
+    const dot = el.querySelector('.step-dot');
+    if (i < step) {
+      el.className = 'progress-step done';
+      dot.textContent = '✓';
+    } else if (i === step) {
+      el.className = 'progress-step' + (failed ? ' error' : ' active');
+      dot.textContent = failed ? '✗' : i === 4 ? '✓' : i;
+    } else {
+      el.className = 'progress-step';
+      dot.textContent = i === 4 ? '✓' : i;
+    }
+  }
+}
+
+function showThumbprint(fp) {
+  // Format as colon-separated pairs for readability, showing first 10 bytes
+  const pairs = [];
+  for (let i = 0; i < fp.length && i < 20; i += 2) pairs.push(fp.slice(i, i+2));
+  const display = pairs.join(':') + (fp.length > 20 ? '…' : '');
+  document.getElementById('fp-value').textContent = display;
+  document.getElementById('fp-value').dataset.full = fp;
+  document.getElementById('thumbprint-row').classList.add('visible');
+}
+
+window.copyThumbprint = function() {
+  const val = document.getElementById('fp-value').dataset.full || document.getElementById('fp-value').textContent;
+  navigator.clipboard.writeText(val).then(() => toast('Fingerprint copied!')).catch(() => {});
+};
+
 // ── SSH ───────────────────────────────────────────────────────
 async function loadSshDevices() {
   try {
@@ -339,9 +454,9 @@ async function runSsh() {
 
   const btn = document.getElementById('run-ssh-btn');
   btn.disabled = true;
-  btn.textContent = '⏳ Connecting…';
+  btn.textContent = '⏳ Running…';
   clearTerminal();
-  termLine('status', 'Initiating execution…');
+  resetProgress();
 
   try {
     const res = await fetch('/api/ssh/execute', {
@@ -355,7 +470,12 @@ async function runSsh() {
       })
     });
     const data = await res.json();
-    if (!res.ok) { termLine('error', data.error || 'Request failed'); btn.disabled = false; btn.textContent = '▶ Run on device'; return; }
+    if (!res.ok) {
+      termLine('error', data.error || 'Request failed');
+      setProgress(1, 4, true);
+      btn.disabled = false; btn.textContent = '▶ Run on device';
+      return;
+    }
 
     const logId = data.logId;
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
@@ -363,21 +483,37 @@ async function runSsh() {
 
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data);
-      if      (msg.type === 'status')  termLine('status',  msg.data);
-      else if (msg.type === 'output')  termAppend('stdout', msg.data);
-      else if (msg.type === 'stderr')  termAppend('stderr', msg.data);
-      else if (msg.type === 'error')   termLine('error',   '⚠ ' + msg.data);
-      else if (msg.type === 'done') {
+      if (msg.type === 'progress') {
+        setProgress(msg.data.step, msg.data.total, false);
+        if (msg.data.label) termLine('status', msg.data.label + '…');
+      } else if (msg.type === 'thumbprint') {
+        showThumbprint(msg.data);
+      } else if (msg.type === 'status') {
+        termLine('status', msg.data);
+      } else if (msg.type === 'output') {
+        termAppend('stdout', msg.data);
+      } else if (msg.type === 'stderr') {
+        termAppend('stderr', msg.data);
+      } else if (msg.type === 'error') {
+        termLine('error', '⚠ ' + msg.data);
+        setProgress(4, 4, true);
+      } else if (msg.type === 'done') {
         const ok = msg.data.status === 'success';
+        setProgress(4, 4, !ok);
         termLine(ok ? 'success' : 'fail', ok ? '✅ Completed (exit 0)' : `❌ Failed (exit ${msg.data.exitCode})`);
         btn.disabled = false;
         btn.textContent = '▶ Run on device';
       }
     };
-    ws.onerror  = () => { termLine('error', 'WebSocket error'); btn.disabled = false; btn.textContent = '▶ Run on device'; };
+    ws.onerror  = () => {
+      termLine('error', 'WebSocket error');
+      setProgress(4, 4, true);
+      btn.disabled = false; btn.textContent = '▶ Run on device';
+    };
     ws.onclose  = () => {};
   } catch (err) {
     termLine('error', err.message);
+    setProgress(4, 4, true);
     btn.disabled = false;
     btn.textContent = '▶ Run on device';
   }
@@ -395,7 +531,6 @@ function termLine(cls, text) {
 function termAppend(cls, text) {
   if (!text) return;
   const t = document.getElementById('ssh-terminal');
-  // Find or create a span for continuous output
   let last = t.lastElementChild;
   if (!last || !last.classList.contains('t-' + cls)) {
     last = document.createElement('span');
@@ -408,6 +543,7 @@ function termAppend(cls, text) {
 
 function clearTerminal() {
   document.getElementById('ssh-terminal').innerHTML = '';
+  resetProgress();
 }
 
 // ── Misc ──────────────────────────────────────────────────────

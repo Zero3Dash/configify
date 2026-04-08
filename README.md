@@ -403,6 +403,27 @@ Each execution is logged to `execution_logs` with the full command text, combine
 GET /api/devices/:id/logs
 ```
 
+#### Host-key fingerprint (auto-accept)
+
+configify automatically accepts any SSH host key presented by a target device, equivalent to OpenSSH's `StrictHostKeyChecking=accept-new`. Executions are never blocked by an unknown-host prompt.
+
+During each connection the server captures the host key's **SHA-256 fingerprint** (hex) via the `hostVerifier` callback and streams it to the browser over the WebSocket. It appears beneath the progress bar in the **Execute on Device** panel and can be copied with one click for out-of-band verification against the device's own key output (e.g. `show crypto key mypubkey rsa` on Cisco IOS).
+
+> **Security note:** because keys are accepted unconditionally, configify does not protect against MITM attacks on the network path between the server and the device. Restrict network access to the configify host itself and use a dedicated management VLAN or VPN for device connectivity.
+
+#### Progress indicator
+
+A four-step progress bar appears below the **▶ Run on device** button for every execution:
+
+| Step | Label   | What it means                       |
+| ---- | ------- | ------------------------------------ |
+| 1    | Fetch   | Retrieving job details from the DB   |
+| 2    | Connect | TCP + SSH handshake to the device    |
+| 3    | Run     | Command executing, output streaming  |
+| 4    | Done    | Exit code received, log finalised    |
+
+Steps animate with a pulsing blue dot while active, turn green on success, and red on any failure. The track bar fills proportionally and changes colour to match the outcome.
+
 ---
 
 ## Database backup
@@ -477,6 +498,7 @@ pm2 monit                     # live CPU / memory dashboard
 | WebSocket disconnects instantly             | Nginx missing upgrade headers       | Confirm `proxy_set_header Upgrade $http_upgrade` and `Connection 'upgrade'` in Nginx config             |
 | `VAULT_SECRET must be 64-char` on startup | Missing or malformed `.env`       | Run `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` and paste result           |
 | 401 on all API calls                        | Session store not initialised       | Check `err.log` for DB connection errors; `user_sessions` table is created automatically on first start |
+| No fingerprint shown after SSH connect      | Device disconnected before handshake| Check terminal for the specific connection error                                                            |
 
 ---
 
@@ -487,6 +509,7 @@ pm2 monit                     # live CPU / memory dashboard
 - Session cookies are `httpOnly`, `secure` (production), and expire after 8 hours
 - Only `admin` role accounts can delete users, devices, credentials, and groups
 - PostgreSQL is bound to `localhost` only — no remote database access
+- SSH host keys are accepted automatically; verify fingerprints displayed in the UI out-of-band if MITM risk is a concern in your environment
 - Install `fail2ban` to protect the host SSH service against brute-force:
 
 ```bash

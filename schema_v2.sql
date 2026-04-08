@@ -116,6 +116,7 @@ CREATE TABLE IF NOT EXISTS execution_logs (
     device_id      INTEGER REFERENCES devices(id) ON DELETE SET NULL,
     template_id    VARCHAR(50),  -- references templates.template_id (soft ref)
     executed_by    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    credential_id  INTEGER REFERENCES credentials(id) ON DELETE SET NULL,
     command_text   TEXT    NOT NULL,
     output         TEXT,
     exit_code      INTEGER,

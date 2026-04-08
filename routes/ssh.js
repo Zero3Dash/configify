@@ -40,9 +40,9 @@ router.post('/execute', requireAuth, async (req, res) => {
 
         // Create log entry
         const logRes = await db.query(
-            `INSERT INTO execution_logs (device_id, template_id, executed_by, command_text, status)
-             VALUES ($1, $2, $3, $4, 'running') RETURNING id`,
-            [device_id, template_id || null, req.user.id, command]
+            `INSERT INTO execution_logs (device_id, template_id, executed_by, command_text, status, credential_id)
+            VALUES ($1, $2, $3, $4, 'running', $5) RETURNING id`,
+            [device_id, template_id || null, req.user.id, command, credId]
         );
         const logId = logRes.rows[0].id;
 
@@ -89,11 +89,10 @@ async function handleSshConnection(ws, logId, userId) {
 
         // Fetch log + device + credential
         const logRes = await db.query(
-            `SELECT l.*, d.hostname, d.port, d.device_type,
-                    d.default_credential_id
-             FROM execution_logs l
-             JOIN devices d ON d.id = l.device_id
-             WHERE l.id = $1 AND l.executed_by = $2`,
+            `SELECT l.*, d.hostname, d.port, d.device_type
+            FROM execution_logs l
+            JOIN devices d ON d.id = l.device_id
+            WHERE l.id = $1 AND l.executed_by = $2`,
             [logId, userId]
         );
         if (!logRes.rows.length) {
@@ -104,7 +103,7 @@ async function handleSshConnection(ws, logId, userId) {
 
         const credRes = await db.query(
             'SELECT * FROM credentials WHERE id = $1',
-            [log.default_credential_id]
+            [log.credential_id]
         );
         if (!credRes.rows.length) {
             send('error', 'Credential not found');

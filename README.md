@@ -136,8 +136,10 @@ Follow this path if you need more control, are deploying to an existing server, 
 - A domain name pointing to the server's IP (required for Let's Encrypt; optional for self-signed)
 - SSH access with sudo
 
-- sudo apt install git
-- sudo apt install cron
+```bash
+sudo apt install git
+sudo apt install cron
+```
 
 ### 1 — Get the code
 

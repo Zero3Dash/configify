@@ -1,18 +1,12 @@
 /**
  * routes/ssh.js
- * REST endpoint to initiate SSH execution + WebSocket handler for streaming output.
+ * REST endpoint + WebSocket handler for SSH execution.
  *
- * Auth flow:
- *   1. POST /api/ssh/execute  — authenticated via session cookie (normal Express route)
- *                              → creates execution_log row
- *                              → generates a short-lived one-time token
- *                              → returns { logId, token }
- *   2. Client opens WebSocket ws://host/ws/ssh/:logId?token=<token>
- *   3. Upgrade handler validates token directly — no session middleware needed
- *   4. Server SSHes the device, streams stdout/stderr back, closes WS when done
+ * Auth: POST /execute returns { logId, token }
+ *       WebSocket opens at /ws/ssh/:logId?token=<token>
+ *       No session middleware needed on the upgrade path.
  *
- * This avoids running express-session over a raw socket upgrade (which requires
- * a fake res shim and silently fails in certain environments).
+ * Debug logging: set DEBUG_SSH=true in .env to enable verbose output.
  */
 const express      = require('express');
 const crypto       = require('crypto');
@@ -22,77 +16,106 @@ const vault        = require('../crypto/vault');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
+const DEBUG  = process.env.DEBUG_SSH === 'true';
 
-// ── In-memory token store ─────────────────────────────────────
-// token → { logId, userId, expires }
-// Tokens are single-use and expire after 60 seconds.
+function log(...args)  { console.log ('[SSH]',     new Date().toISOString(), ...args); }
+function dbg(...args)  { if (DEBUG) console.log('[SSH:dbg]', new Date().toISOString(), ...args); }
+function err(...args)  { console.error('[SSH:err]', new Date().toISOString(), ...args); }
+
+// ── In-memory one-time token store ────────────────────────────
+// Map<token, { logId, userId, expires }>
 const pendingTokens = new Map();
-
-// Sweep expired tokens every 5 minutes
 setInterval(() => {
     const now = Date.now();
-    for (const [token, meta] of pendingTokens) {
-        if (meta.expires < now) pendingTokens.delete(token);
+    for (const [t, m] of pendingTokens) {
+        if (m.expires < now) {
+            dbg('Swept expired token:', t.slice(0, 8) + '…');
+            pendingTokens.delete(t);
+        }
     }
-}, 5 * 60 * 1000);
+}, 60_000);
 
-// ── Initiate execution (REST) ──────────────────────────────────
+// ── POST /api/ssh/execute ─────────────────────────────────────
 router.post('/execute', requireAuth, async (req, res) => {
     const { device_id, credential_id, command, template_id } = req.body;
+    log(`execute  user=${req.user?.id} device=${device_id} cred_override=${credential_id}`);
 
     if (!device_id || !command) {
+        err('execute: missing device_id or command');
         return res.status(400).json({ error: 'device_id and command required' });
     }
 
     try {
-        // Fetch device
+        // 1. Fetch device
         const devRes = await db.query('SELECT * FROM devices WHERE id = $1', [device_id]);
         if (!devRes.rows.length) {
+            err('execute: device not found:', device_id);
             return res.status(404).json({ error: 'Device not found' });
         }
         const device = devRes.rows[0];
+        dbg('execute: device:', device.name, device.hostname + ':' + device.port,
+            'default_cred:', device.default_credential_id);
 
-        // Resolve credential: explicit override → device default → error
-        const credId = credential_id || device.default_credential_id;
+        // 2. Resolve credential
+        const credId = parseInt(credential_id) || device.default_credential_id;
+        dbg('execute: resolved credId:', credId);
         if (!credId) {
+            err('execute: no credential available for device:', device_id);
             return res.status(400).json({
-                error: 'No credential specified and no default credential configured for this device'
+                error: 'No credential specified and device has no default credential'
             });
         }
 
-        // Verify credential exists before creating the log
-        const credCheck = await db.query('SELECT id FROM credentials WHERE id = $1', [credId]);
+        const credCheck = await db.query(
+            'SELECT id, name, username FROM credentials WHERE id = $1', [credId]
+        );
         if (!credCheck.rows.length) {
-            return res.status(400).json({ error: 'Credential not found' });
+            err('execute: credential not found:', credId);
+            return res.status(400).json({ error: `Credential id=${credId} not found` });
+        }
+        dbg('execute: credential:', credCheck.rows[0].name, '/', credCheck.rows[0].username);
+
+        // 3. Auto-migrate: ensure credential_id column exists on execution_logs
+        try {
+            await db.query(`
+                ALTER TABLE execution_logs
+                ADD COLUMN IF NOT EXISTS credential_id
+                INTEGER REFERENCES credentials(id) ON DELETE SET NULL
+            `);
+            dbg('execute: credential_id column verified');
+        } catch (migrErr) {
+            dbg('execute: credential_id column check:', migrErr.message);
         }
 
-        // Create execution log — persist credId so the WS handler can retrieve it
+        // 4. Insert log row
         const logRes = await db.query(
             `INSERT INTO execution_logs
                (device_id, template_id, executed_by, command_text, status, credential_id)
-             VALUES ($1, $2, $3, $4, 'running', $5)
-             RETURNING id`,
+             VALUES ($1,$2,$3,$4,'running',$5) RETURNING id`,
             [device_id, template_id || null, req.user.id, command, credId]
         );
         const logId = logRes.rows[0].id;
+        log(`execute: log row created logId=${logId}`);
 
-        // Generate a short-lived single-use token for the WebSocket upgrade
+        // 5. Issue one-time token
         const token = crypto.randomBytes(32).toString('hex');
         pendingTokens.set(token, {
             logId,
             userId: req.user.id,
-            expires: Date.now() + 60_000   // 60 seconds to open the WS
+            expires: Date.now() + 60_000  // 60 s window to open the WebSocket
         });
+        dbg('execute: token issued for logId:', logId);
 
         return res.json({ ok: true, logId, token });
 
-    } catch (err) {
-        console.error('SSH execute error:', err);
-        return res.status(500).json({ error: 'Database error' });
+    } catch (e) {
+        err('execute: unhandled error:', e.message);
+        err(e.stack);
+        return res.status(500).json({ error: e.message || 'Server error' });
     }
 });
 
-// ── WebSocket connection handler ───────────────────────────────
+// ── WebSocket SSH handler ─────────────────────────────────────
 async function handleSshConnection(ws, logId, userId) {
     let ssh       = null;
     let logOutput = '';
@@ -102,23 +125,27 @@ async function handleSshConnection(ws, logId, userId) {
             if (ws.readyState === ws.OPEN) {
                 ws.send(JSON.stringify({ type, data }));
             }
-        } catch (_) {}
+        } catch (e) {
+            dbg('send() error:', e.message);
+        }
     };
 
     const progress = (step, total, label) => {
+        dbg(`progress ${step}/${total} "${label}"`);
         send('progress', { step, total, label });
     };
 
     const finish = async (exitCode, status) => {
+        log(`finish  logId=${logId} exitCode=${exitCode} status=${status}`);
         try {
             await db.query(
                 `UPDATE execution_logs
-                 SET output = $1, exit_code = $2, status = $3, completed_at = NOW()
-                 WHERE id = $4`,
+                 SET output=$1, exit_code=$2, status=$3, completed_at=NOW()
+                 WHERE id=$4`,
                 [logOutput, exitCode, status, logId]
             );
         } catch (e) {
-            console.error('Log update error:', e);
+            err('finish: db update failed:', e.message);
         }
         progress(4, 4, status === 'success' ? 'Complete' : 'Failed');
         send('done', { exitCode, status });
@@ -126,85 +153,146 @@ async function handleSshConnection(ws, logId, userId) {
     };
 
     try {
-        // Step 1 — fetch job details
+        // ── Step 1: load log row ──────────────────────────────
         progress(1, 4, 'Fetching job details');
+        dbg(`step1: loading log  logId=${logId} userId=${userId}`);
 
         const logRes = await db.query(
             `SELECT l.*, d.hostname, d.port, d.device_type
              FROM   execution_logs l
              JOIN   devices d ON d.id = l.device_id
-             WHERE  l.id = $1 AND l.executed_by = $2`,
+             WHERE  l.id=$1 AND l.executed_by=$2`,
             [logId, userId]
         );
 
         if (!logRes.rows.length) {
-            send('error', 'Execution log not found or access denied');
+            err(`step1: log row missing  logId=${logId} userId=${userId}`);
+            send('error', `Log row not found (logId=${logId} userId=${userId})`);
             return ws.close();
         }
-        const log = logRes.rows[0];
 
-        if (!log.credential_id) {
-            send('error', 'No credential on log row — run: ALTER TABLE execution_logs ADD COLUMN IF NOT EXISTS credential_id INTEGER REFERENCES credentials(id) ON DELETE SET NULL;');
+        const logRow = logRes.rows[0];
+        dbg('step1: logRow:', {
+            id:            logRow.id,
+            hostname:      logRow.hostname,
+            port:          logRow.port,
+            device_type:   logRow.device_type,
+            credential_id: logRow.credential_id,
+        });
+
+        if (!logRow.credential_id) {
+            err('step1: credential_id is NULL — schema migration needed');
+            send('error',
+                'credential_id missing from log row. ' +
+                'Run: ALTER TABLE execution_logs ADD COLUMN IF NOT EXISTS ' +
+                'credential_id INTEGER REFERENCES credentials(id) ON DELETE SET NULL;'
+            );
             return await finish(-1, 'failed');
         }
 
+        // ── Step 1b: load credential ──────────────────────────
         const credRes = await db.query(
-            'SELECT * FROM credentials WHERE id = $1',
-            [log.credential_id]
+            'SELECT * FROM credentials WHERE id=$1',
+            [logRow.credential_id]
         );
         if (!credRes.rows.length) {
-            send('error', 'Credential not found');
+            err('step1b: credential row missing id:', logRow.credential_id);
+            send('error', `Credential id=${logRow.credential_id} not found`);
             return await finish(-1, 'failed');
         }
         const cred = credRes.rows[0];
+        dbg('step1b: cred:', {
+            id:          cred.id,
+            name:        cred.name,
+            username:    cred.username,
+            auth_method: cred.auth_method,
+            has_pw:      !!cred.encrypted_password,
+            has_key:     !!cred.encrypted_key,
+        });
 
-        // Step 2 — connect
-        progress(2, 4, `Connecting to ${log.hostname}:${log.port}`);
-        send('status', `Connecting to ${log.hostname}:${log.port}…`);
+        // ── Step 2: build SSH config ──────────────────────────
+        progress(2, 4, `Connecting to ${logRow.hostname}:${logRow.port}`);
+        send('status', `Connecting to ${logRow.hostname}:${logRow.port}…`);
+        log(`step2: SSH connect ${cred.username}@${logRow.hostname}:${logRow.port} method=${cred.auth_method}`);
 
         const sshCfg = {
-            host:         log.hostname,
-            port:         log.port,
+            host:         logRow.hostname,
+            port:         logRow.port,
             username:     cred.username,
             readyTimeout: 20000,
-            // Accept all host keys; stream fingerprint to browser for out-of-band verification
             hostVerifier: (keyOrHash) => {
                 try {
-                    const thumbprint = Buffer.isBuffer(keyOrHash)
+                    const fp = Buffer.isBuffer(keyOrHash)
                         ? keyOrHash.toString('hex')
                         : String(keyOrHash);
-                    send('thumbprint', thumbprint);
+                    dbg('step2: host fingerprint:', fp.slice(0, 32) + '…');
+                    send('thumbprint', fp);
                 } catch (_) {}
                 return true;
             },
         };
 
         if (cred.auth_method === 'password') {
-            const pw = vault.decrypt(cred.encrypted_password);
+            dbg('step2: decrypting password…');
+            let pw;
+            try {
+                pw = vault.decrypt(cred.encrypted_password);
+            } catch (decryptErr) {
+                err('step2: vault.decrypt threw:', decryptErr.message);
+                send('error', 'Credential decrypt error: ' + decryptErr.message);
+                return await finish(-1, 'failed');
+            }
             if (!pw) {
-                send('error', 'Failed to decrypt password — check VAULT_SECRET');
+                err('step2: vault.decrypt returned null/empty for password');
+                send('error', 'Failed to decrypt password — verify VAULT_SECRET has not changed');
                 return await finish(-1, 'failed');
             }
+            dbg('step2: password decrypted, length:', pw.length);
             sshCfg.password = pw;
+
         } else {
-            const key = vault.decrypt(cred.encrypted_key);
-            if (!key) {
-                send('error', 'Failed to decrypt private key — check VAULT_SECRET');
+            dbg('step2: decrypting private key…');
+            let key;
+            try {
+                key = vault.decrypt(cred.encrypted_key);
+            } catch (decryptErr) {
+                err('step2: vault.decrypt threw for key:', decryptErr.message);
+                send('error', 'Credential decrypt error: ' + decryptErr.message);
                 return await finish(-1, 'failed');
             }
+            if (!key) {
+                err('step2: vault.decrypt returned null/empty for key');
+                send('error', 'Failed to decrypt private key — verify VAULT_SECRET has not changed');
+                return await finish(-1, 'failed');
+            }
+            dbg('step2: key decrypted, length:', key.length);
             sshCfg.privateKey = key;
-            const pp = vault.decrypt(cred.encrypted_passphrase);
-            if (pp) sshCfg.passphrase = pp;
+
+            if (cred.encrypted_passphrase) {
+                try {
+                    const pp = vault.decrypt(cred.encrypted_passphrase);
+                    if (pp) {
+                        dbg('step2: passphrase decrypted OK');
+                        sshCfg.passphrase = pp;
+                    }
+                } catch (ppErr) {
+                    dbg('step2: passphrase decrypt failed (continuing):', ppErr.message);
+                }
+            }
         }
 
+        // ── Step 2b: connect ──────────────────────────────────
+        dbg('step2b: calling ssh.connect()…');
         ssh = new NodeSSH();
         await ssh.connect(sshCfg);
+        log(`step2b: SSH connected  logId=${logId}`);
 
-        // Step 3 — run
+        // ── Step 3: execute command ───────────────────────────
         progress(3, 4, 'Running command');
         send('status', 'Connected. Running command…');
+        dbg('step3: command:', logRow.command_text.slice(0, 120));
 
-        const result = await ssh.execCommand(log.command_text, {
+        const result = await ssh.execCommand(logRow.command_text, {
             onStdout: (chunk) => {
                 const txt = chunk.toString();
                 logOutput += txt;
@@ -217,42 +305,65 @@ async function handleSshConnection(ws, logId, userId) {
             }
         });
 
+        log(`step3: command done  logId=${logId} exitCode=${result.code}`);
         ssh.dispose();
         ssh = null;
 
         await finish(result.code, result.code === 0 ? 'success' : 'failed');
 
-    } catch (err) {
-        console.error('SSH connection/execution error:', err.message);
-        send('error', err.message);
+    } catch (e) {
+        err('handleSshConnection: unhandled error:', e.message);
+        err(e.stack);
+        send('error', e.message);
         if (ssh) { try { ssh.dispose(); } catch (_) {} ssh = null; }
         await finish(-1, 'failed');
     }
 }
 
-// ── Attach WebSocket server ────────────────────────────────────
+// ── Attach WebSocket server ───────────────────────────────────
 function attachSshWebSocket(wss) {
     wss.on('connection', async (ws, req) => {
-        // URL format: /ws/ssh/:logId?token=<hex64>
+        log('WS: new connection  url:', req.url);
+
+        // Expect: /ws/ssh/:logId?token=<64-char hex>
         const match = req.url.match(/^\/ws\/ssh\/(\d+)\?token=([a-f0-9]{64})$/);
         if (!match) {
-            try { ws.send(JSON.stringify({ type: 'error', data: 'Invalid WebSocket URL' })); } catch (_) {}
+            err('WS: URL does not match expected pattern:', req.url);
+            try { ws.send(JSON.stringify({ type: 'error', data: 'Invalid WebSocket URL format' })); } catch (_) {}
             ws.close();
             return;
         }
 
         const logId = parseInt(match[1], 10);
         const token = match[2];
+        dbg(`WS: parsed  logId=${logId} token=${token.slice(0, 8)}…`);
 
-        // Validate and consume the token (single-use)
         const meta = pendingTokens.get(token);
-        if (!meta || meta.logId !== logId || Date.now() > meta.expires) {
-            pendingTokens.delete(token);
-            try { ws.send(JSON.stringify({ type: 'error', data: 'Invalid or expired token — try running the command again' })); } catch (_) {}
+        if (!meta) {
+            err(`WS: token not in store  logId=${logId} (store size: ${pendingTokens.size})`);
+            try { ws.send(JSON.stringify({ type: 'error', data: 'Invalid or expired token — try running again' })); } catch (_) {}
             ws.close();
             return;
         }
-        pendingTokens.delete(token);
+
+        if (meta.logId !== logId) {
+            err(`WS: token logId mismatch  tokenLogId=${meta.logId} requestLogId=${logId}`);
+            pendingTokens.delete(token);
+            try { ws.send(JSON.stringify({ type: 'error', data: 'Token/logId mismatch' })); } catch (_) {}
+            ws.close();
+            return;
+        }
+
+        if (Date.now() > meta.expires) {
+            err(`WS: token expired  logId=${logId}`);
+            pendingTokens.delete(token);
+            try { ws.send(JSON.stringify({ type: 'error', data: 'Token expired — try running again' })); } catch (_) {}
+            ws.close();
+            return;
+        }
+
+        pendingTokens.delete(token);  // single-use
+        log(`WS: auth OK  logId=${logId} userId=${meta.userId}`);
 
         await handleSshConnection(ws, logId, meta.userId);
     });

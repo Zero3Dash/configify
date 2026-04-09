@@ -25,7 +25,7 @@ const PORT   = process.env.PORT || 3000;
 
 app.set('trust proxy', 1);
 
-// ── Session store in PostgreSQL ────────────────────────────────
+// ── Session store ──────────────────────────────────────────────
 const sessionMiddleware = session({
     store: new pgSession({
         pool: db.pool,
@@ -38,59 +38,44 @@ const sessionMiddleware = session({
     cookie: {
         secure:   process.env.NODE_ENV === 'production',
         httpOnly: true,
-        maxAge:   8 * 60 * 60 * 1000   // 8 hours
+        maxAge:   8 * 60 * 60 * 1000
     }
 });
 
 // ── Middleware ─────────────────────────────────────────────────
-app.use(cors({ origin: false }));          // same-origin only
+app.use(cors({ origin: false }));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(sessionMiddleware);
 app.use(passport.initialize());
 app.use(passport.session());
 
-// ── Static files (public folder) ──────────────────────────────
+// ── Auth gate for HTML pages ───────────────────────────────────
 app.use((req, res, next) => {
     const publicPaths = ['/login.html', '/auth/', '/favicon.ico'];
-    const isPublicFile = publicPaths.some(p => req.path.startsWith(p));
-    if (req.path.startsWith('/api') || req.path.startsWith('/auth') || isPublicFile) {
-        return next();
-    }
+    const isPublic = publicPaths.some(p => req.path.startsWith(p));
+    if (req.path.startsWith('/api') || req.path.startsWith('/auth') || isPublic) return next();
     if (req.isAuthenticated()) return next();
-    if (req.path === '/' || req.path === '/index.html') {
-        return res.redirect('/login.html');
-    }
-    if (req.path.endsWith('.html')) {
-        return res.redirect('/login.html');
-    }
+    if (req.path === '/' || req.path.endsWith('.html')) return res.redirect('/login.html');
     next();
 });
 
 app.use(express.static('public'));
 
 // ── API Routes ─────────────────────────────────────────────────
-app.use('/auth',               authRoutes);
-app.use('/api/users',          userRoutes);
-app.use('/api/devices',        deviceRoutes);
-app.use('/api/ssh',            requireAuth, sshRoutes);
-
-const templateRoutes = require('./routes/templates');
-app.use('/api/templates',      requireAuth, templateRoutes);
+app.use('/auth',          authRoutes);
+app.use('/api/users',     userRoutes);
+app.use('/api/devices',   deviceRoutes);
+app.use('/api/ssh',       requireAuth, sshRoutes);
+app.use('/api/templates', requireAuth, require('./routes/templates'));
 
 // ── SPA fallback ───────────────────────────────────────────────
 app.use((req, res) => {
-    if (req.isAuthenticated()) {
-        res.sendFile(__dirname + '/public/index.html');
-    } else {
-        res.redirect('/login.html');
-    }
+    if (req.isAuthenticated()) return res.sendFile(__dirname + '/public/index.html');
+    res.redirect('/login.html');
 });
 
-// ── WebSocket SSH streaming ────────────────────────────────────
-// Auth is handled via one-time tokens issued by POST /api/ssh/execute.
-// The upgrade handler does NOT need session middleware — the token in the
-// URL query string is sufficient proof of identity.
+// ── WebSocket — token auth, no session middleware needed ───────
 const wss = new WebSocket.Server({ noServer: true });
 sshRoutes.attachSshWebSocket(wss);
 
@@ -108,13 +93,13 @@ server.on('upgrade', (req, socket, head) => {
 async function start() {
     await initAuth();
     server.listen(PORT, () => {
-        console.log(`✅ configify running on http://localhost:${PORT}`);
-        console.log(`📝 Environment: ${process.env.NODE_ENV}`);
-        console.log(`🔌 WebSocket SSH endpoint: ws://localhost:${PORT}/ws/ssh/:logId`);
+        console.log(`[server] configify running on http://localhost:${PORT}`);
+        console.log(`[server] NODE_ENV=${process.env.NODE_ENV}`);
+        console.log(`[server] DEBUG_SSH=${process.env.DEBUG_SSH}`);
     });
 }
 
 start().catch(err => {
-    console.error('Fatal startup error:', err);
+    console.error('[server] Fatal startup error:', err);
     process.exit(1);
 });

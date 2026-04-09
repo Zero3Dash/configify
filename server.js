@@ -51,17 +51,13 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // ── Static files (public folder) ──────────────────────────────
-// Protected: redirect to login if not authenticated
 app.use((req, res, next) => {
     const publicPaths = ['/login.html', '/auth/', '/favicon.ico'];
     const isPublicFile = publicPaths.some(p => req.path.startsWith(p));
-    // Let API routes and public pages through
     if (req.path.startsWith('/api') || req.path.startsWith('/auth') || isPublicFile) {
         return next();
     }
-    // Serve static files — if authenticated
     if (req.isAuthenticated()) return next();
-    // Not authenticated — serve static only for login page
     if (req.path === '/' || req.path === '/index.html') {
         return res.redirect('/login.html');
     }
@@ -79,7 +75,6 @@ app.use('/api/users',          userRoutes);
 app.use('/api/devices',        deviceRoutes);
 app.use('/api/ssh',            requireAuth, sshRoutes);
 
-// Templates routes (preserved from v1)
 const templateRoutes = require('./routes/templates');
 app.use('/api/templates',      requireAuth, templateRoutes);
 
@@ -93,63 +88,25 @@ app.use((req, res) => {
 });
 
 // ── WebSocket SSH streaming ────────────────────────────────────
+// Auth is handled via one-time tokens issued by POST /api/ssh/execute.
+// The upgrade handler does NOT need session middleware — the token in the
+// URL query string is sufficient proof of identity.
 const wss = new WebSocket.Server({ noServer: true });
 sshRoutes.attachSshWebSocket(wss);
 
-/**
- * Build a minimal response-like object that satisfies express-session
- * and passport without binding to a real HTTP socket.
- *
- * express-session calls res.on('finish', ...) via the on-headers package
- * (which wraps res.writeHead) and may also call res.getHeader /
- * res.setHeader.  Passing a plain `{}` causes "res.on is not a function",
- * which silently swallows the callback and leaves req.session undefined —
- * so every WebSocket is rejected as "Not authenticated".
- */
-function makeFakeRes() {
-    const fakeRes = {
-        on:           () => fakeRes,
-        once:         () => fakeRes,
-        off:          () => fakeRes,
-        emit:         () => false,
-        end:          () => fakeRes,
-        write:        () => fakeRes,
-        writeHead:    () => fakeRes,
-        getHeader:    () => undefined,
-        getHeaders:   () => ({}),
-        setHeader:    () => fakeRes,
-        removeHeader: () => {},
-        finished:     false,
-        headersSent:  false,
-        statusCode:   200,
-    };
-    return fakeRes;
-}
-
-// Upgrade handler — share express session with WS
 server.on('upgrade', (req, socket, head) => {
     if (!req.url.startsWith('/ws/ssh/')) {
         socket.destroy();
         return;
     }
-
-    const res = makeFakeRes();
-
-    // Restore the session so req.session.passport.user is populated
-    sessionMiddleware(req, res, () => {
-        passport.initialize()(req, res, () => {
-            passport.session()(req, res, () => {
-                wss.handleUpgrade(req, socket, head, (ws) => {
-                    wss.emit('connection', ws, req);
-                });
-            });
-        });
+    wss.handleUpgrade(req, socket, head, (ws) => {
+        wss.emit('connection', ws, req);
     });
 });
 
 // ── Start ──────────────────────────────────────────────────────
 async function start() {
-    await initAuth();   // load LDAP/SAML strategies from DB config
+    await initAuth();
     server.listen(PORT, () => {
         console.log(`✅ configify running on http://localhost:${PORT}`);
         console.log(`📝 Environment: ${process.env.NODE_ENV}`);

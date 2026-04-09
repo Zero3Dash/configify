@@ -2,25 +2,39 @@
  * routes/ssh.js
  * REST endpoint to initiate SSH execution + WebSocket handler for streaming output.
  *
- * Flow:
- *   1. POST /api/ssh/execute  →  creates execution_log row, returns { logId }
- *   2. Client opens WebSocket ws://host/ws/ssh/:logId
- *   3. Server SSHes the device, streams stdout/stderr back, closes WS when done
+ * Auth flow:
+ *   1. POST /api/ssh/execute  — authenticated via session cookie (normal Express route)
+ *                              → creates execution_log row
+ *                              → generates a short-lived one-time token
+ *                              → returns { logId, token }
+ *   2. Client opens WebSocket ws://host/ws/ssh/:logId?token=<token>
+ *   3. Upgrade handler validates token directly — no session middleware needed
+ *   4. Server SSHes the device, streams stdout/stderr back, closes WS when done
  *
- * Host-key policy:
- *   hostVerifier is set to always return true so unknown or changed host keys
- *   are automatically accepted. This mirrors "StrictHostKeyChecking=accept-new"
- *   behaviour and prevents executions from blocking on a fingerprint prompt.
- *   The resolved fingerprint (SHA-256, hex) is streamed to the browser over the
- *   WebSocket so operators can verify it out-of-band.
+ * This avoids running express-session over a raw socket upgrade (which requires
+ * a fake res shim and silently fails in certain environments).
  */
 const express      = require('express');
+const crypto       = require('crypto');
 const { NodeSSH }  = require('node-ssh');
 const db           = require('../db');
 const vault        = require('../crypto/vault');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
+
+// ── In-memory token store ─────────────────────────────────────
+// token → { logId, userId, expires }
+// Tokens are single-use and expire after 60 seconds.
+const pendingTokens = new Map();
+
+// Sweep expired tokens every 5 minutes
+setInterval(() => {
+    const now = Date.now();
+    for (const [token, meta] of pendingTokens) {
+        if (meta.expires < now) pendingTokens.delete(token);
+    }
+}, 5 * 60 * 1000);
 
 // ── Initiate execution (REST) ──────────────────────────────────
 router.post('/execute', requireAuth, async (req, res) => {
@@ -52,7 +66,7 @@ router.post('/execute', requireAuth, async (req, res) => {
             return res.status(400).json({ error: 'Credential not found' });
         }
 
-        // Create execution log — store credId so the WS handler can retrieve it
+        // Create execution log — persist credId so the WS handler can retrieve it
         const logRes = await db.query(
             `INSERT INTO execution_logs
                (device_id, template_id, executed_by, command_text, status, credential_id)
@@ -62,7 +76,15 @@ router.post('/execute', requireAuth, async (req, res) => {
         );
         const logId = logRes.rows[0].id;
 
-        return res.json({ ok: true, logId });
+        // Generate a short-lived single-use token for the WebSocket upgrade
+        const token = crypto.randomBytes(32).toString('hex');
+        pendingTokens.set(token, {
+            logId,
+            userId: req.user.id,
+            expires: Date.now() + 60_000   // 60 seconds to open the WS
+        });
+
+        return res.json({ ok: true, logId, token });
 
     } catch (err) {
         console.error('SSH execute error:', err);
@@ -70,18 +92,17 @@ router.post('/execute', requireAuth, async (req, res) => {
     }
 });
 
-// ── WebSocket handler ──────────────────────────────────────────
+// ── WebSocket connection handler ───────────────────────────────
 async function handleSshConnection(ws, logId, userId) {
     let ssh       = null;
     let logOutput = '';
 
-    // ── Helpers ──────────────────────────────────────────────
     const send = (type, data) => {
         try {
             if (ws.readyState === ws.OPEN) {
                 ws.send(JSON.stringify({ type, data }));
             }
-        } catch (_) { /* ignore write errors on a closing socket */ }
+        } catch (_) {}
     };
 
     const progress = (step, total, label) => {
@@ -104,7 +125,6 @@ async function handleSshConnection(ws, logId, userId) {
         try { ws.close(); } catch (_) {}
     };
 
-    // ── Main flow ─────────────────────────────────────────────
     try {
         // Step 1 — fetch job details
         progress(1, 4, 'Fetching job details');
@@ -124,7 +144,7 @@ async function handleSshConnection(ws, logId, userId) {
         const log = logRes.rows[0];
 
         if (!log.credential_id) {
-            send('error', 'No credential associated with this execution log');
+            send('error', 'No credential on log row — run: ALTER TABLE execution_logs ADD COLUMN IF NOT EXISTS credential_id INTEGER REFERENCES credentials(id) ON DELETE SET NULL;');
             return await finish(-1, 'failed');
         }
 
@@ -132,7 +152,6 @@ async function handleSshConnection(ws, logId, userId) {
             'SELECT * FROM credentials WHERE id = $1',
             [log.credential_id]
         );
-
         if (!credRes.rows.length) {
             send('error', 'Credential not found');
             return await finish(-1, 'failed');
@@ -143,12 +162,12 @@ async function handleSshConnection(ws, logId, userId) {
         progress(2, 4, `Connecting to ${log.hostname}:${log.port}`);
         send('status', `Connecting to ${log.hostname}:${log.port}…`);
 
-        // Build SSH config
         const sshCfg = {
-            host:     log.hostname,
-            port:     log.port,
-            username: cred.username,
-            // Accept all host keys; capture fingerprint for display
+            host:         log.hostname,
+            port:         log.port,
+            username:     cred.username,
+            readyTimeout: 20000,
+            // Accept all host keys; stream fingerprint to browser for out-of-band verification
             hostVerifier: (keyOrHash) => {
                 try {
                     const thumbprint = Buffer.isBuffer(keyOrHash)
@@ -158,11 +177,8 @@ async function handleSshConnection(ws, logId, userId) {
                 } catch (_) {}
                 return true;
             },
-            // Reasonable connection timeout
-            readyTimeout: 20000,
         };
 
-        // Attach credentials
         if (cred.auth_method === 'password') {
             const pw = vault.decrypt(cred.encrypted_password);
             if (!pw) {
@@ -204,18 +220,12 @@ async function handleSshConnection(ws, logId, userId) {
         ssh.dispose();
         ssh = null;
 
-        await finish(
-            result.code,
-            result.code === 0 ? 'success' : 'failed'
-        );
+        await finish(result.code, result.code === 0 ? 'success' : 'failed');
 
     } catch (err) {
         console.error('SSH connection/execution error:', err.message);
         send('error', err.message);
-        if (ssh) {
-            try { ssh.dispose(); } catch (_) {}
-            ssh = null;
-        }
+        if (ssh) { try { ssh.dispose(); } catch (_) {} ssh = null; }
         await finish(-1, 'failed');
     }
 }
@@ -223,27 +233,28 @@ async function handleSshConnection(ws, logId, userId) {
 // ── Attach WebSocket server ────────────────────────────────────
 function attachSshWebSocket(wss) {
     wss.on('connection', async (ws, req) => {
-        // Validate URL pattern
-        const match = req.url.match(/^\/ws\/ssh\/(\d+)$/);
+        // URL format: /ws/ssh/:logId?token=<hex64>
+        const match = req.url.match(/^\/ws\/ssh\/(\d+)\?token=([a-f0-9]{64})$/);
         if (!match) {
+            try { ws.send(JSON.stringify({ type: 'error', data: 'Invalid WebSocket URL' })); } catch (_) {}
             ws.close();
             return;
         }
 
-        const logId  = parseInt(match[1], 10);
+        const logId = parseInt(match[1], 10);
+        const token = match[2];
 
-        // req.session is populated by the session middleware in server.js
-        // upgrade handler — if it's missing the session restore failed.
-        const userId = req.session && req.session.passport && req.session.passport.user;
-        if (!userId) {
-            try {
-                ws.send(JSON.stringify({ type: 'error', data: 'Not authenticated' }));
-            } catch (_) {}
+        // Validate and consume the token (single-use)
+        const meta = pendingTokens.get(token);
+        if (!meta || meta.logId !== logId || Date.now() > meta.expires) {
+            pendingTokens.delete(token);
+            try { ws.send(JSON.stringify({ type: 'error', data: 'Invalid or expired token — try running the command again' })); } catch (_) {}
             ws.close();
             return;
         }
+        pendingTokens.delete(token);
 
-        await handleSshConnection(ws, logId, userId);
+        await handleSshConnection(ws, logId, meta.userId);
     });
 }
 

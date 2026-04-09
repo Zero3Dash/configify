@@ -62,22 +62,11 @@
   #ssh-progress { display: none; margin-top: 0.75rem; }
   #ssh-progress.visible { display: block; }
   .progress-steps { display: flex; align-items: center; gap: 0; margin-bottom: 0.5rem; }
-  .progress-step {
-    flex: 1; display: flex; flex-direction: column; align-items: center; position: relative;
-  }
-  .progress-step:not(:last-child)::after {
-    content: ''; position: absolute; top: 11px; left: 50%; width: 100%;
-    height: 2px; background: #334155; z-index: 0;
-    transition: background 0.3s;
-  }
+  .progress-step { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; }
+  .progress-step:not(:last-child)::after { content: ''; position: absolute; top: 11px; left: 50%; width: 100%; height: 2px; background: #334155; z-index: 0; transition: background 0.3s; }
   .progress-step.done:not(:last-child)::after  { background: #16a34a; }
   .progress-step.active:not(:last-child)::after { background: #334155; }
-  .step-dot {
-    width: 22px; height: 22px; border-radius: 50%; background: #334155;
-    border: 2px solid #475569; display: flex; align-items: center; justify-content: center;
-    font-size: 0.6rem; color: #94a3b8; z-index: 1; position: relative;
-    transition: background 0.3s, border-color 0.3s;
-  }
+  .step-dot { width: 22px; height: 22px; border-radius: 50%; background: #334155; border: 2px solid #475569; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: #94a3b8; z-index: 1; position: relative; transition: background 0.3s, border-color 0.3s; }
   .progress-step.done   .step-dot { background: #16a34a; border-color: #16a34a; color: white; }
   .progress-step.active .step-dot { background: #2563eb; border-color: #38bdf8; color: white; animation: pulse-dot 1s infinite; }
   .progress-step.error  .step-dot { background: #dc2626; border-color: #f87171; color: white; }
@@ -86,8 +75,6 @@
   .progress-step.done   .step-label { color: #4ade80; }
   .progress-step.active .step-label { color: #38bdf8; }
   .progress-step.error  .step-label { color: #f87171; }
-
-  /* track bar */
   .progress-track { height: 4px; background: #1e293b; border-radius: 2px; overflow: hidden; margin-bottom: 0.4rem; }
   .progress-fill  { height: 100%; background: linear-gradient(90deg,#2563eb,#38bdf8); border-radius: 2px; width: 0%; transition: width 0.4s ease; }
   .progress-fill.done  { background: linear-gradient(90deg,#16a34a,#4ade80); }
@@ -97,7 +84,7 @@
   #thumbprint-row { display: none; align-items: center; gap: 0.4rem; margin-top: 0.4rem; }
   #thumbprint-row.visible { display: flex; }
   .fp-label { font-size: 0.68rem; color: #64748b; white-space: nowrap; }
-  .fp-value { font-family: 'Fira Code', monospace; font-size: 0.65rem; color: #38bdf8; background: #0f172a; border: 1px solid #334155; border-radius: 4px; padding: 0.15rem 0.4rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; cursor: pointer; title: "Click to copy"; }
+  .fp-value { font-family: 'Fira Code', monospace; font-size: 0.65rem; color: #38bdf8; background: #0f172a; border: 1px solid #334155; border-radius: 4px; padding: 0.15rem 0.4rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; cursor: pointer; }
   .fp-copy { font-size: 0.65rem; padding: 0.15rem 0.4rem; background: #334155; color: #94a3b8; border: none; border-radius: 4px; cursor: pointer; flex-shrink: 0; }
   .fp-copy:hover { background: #475569; color: white; }
 
@@ -342,8 +329,6 @@ async function loadFromUrl() {
 }
 
 // ── Progress indicator ────────────────────────────────────────
-const STEP_LABELS = ['Fetch', 'Connect', 'Run', 'Done'];
-
 function resetProgress() {
   document.getElementById('ssh-progress').classList.remove('visible');
   document.getElementById('progress-fill').style.width = '0%';
@@ -381,7 +366,6 @@ function setProgress(step, total, failed = false) {
 }
 
 function showThumbprint(fp) {
-  // Format as colon-separated pairs for readability, showing first 10 bytes
   const pairs = [];
   for (let i = 0; i < fp.length && i < 20; i += 2) pairs.push(fp.slice(i, i+2));
   const display = pairs.join(':') + (fp.length > 20 ? '…' : '');
@@ -405,7 +389,6 @@ async function loadSshDevices() {
     const devices = await devRes.json();
     const creds   = await credRes.json();
 
-    // Group devices
     const groups = {};
     devices.forEach(d => {
       const g = d.group_name || 'Ungrouped';
@@ -445,9 +428,9 @@ function updateRunBtn() {
 }
 
 async function runSsh() {
-  const deviceId    = document.getElementById('ssh-device-select').value;
-  const credId      = document.getElementById('ssh-cred-select').value;
-  const command     = updateOutput();
+  const deviceId = document.getElementById('ssh-device-select').value;
+  const credId   = document.getElementById('ssh-cred-select').value;
+  const command  = updateOutput();
 
   if (!deviceId) return toast('Select a device first', true);
   if (!command || command.includes('✨')) return toast('Generate the template first', true);
@@ -459,6 +442,7 @@ async function runSsh() {
   resetProgress();
 
   try {
+    // POST /execute — uses normal session cookie auth, returns logId + one-time token
     const res = await fetch('/api/ssh/execute', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
@@ -469,17 +453,22 @@ async function runSsh() {
         template_id:   currentTemplateId !== 'default' ? currentTemplateId : undefined
       })
     });
+
     const data = await res.json();
+
     if (!res.ok) {
       termLine('error', data.error || 'Request failed');
       setProgress(1, 4, true);
-      btn.disabled = false; btn.textContent = '▶ Run on device';
+      btn.disabled = false;
+      btn.textContent = '▶ Run on device';
       return;
     }
 
-    const logId = data.logId;
+    const { logId, token } = data;
+
+    // Open WebSocket with one-time token in URL — no session middleware needed server-side
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws = new WebSocket(`${proto}://${window.location.host}/ws/ssh/${logId}`);
+    const ws = new WebSocket(`${proto}://${window.location.host}/ws/ssh/${logId}?token=${token}`);
 
     ws.onmessage = (e) => {
       const msg = JSON.parse(e.data);
@@ -497,20 +486,36 @@ async function runSsh() {
       } else if (msg.type === 'error') {
         termLine('error', '⚠ ' + msg.data);
         setProgress(4, 4, true);
+        btn.disabled = false;
+        btn.textContent = '▶ Run on device';
       } else if (msg.type === 'done') {
         const ok = msg.data.status === 'success';
         setProgress(4, 4, !ok);
-        termLine(ok ? 'success' : 'fail', ok ? '✅ Completed (exit 0)' : `❌ Failed (exit ${msg.data.exitCode})`);
+        termLine(ok ? 'success' : 'fail', ok
+          ? '✅ Completed (exit 0)'
+          : `❌ Failed (exit ${msg.data.exitCode})`);
         btn.disabled = false;
         btn.textContent = '▶ Run on device';
       }
     };
-    ws.onerror  = () => {
-      termLine('error', 'WebSocket error');
+
+    ws.onerror = () => {
+      termLine('error', 'WebSocket connection error');
       setProgress(4, 4, true);
-      btn.disabled = false; btn.textContent = '▶ Run on device';
+      btn.disabled = false;
+      btn.textContent = '▶ Run on device';
     };
-    ws.onclose  = () => {};
+
+    ws.onclose = (e) => {
+      // Only show unexpected close (normal close is code 1000)
+      if (e.code !== 1000 && e.code !== 1005) {
+        termLine('error', `WebSocket closed unexpectedly (code ${e.code})`);
+        setProgress(4, 4, true);
+        btn.disabled = false;
+        btn.textContent = '▶ Run on device';
+      }
+    };
+
   } catch (err) {
     termLine('error', err.message);
     setProgress(4, 4, true);

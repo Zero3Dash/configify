@@ -64,6 +64,16 @@ PostgreSQL               ← templates, users, devices, credentials, logs
 | PUT    | `/api/users/auth-config/:provider` | **admin** | Update LDAP/SAML config                |
 
 ---
+### Prerequisites
+
+- Ubuntu 24.04 (or compatible Debian-based OS), minimum 1 GB RAM
+- A domain name pointing to the server's IP (required for Let's Encrypt; optional for self-signed)
+- SSH access with sudo
+
+```bash
+sudo apt install git
+sudo apt install cron
+```
 
 ## Getting the code
 

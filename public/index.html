@@ -16,82 +16,54 @@
   button.nav-btn { border: none; padding: 0.35rem 0.9rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; background: #334155; color: #e2e8f0; }
   button.nav-btn:hover { background: #475569; }
 
-  .layout { display: grid; grid-template-columns: 1fr 380px; gap: 1.5rem; max-width: 1300px; margin: 2rem auto; padding: 0 1.5rem; }
+  .layout { display: grid; grid-template-columns: 1fr 400px; gap: 1.5rem; max-width: 1300px; margin: 2rem auto; padding: 0 1.5rem; }
   @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
 
   .container { background: white; border-radius: 16px; padding: 2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
-  h2 { font-size: 1.3rem; font-weight: 500; margin: 2rem 0 1rem; border-bottom: 2px solid #e9edf2; padding-bottom: 0.3rem; }
+  h2 { font-size: 1.15rem; font-weight: 600; margin: 1.75rem 0 0.75rem; border-bottom: 2px solid #e9edf2; padding-bottom: 0.3rem; }
   h2:first-of-type { margin-top: 0; }
-  .card { background: #f1f5f9; padding: 1.5rem; border-radius: 12px; margin: 1.5rem 0; }
+  .card { background: #f1f5f9; padding: 1.5rem; border-radius: 12px; margin: 1.25rem 0; }
   .flex-row { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
-  textarea, input[type="text"] { width: 100%; padding: 0.8rem 1rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem; background: white; box-sizing: border-box; font-family: 'Fira Code', monospace; outline: none; }
-  textarea:focus, input:focus { border-color: #2563eb; }
-  textarea { min-height: 140px; resize: vertical; }
-  button { background: #2563eb; color: white; border: none; padding: 0.7rem 1.4rem; border-radius: 8px; font-size: 0.95rem; font-weight: 500; cursor: pointer; }
+  textarea, input[type="text"] { width: 100%; padding: 0.75rem 1rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; background: white; font-family: 'Fira Code', monospace; outline: none; }
+  textarea:focus, input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.1); }
+  textarea { min-height: 130px; resize: vertical; }
+  button { background: #2563eb; color: white; border: none; padding: 0.65rem 1.3rem; border-radius: 8px; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: background 0.15s; }
   button:hover { background: #1d4ed8; }
   button.secondary { background: #475569; }
   button.secondary:hover { background: #334155; }
-  button.danger { background: #dc2626; }
-  .form-grid { display: grid; gap: 1rem; margin: 1rem 0; }
-  .form-group label { font-weight: 500; display: block; margin-bottom: 0.25rem; color: #1e293b; font-size: 0.9rem; }
-  .output-area { background: #0f172a; color: #e2e8f0; padding: 1.2rem; border-radius: 8px; font-family: 'Fira Code', monospace; white-space: pre-wrap; word-break: break-all; border: 1px solid #334155; min-height: 80px; font-size: 0.88rem; }
-  .embed-box { background: #f1f5f9; padding: 1rem; border-radius: 8px; margin: 1rem 0; }
-  .embed-box textarea { background: #0f172a; color: #a5f3fc; border: 1px solid #334155; font-size: 0.82rem; margin-top: 0.5rem; min-height: 60px; }
-  .template-selector { display: flex; gap: 0.75rem; align-items: center; margin: 0.5rem 0 1.5rem; flex-wrap: wrap; }
+  .template-selector { display: flex; gap: 0.75rem; align-items: center; margin: 0.5rem 0 1.25rem; flex-wrap: wrap; }
   .template-selector select { flex: 1; min-width: 200px; padding: 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1; background: white; font-size: 0.9rem; }
-  .info-note { background: #e6f0ff; border-left: 4px solid #2563eb; padding: 0.8rem 1.2rem; border-radius: 0 8px 8px 0; font-size: 0.9rem; margin: 1rem 0; }
-  hr { border: none; border-top: 2px dashed #cbd5e1; margin: 2rem 0; }
+  .form-grid { display: grid; gap: 0.9rem; margin: 1rem 0; }
+  .form-group label { font-weight: 500; display: block; margin-bottom: 0.2rem; color: #1e293b; font-size: 0.88rem; }
+  .output-area { background: #0f172a; color: #e2e8f0; padding: 1.2rem; border-radius: 8px; font-family: 'Fira Code', monospace; white-space: pre-wrap; word-break: break-all; border: 1px solid #334155; min-height: 80px; font-size: 0.85rem; }
+  .copy-btn { float: right; font-size: 0.75rem; padding: 0.25rem 0.6rem; background: #334155; color: #94a3b8; border: none; border-radius: 4px; cursor: pointer; margin-top: -0.2rem; }
+  .copy-btn:hover { background: #475569; color: white; }
 
-  /* ── SSH panel ──────────────────────────────────────────────── */
+  /* ── SSH panel ── */
   .ssh-panel { background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; height: fit-content; position: sticky; top: 72px; }
-  .ssh-panel h2 { font-size: 1.1rem; margin-top: 0; }
-  .ssh-panel select, .ssh-panel input { width: 100%; padding: 0.55rem 0.8rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.88rem; margin-bottom: 0.75rem; background: white; outline: none; }
-  .ssh-panel select:focus, .ssh-panel input:focus { border-color: #2563eb; }
-  .ssh-terminal { background: #0f172a; color: #e2e8f0; padding: 1rem; border-radius: 8px; font-family: 'Fira Code', monospace; font-size: 0.8rem; min-height: 200px; max-height: 400px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; border: 1px solid #334155; margin-top: 0.75rem; }
-  .ssh-terminal .t-status  { color: #38bdf8; }
-  .ssh-terminal .t-stdout  { color: #e2e8f0; }
-  .ssh-terminal .t-stderr  { color: #fbbf24; }
-  .ssh-terminal .t-error   { color: #f87171; }
-  .ssh-terminal .t-success { color: #86efac; }
-  .ssh-terminal .t-fail    { color: #f87171; }
-  .run-btn { width: 100%; padding: 0.75rem; font-size: 0.95rem; margin-top: 0.5rem; background: #16a34a; }
-  .run-btn:hover { background: #15803d; }
+  .ssh-panel h2 { font-size: 1.05rem; margin-top: 0; }
+  .ssh-panel select { width: 100%; padding: 0.55rem 0.8rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.88rem; margin-bottom: 0.75rem; background: white; outline: none; }
+  .ssh-panel select:focus { border-color: #2563eb; }
+  .ssh-label { font-size: 0.8rem; color: #64748b; display: block; margin-bottom: 0.25rem; }
+
+  .run-btn { width: 100%; padding: 0.75rem; font-size: 0.95rem; margin-top: 0.25rem; background: #16a34a; border-radius: 8px; }
+  .run-btn:hover:not(:disabled) { background: #15803d; }
   .run-btn:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
 
-  /* ── Progress indicator ─────────────────────────────────────── */
-  #ssh-progress { display: none; margin-top: 0.75rem; }
-  #ssh-progress.visible { display: block; }
-  .progress-steps { display: flex; align-items: center; gap: 0; margin-bottom: 0.5rem; }
-  .progress-step { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; }
-  .progress-step:not(:last-child)::after { content: ''; position: absolute; top: 11px; left: 50%; width: 100%; height: 2px; background: #334155; z-index: 0; transition: background 0.3s; }
-  .progress-step.done:not(:last-child)::after  { background: #16a34a; }
-  .progress-step.active:not(:last-child)::after { background: #334155; }
-  .step-dot { width: 22px; height: 22px; border-radius: 50%; background: #334155; border: 2px solid #475569; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: #94a3b8; z-index: 1; position: relative; transition: background 0.3s, border-color 0.3s; }
-  .progress-step.done   .step-dot { background: #16a34a; border-color: #16a34a; color: white; }
-  .progress-step.active .step-dot { background: #2563eb; border-color: #38bdf8; color: white; animation: pulse-dot 1s infinite; }
-  .progress-step.error  .step-dot { background: #dc2626; border-color: #f87171; color: white; }
-  @keyframes pulse-dot { 0%,100% { box-shadow: 0 0 0 0 rgba(56,189,248,0.4); } 50% { box-shadow: 0 0 0 5px rgba(56,189,248,0); } }
-  .step-label { font-size: 0.65rem; color: #64748b; margin-top: 0.25rem; text-align: center; white-space: nowrap; }
-  .progress-step.done   .step-label { color: #4ade80; }
-  .progress-step.active .step-label { color: #38bdf8; }
-  .progress-step.error  .step-label { color: #f87171; }
-  .progress-track { height: 4px; background: #1e293b; border-radius: 2px; overflow: hidden; margin-bottom: 0.4rem; }
-  .progress-fill  { height: 100%; background: linear-gradient(90deg,#2563eb,#38bdf8); border-radius: 2px; width: 0%; transition: width 0.4s ease; }
-  .progress-fill.done  { background: linear-gradient(90deg,#16a34a,#4ade80); }
-  .progress-fill.error { background: #dc2626; }
+  /* status bar */
+  .ssh-status { display: none; align-items: center; gap: 0.6rem; margin: 0.75rem 0 0.5rem; font-size: 0.82rem; }
+  .ssh-status.visible { display: flex; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .status-dot.running  { background: #2563eb; animation: pulse 1s infinite; }
+  .status-dot.done     { background: #16a34a; }
+  .status-dot.error    { background: #dc2626; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-  /* thumbprint badge */
-  #thumbprint-row { display: none; align-items: center; gap: 0.4rem; margin-top: 0.4rem; }
-  #thumbprint-row.visible { display: flex; }
-  .fp-label { font-size: 0.68rem; color: #64748b; white-space: nowrap; }
-  .fp-value { font-family: 'Fira Code', monospace; font-size: 0.65rem; color: #38bdf8; background: #0f172a; border: 1px solid #334155; border-radius: 4px; padding: 0.15rem 0.4rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; cursor: pointer; }
-  .fp-copy { font-size: 0.65rem; padding: 0.15rem 0.4rem; background: #334155; color: #94a3b8; border: none; border-radius: 4px; cursor: pointer; flex-shrink: 0; }
-  .fp-copy:hover { background: #475569; color: white; }
+  .ssh-terminal { background: #0f172a; color: #e2e8f0; padding: 1rem; border-radius: 8px; font-family: 'Fira Code', monospace; font-size: 0.78rem; min-height: 220px; max-height: 420px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; border: 1px solid #334155; margin-top: 0.5rem; line-height: 1.5; }
+  .clear-btn { width: 100%; margin-top: 0.6rem; font-size: 0.8rem; padding: 0.4rem; background: #1e293b; color: #64748b; border: 1px solid #334155; border-radius: 6px; cursor: pointer; }
+  .clear-btn:hover { background: #334155; color: #94a3b8; }
 
-  .group-header { font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.4rem 0.5rem; pointer-events: none; }
   #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #166534; color: white; padding: 0.75rem 1.25rem; border-radius: 8px; font-size: 0.9rem; display: none; z-index: 200; }
-  .copy-btn { float: right; font-size: 0.75rem; padding: 0.25rem 0.6rem; background: #334155; color: #94a3b8; border: none; border-radius: 4px; cursor: pointer; margin-top: -0.25rem; }
-  .copy-btn:hover { background: #475569; color: white; }
 </style>
 </head>
 <body>
@@ -106,523 +78,383 @@
 </nav>
 
 <div class="layout">
-  <!-- ── Main template panel ── -->
+
+  <!-- ── Template panel ── -->
   <div class="container">
     <h2>📂 Templates</h2>
     <div class="template-selector">
-      <select id="template-list"><option value="">— Select a template —</option></select>
-      <button id="load-selected" class="secondary">Load</button>
-      <button id="delete-selected" class="secondary" style="background:#b91c1c">Delete</button>
-      <button id="refresh-list" class="secondary">🔄</button>
+      <select id="template-list"><option value="">— Select a saved template —</option></select>
+      <button id="load-btn" class="secondary">Load</button>
+      <button id="delete-btn" class="secondary" style="background:#b91c1c">Delete</button>
+      <button id="refresh-btn" class="secondary" title="Refresh list">🔄</button>
     </div>
 
     <div class="card">
-      <h2 style="margin-top:0;border:none;padding:0;font-size:1rem;">➕ Create / edit template</h2>
+      <h2 style="margin-top:0;border:none;padding:0;font-size:0.95rem;font-weight:600;">➕ New template</h2>
       <textarea id="new-template-text" placeholder="e.g. interface {{Interface}}&#10; ip address {{IP Address}} {{Subnet Mask}}"></textarea>
       <div class="flex-row" style="margin-top:0.75rem">
-        <button id="save-template-btn">💾 Save as new</button>
-        <button id="reset-default-btn" class="secondary">↺ Router example</button>
+        <button id="save-btn">💾 Save as new</button>
+        <button id="example-btn" class="secondary">↺ Router example</button>
       </div>
     </div>
 
-    <h2>📋 Current template</h2>
-    <pre id="current-template-pre" style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:1rem;font-family:'Fira Code',monospace;font-size:0.88rem;white-space:pre-wrap;word-break:break-all;"></pre>
+    <h2>📋 Active template</h2>
+    <pre id="tpl-preview" style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:1rem;font-family:'Fira Code',monospace;font-size:0.85rem;white-space:pre-wrap;word-break:break-all;margin:0 0 1rem;"></pre>
 
-    <div id="dynamic-form-container" class="form-grid"></div>
+    <div id="form-container" class="form-grid"></div>
 
-    <div style="margin:1.25rem 0 0.5rem">
-      <button id="generate-btn">⚡ Generate Filled Template</button>
+    <div style="margin:1rem 0 0.5rem">
+      <button id="generate-btn">⚡ Generate</button>
     </div>
 
-    <h2>📎 Result <button class="copy-btn" onclick="copyOutput()">Copy</button></h2>
-    <div id="output" class="output-area">✨ Fill in the form above and click Generate.</div>
-
-    <hr />
-    <h2>🔗 Sharing</h2>
-    <p style="font-size:0.9rem;color:#475569"><a href="#" id="share-link">📋 Copy shareable link</a> — includes template + current values in the URL.</p>
-    <div class="embed-box">
-      <strong style="font-size:0.85rem">📎 Embed full tool:</strong>
-      <textarea id="embed-full" rows="2" readonly></textarea>
-    </div>
-    <div class="embed-box">
-      <strong style="font-size:0.85rem">📎 Embed variables form only:</strong>
-      <textarea id="embed-vars" rows="2" readonly></textarea>
-    </div>
+    <h2>📎 Result <button class="copy-btn" id="copy-btn">Copy</button></h2>
+    <div id="output" class="output-area">Fill in the fields above and click Generate.</div>
   </div>
 
-  <!-- ── SSH execution panel ── -->
+  <!-- ── SSH panel ── -->
   <div class="ssh-panel">
     <h2>🚀 Execute on Device</h2>
-    <label style="font-size:0.82rem;color:#64748b;display:block;margin-bottom:0.3rem">Target device</label>
-    <select id="ssh-device-select"><option value="">— Select device —</option></select>
 
-    <label style="font-size:0.82rem;color:#64748b;display:block;margin-bottom:0.3rem">Override credential (optional)</label>
-    <select id="ssh-cred-select"><option value="">— Use device default —</option></select>
+    <span class="ssh-label">Target device</span>
+    <select id="device-select"><option value="">— Select device —</option></select>
 
-    <button class="run-btn" id="run-ssh-btn" onclick="runSsh()" disabled>▶ Run on device</button>
+    <span class="ssh-label">Override credential <span style="color:#94a3b8">(optional)</span></span>
+    <select id="cred-select"><option value="">— Use device default —</option></select>
 
-    <!-- ── Progress indicator ── -->
-    <div id="ssh-progress">
-      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
-      <div class="progress-steps" id="progress-steps">
-        <div class="progress-step" id="ps-1"><div class="step-dot">1</div><div class="step-label">Fetch</div></div>
-        <div class="progress-step" id="ps-2"><div class="step-dot">2</div><div class="step-label">Connect</div></div>
-        <div class="progress-step" id="ps-3"><div class="step-dot">3</div><div class="step-label">Run</div></div>
-        <div class="progress-step" id="ps-4"><div class="step-dot">✓</div><div class="step-label">Done</div></div>
-      </div>
-      <!-- Host key fingerprint -->
-      <div id="thumbprint-row">
-        <span class="fp-label">🔑 Host key:</span>
-        <span class="fp-value" id="fp-value" title="Click to copy" onclick="copyThumbprint()"></span>
-        <button class="fp-copy" onclick="copyThumbprint()">copy</button>
-      </div>
+    <button class="run-btn" id="run-btn" onclick="runSsh()" disabled>▶ Run on device</button>
+
+    <div class="ssh-status" id="ssh-status">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-text"></span>
     </div>
 
-    <div class="ssh-terminal" id="ssh-terminal">Select a device above, fill the template, then click Run.</div>
-
-    <div style="margin-top:0.75rem">
-      <button class="secondary" style="font-size:0.8rem;padding:0.4rem 0.8rem;width:100%" onclick="clearTerminal()">🗑 Clear terminal</button>
-    </div>
+    <div class="ssh-terminal" id="terminal">Select a device, generate the template, then click Run.</div>
+    <button class="clear-btn" onclick="clearTerminal()">🗑 Clear</button>
   </div>
+
 </div>
 
 <div id="toast"></div>
 
 <script>
-(function() {
-const API_BASE = '/api';
-const DEFAULT_TEMPLATE = `interface {{interface}}
+(function () {
+'use strict';
+
+const API = '/api';
+const DEFAULT_TPL = `interface {{Interface}}
  ip address {{IP Address}} {{Subnet Mask}}
  no shutdown
 ip route 0.0.0.0 0.0.0.0 {{Default Gateway}}`;
 
-let currentTemplateId   = 'default';
-let currentTemplateText = DEFAULT_TEMPLATE;
-let templatesList = [];
+let currentText = DEFAULT_TPL;
+let currentId   = 'default';
+let pollTimer   = null;
 
-// ── Init ─────────────────────────────────────────────────────
-(async function init() {
-  const me = await (await fetch('/auth/me')).json().catch(() => null);
-  if (me) {
-    document.getElementById('user-badge').textContent = me.username;
-    if (me.role === 'admin') document.getElementById('admin-nav-link').style.display = '';
-  }
-  await fetchTemplatesList();
-  await loadFromUrl();
-  loadSshDevices();
-  updateEmbedCodes();
+// ── Boot ─────────────────────────────────────────────────────
+(async function boot() {
+    try {
+        const me = await apiFetch('/auth/me');
+        document.getElementById('user-badge').textContent = me.username;
+        if (me.role === 'admin') show('admin-nav-link');
+    } catch (_) {}
+
+    setTemplate(DEFAULT_TPL, 'default');
+    await loadTemplateList();
+    await loadDevicesAndCreds();
 })();
 
-// ── Helpers ───────────────────────────────────────────────────
-function extractVariables(tpl) {
-  const re = /{{\s*([^}]+?)\s*}}/g, vars = [];
-  let m;
-  while ((m = re.exec(tpl)) !== null) {
-    const v = m[1].trim();
-    if (!vars.includes(v)) vars.push(v);
-  }
-  return vars;
+// ── Template helpers ──────────────────────────────────────────
+function extractVars(text) {
+    const vars = [], re = /{{\s*([^}]+?)\s*}}/g;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+        const v = m[1].trim();
+        if (!vars.includes(v)) vars.push(v);
+    }
+    return vars;
 }
 
 function varId(name) {
-  return name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    return 'v_' + name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
 }
 
-function renderForm(variables) {
-  const c = document.getElementById('dynamic-form-container');
-  if (!variables.length) { c.innerHTML = '<p style="color:#94a3b8;font-size:0.9rem">No variables in this template.</p>'; return; }
-  c.innerHTML = variables.map(name => `
-    <div class="form-group">
-      <label for="${varId(name)}">${name}</label>
-      <input type="text" id="${varId(name)}" name="${varId(name)}" placeholder="Enter value" />
-    </div>`).join('');
-}
-
-function getFormValues() {
-  const values = {};
-  extractVariables(currentTemplateText).forEach(name => {
-    const el = document.getElementById(varId(name));
-    values[name] = el ? el.value : '';
-  });
-  return values;
-}
-
-function setFormValues(vals) {
-  extractVariables(currentTemplateText).forEach(name => {
-    const el = document.getElementById(varId(name));
-    if (el && vals[name] !== undefined) el.value = vals[name];
-  });
-}
-
-function fillTemplate(tpl, values) {
-  let r = tpl;
-  extractVariables(tpl).forEach(name => {
-    r = r.replace(new RegExp(`{{\\s*${escRe(name)}\\s*}}`, 'g'), values[name] || '');
-  });
-  return r;
-}
-
-function escRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-
-function updateOutput() {
-  const filled = fillTemplate(currentTemplateText, getFormValues());
-  document.getElementById('output').innerText = filled;
-  return filled;
-}
-
-function setCurrentTemplate(text, id = 'default') {
-  currentTemplateText = text;
-  currentTemplateId   = id;
-  document.getElementById('current-template-pre').innerText = text;
-  const vars = extractVariables(text);
-  renderForm(vars);
-  vars.forEach(name => { const el = document.getElementById(varId(name)); if (el) el.value = ''; });
-  document.getElementById('output').innerText = '✨ Fill in the form above and click Generate.';
-  updateEmbedCodes();
-  updateRunBtn();
-}
-
-function updateEmbedCodes() {
-  const base = window.location.href.split('?')[0];
-  const param = currentTemplateId !== 'default' ? `?template=${currentTemplateId}` : '';
-  document.getElementById('embed-full').value =
-    `<iframe src="${base}${param}" width="100%" height="600" style="border:1px solid #ccc;border-radius:8px" title="configify"></iframe>`;
-  document.getElementById('embed-vars').value =
-    `<iframe src="${base}${param}${param ? '&' : '?'}embed=form" width="100%" height="300" style="border:1px solid #ccc;border-radius:8px" title="configify form"></iframe>`;
-}
-
-// ── API: templates ────────────────────────────────────────────
-async function fetchTemplatesList() {
-  const res = await fetch(`${API_BASE}/templates`);
-  templatesList = await res.json();
-  const sorted = [...templatesList].sort((a,b) => a.name.localeCompare(b.name));
-  const sel = document.getElementById('template-list');
-  sel.innerHTML = '<option value="">— Select a template —</option>';
-  sorted.forEach(t => {
-    const o = document.createElement('option');
-    o.value = t.template_id;
-    o.textContent = t.name + ' (' + t.template_id.substr(0,6) + '…)';
-    sel.appendChild(o);
-  });
-}
-
-async function loadTemplateById(id) {
-  const res = await fetch(`${API_BASE}/templates/${id}`);
-  if (!res.ok) return alert('Template not found');
-  const tpl = await res.json();
-  setCurrentTemplate(tpl.template_text, tpl.template_id);
-  const url = new URL(window.location);
-  url.searchParams.set('template', id);
-  history.replaceState({}, '', url);
-}
-
-async function loadFromUrl() {
-  const p = new URLSearchParams(window.location.search);
-  const id = p.get('template');
-  if (id && id !== 'default') await loadTemplateById(id);
-  else setCurrentTemplate(DEFAULT_TEMPLATE, 'default');
-  const prefill = {};
-  extractVariables(currentTemplateText).forEach(name => {
-    const v = p.get(name); if (v) prefill[name] = v;
-  });
-  if (Object.keys(prefill).length) { setFormValues(prefill); updateOutput(); }
-}
-
-// ── Progress indicator ────────────────────────────────────────
-function resetProgress() {
-  document.getElementById('ssh-progress').classList.remove('visible');
-  document.getElementById('progress-fill').style.width = '0%';
-  document.getElementById('progress-fill').className = 'progress-fill';
-  for (let i = 1; i <= 4; i++) {
-    const el = document.getElementById(`ps-${i}`);
-    el.className = 'progress-step';
-    el.querySelector('.step-dot').textContent = i === 4 ? '✓' : i;
-  }
-  document.getElementById('thumbprint-row').classList.remove('visible');
-  document.getElementById('fp-value').textContent = '';
-}
-
-function setProgress(step, total, failed = false) {
-  document.getElementById('ssh-progress').classList.add('visible');
-  const pct = Math.round((step / total) * 100);
-  const fill = document.getElementById('progress-fill');
-  fill.style.width = pct + '%';
-  fill.className = 'progress-fill' + (failed ? ' error' : step === total && !failed ? ' done' : '');
-
-  for (let i = 1; i <= 4; i++) {
-    const el = document.getElementById(`ps-${i}`);
-    const dot = el.querySelector('.step-dot');
-    if (i < step) {
-      el.className = 'progress-step done';
-      dot.textContent = '✓';
-    } else if (i === step) {
-      el.className = 'progress-step' + (failed ? ' error' : ' active');
-      dot.textContent = failed ? '✗' : i === 4 ? '✓' : i;
+function setTemplate(text, id) {
+    currentText = text;
+    currentId   = id;
+    document.getElementById('tpl-preview').textContent = text;
+    const vars = extractVars(text);
+    const fc = document.getElementById('form-container');
+    if (!vars.length) {
+        fc.innerHTML = '<p style="color:#94a3b8;font-size:0.88rem">No variables in this template.</p>';
     } else {
-      el.className = 'progress-step';
-      dot.textContent = i === 4 ? '✓' : i;
+        fc.innerHTML = vars.map(v => `
+            <div class="form-group">
+              <label for="${varId(v)}">${v}</label>
+              <input type="text" id="${varId(v)}" placeholder="Enter value for ${v}" />
+            </div>`).join('');
     }
-  }
+    document.getElementById('output').textContent = 'Fill in the fields above and click Generate.';
+    updateRunBtn();
 }
 
-function showThumbprint(fp) {
-  const pairs = [];
-  for (let i = 0; i < fp.length && i < 20; i += 2) pairs.push(fp.slice(i, i+2));
-  const display = pairs.join(':') + (fp.length > 20 ? '…' : '');
-  document.getElementById('fp-value').textContent = display;
-  document.getElementById('fp-value').dataset.full = fp;
-  document.getElementById('thumbprint-row').classList.add('visible');
+function getValues() {
+    const out = {};
+    extractVars(currentText).forEach(v => {
+        const el = document.getElementById(varId(v));
+        out[v] = el ? el.value : '';
+    });
+    return out;
 }
 
-window.copyThumbprint = function() {
-  const val = document.getElementById('fp-value').dataset.full || document.getElementById('fp-value').textContent;
-  navigator.clipboard.writeText(val).then(() => toast('Fingerprint copied!')).catch(() => {});
-};
+function fill(text, values) {
+    let r = text;
+    for (const [k, v] of Object.entries(values)) {
+        r = r.replace(new RegExp('{{\\s*' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*}}', 'g'), v);
+    }
+    return r;
+}
 
-// ── SSH ───────────────────────────────────────────────────────
-async function loadSshDevices() {
-  try {
-    const [devRes, credRes] = await Promise.all([
-      fetch('/api/devices'),
-      fetch('/api/devices/credentials')
-    ]);
-    const devices = await devRes.json();
-    const creds   = await credRes.json();
+function generateOutput() {
+    const result = fill(currentText, getValues());
+    document.getElementById('output').textContent = result;
+    return result;
+}
 
-    const groups = {};
-    devices.forEach(d => {
-      const g = d.group_name || 'Ungrouped';
-      (groups[g] = groups[g] || []).push(d);
-    });
+// ── Template list ─────────────────────────────────────────────
+async function loadTemplateList() {
+    try {
+        const list = await apiFetch('/api/templates');
+        const sel  = document.getElementById('template-list');
+        sel.innerHTML = '<option value="">— Select a saved template —</option>';
+        [...list].sort((a, b) => a.name.localeCompare(b.name)).forEach(t => {
+            const o = document.createElement('option');
+            o.value = t.template_id;
+            o.textContent = t.name;
+            sel.appendChild(o);
+        });
+    } catch (_) {}
+}
 
-    const devSel = document.getElementById('ssh-device-select');
-    devSel.innerHTML = '<option value="">— Select device —</option>';
-    Object.entries(groups).sort().forEach(([gname, devs]) => {
-      const og = document.createElement('optgroup');
-      og.label = gname;
-      devs.forEach(d => {
-        const o = document.createElement('option');
-        o.value = d.id;
-        o.textContent = d.name + ' (' + d.hostname + ')';
-        og.appendChild(o);
-      });
-      devSel.appendChild(og);
-    });
+document.getElementById('load-btn').addEventListener('click', async () => {
+    const id = document.getElementById('template-list').value;
+    if (!id) return toast('Select a template first', true);
+    try {
+        const t = await apiFetch('/api/templates/' + id);
+        setTemplate(t.template_text, t.template_id);
+    } catch (_) { toast('Failed to load template', true); }
+});
 
-    devSel.addEventListener('change', updateRunBtn);
+document.getElementById('delete-btn').addEventListener('click', async () => {
+    const id = document.getElementById('template-list').value;
+    if (!id) return toast('Select a template first', true);
+    if (!confirm('Delete this template?')) return;
+    try {
+        await apiFetch('/api/templates/' + id, { method: 'DELETE' });
+        if (currentId === id) setTemplate(DEFAULT_TPL, 'default');
+        await loadTemplateList();
+        toast('Template deleted');
+    } catch (_) { toast('Delete failed', true); }
+});
 
-    const credSel = document.getElementById('ssh-cred-select');
-    credSel.innerHTML = '<option value="">— Use device default —</option>';
-    creds.forEach(c => {
-      const o = document.createElement('option');
-      o.value = c.id;
-      o.textContent = c.name + ' (' + c.username + ')';
-      credSel.appendChild(o);
-    });
-  } catch {}
+document.getElementById('refresh-btn').addEventListener('click', loadTemplateList);
+
+document.getElementById('save-btn').addEventListener('click', async () => {
+    const text = document.getElementById('new-template-text').value.trim();
+    if (!text) return toast('Enter a template first', true);
+    const name = prompt('Template name:', text.split('\n')[0].slice(0, 40) || 'Unnamed');
+    if (name === null) return;
+    try {
+        const t = await apiFetch('/api/templates', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name || 'Unnamed', template_text: text }),
+        });
+        await loadTemplateList();
+        toast('Template saved');
+        if (confirm('Switch to this template?')) setTemplate(t.template_text, t.template_id);
+        document.getElementById('new-template-text').value = '';
+    } catch (_) { toast('Save failed', true); }
+});
+
+document.getElementById('example-btn').addEventListener('click', () => {
+    setTemplate(DEFAULT_TPL, 'default');
+});
+
+document.getElementById('generate-btn').addEventListener('click', generateOutput);
+
+document.getElementById('copy-btn').addEventListener('click', () => {
+    const text = document.getElementById('output').textContent;
+    navigator.clipboard.writeText(text).then(() => toast('Copied!')).catch(() => toast('Copy failed', true));
+});
+
+// ── SSH devices & credentials ─────────────────────────────────
+async function loadDevicesAndCreds() {
+    try {
+        const [devices, creds] = await Promise.all([
+            apiFetch('/api/devices'),
+            apiFetch('/api/devices/credentials'),
+        ]);
+
+        const devSel = document.getElementById('device-select');
+        devSel.innerHTML = '<option value="">— Select device —</option>';
+
+        // Group by group_name
+        const groups = {};
+        devices.forEach(d => {
+            const g = d.group_name || 'Ungrouped';
+            (groups[g] = groups[g] || []).push(d);
+        });
+        Object.entries(groups).sort().forEach(([gname, devs]) => {
+            const og = document.createElement('optgroup');
+            og.label = gname;
+            devs.forEach(d => {
+                const o = document.createElement('option');
+                o.value = d.id;
+                o.textContent = d.name + ' (' + d.hostname + ')';
+                og.appendChild(o);
+            });
+            devSel.appendChild(og);
+        });
+        devSel.addEventListener('change', updateRunBtn);
+
+        const credSel = document.getElementById('cred-select');
+        credSel.innerHTML = '<option value="">— Use device default —</option>';
+        creds.forEach(c => {
+            const o = document.createElement('option');
+            o.value = c.id;
+            o.textContent = c.name + ' (' + c.username + ')';
+            credSel.appendChild(o);
+        });
+    } catch (_) {}
 }
 
 function updateRunBtn() {
-  const devId = document.getElementById('ssh-device-select').value;
-  document.getElementById('run-ssh-btn').disabled = !devId;
+    document.getElementById('run-btn').disabled =
+        !document.getElementById('device-select').value;
 }
 
+// ── SSH execution — polling ───────────────────────────────────
 async function runSsh() {
-  const deviceId = document.getElementById('ssh-device-select').value;
-  const credId   = document.getElementById('ssh-cred-select').value;
-  const command  = updateOutput();
+    const deviceId = document.getElementById('device-select').value;
+    const credId   = document.getElementById('cred-select').value;
+    if (!deviceId) return toast('Select a device first', true);
 
-  if (!deviceId) return toast('Select a device first', true);
-  if (!command || command.includes('✨')) return toast('Generate the template first', true);
+    const command = generateOutput();
+    if (!command || command.startsWith('Fill in')) return toast('Generate the template first', true);
 
-  const btn = document.getElementById('run-ssh-btn');
-  btn.disabled = true;
-  btn.textContent = '⏳ Running…';
-  clearTerminal();
-  resetProgress();
+    // Reset UI
+    clearTerminal();
+    setStatus('running', 'Starting…');
+    setRunBtn(true);
 
-  try {
-    // POST /execute — uses normal session cookie auth, returns logId + one-time token
-    const res = await fetch('/api/ssh/execute', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        device_id:     parseInt(deviceId),
-        credential_id: credId ? parseInt(credId) : undefined,
-        command,
-        template_id:   currentTemplateId !== 'default' ? currentTemplateId : undefined
-      })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      termLine('error', data.error || 'Request failed');
-      setProgress(1, 4, true);
-      btn.disabled = false;
-      btn.textContent = '▶ Run on device';
-      return;
+    let jobId;
+    try {
+        const data = await apiFetch('/api/ssh/execute', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                device_id:     parseInt(deviceId),
+                credential_id: credId ? parseInt(credId) : undefined,
+                command,
+                template_id:   currentId !== 'default' ? currentId : undefined,
+            }),
+        });
+        jobId = data.jobId;
+    } catch (e) {
+        termWrite('Error starting job: ' + (e.message || 'Unknown error') + '\n');
+        setStatus('error', 'Failed to start');
+        setRunBtn(false);
+        return;
     }
 
-    const { logId, token } = data;
+    // Poll until done
+    pollTimer = setInterval(async () => {
+        try {
+            const poll = await apiFetch('/api/ssh/poll/' + jobId);
 
-    // Open WebSocket with one-time token in URL — no session middleware needed server-side
-    const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws = new WebSocket(`${proto}://${window.location.host}/ws/ssh/${logId}?token=${token}`);
+            if (poll.newOutput) termWrite(poll.newOutput);
 
-    ws.onmessage = (e) => {
-      const msg = JSON.parse(e.data);
-      if (msg.type === 'progress') {
-        setProgress(msg.data.step, msg.data.total, false);
-        if (msg.data.label) termLine('status', msg.data.label + '…');
-      } else if (msg.type === 'thumbprint') {
-        showThumbprint(msg.data);
-      } else if (msg.type === 'status') {
-        termLine('status', msg.data);
-      } else if (msg.type === 'output') {
-        termAppend('stdout', msg.data);
-      } else if (msg.type === 'stderr') {
-        termAppend('stderr', msg.data);
-      } else if (msg.type === 'error') {
-        termLine('error', '⚠ ' + msg.data);
-        setProgress(4, 4, true);
-        btn.disabled = false;
-        btn.textContent = '▶ Run on device';
-      } else if (msg.type === 'done') {
-        const ok = msg.data.status === 'success';
-        setProgress(4, 4, !ok);
-        termLine(ok ? 'success' : 'fail', ok
-          ? '✅ Completed (exit 0)'
-          : `❌ Failed (exit ${msg.data.exitCode})`);
-        btn.disabled = false;
-        btn.textContent = '▶ Run on device';
-      }
-    };
+            if (poll.status === 'running') {
+                setStatus('running', 'Running…');
+                return;  // keep polling
+            }
 
-    ws.onerror = () => {
-      termLine('error', 'WebSocket connection error');
-      setProgress(4, 4, true);
-      btn.disabled = false;
-      btn.textContent = '▶ Run on device';
-    };
+            // Job finished
+            clearInterval(pollTimer);
+            pollTimer = null;
 
-    ws.onclose = (e) => {
-      // Only show unexpected close (normal close is code 1000)
-      if (e.code !== 1000 && e.code !== 1005) {
-        termLine('error', `WebSocket closed unexpectedly (code ${e.code})`);
-        setProgress(4, 4, true);
-        btn.disabled = false;
-        btn.textContent = '▶ Run on device';
-      }
-    };
+            if (poll.status === 'done') {
+                setStatus('done', 'Completed (exit 0)');
+            } else {
+                setStatus('error', 'Failed' + (poll.exitCode != null ? ` (exit ${poll.exitCode})` : ''));
+            }
+            setRunBtn(false);
 
-  } catch (err) {
-    termLine('error', err.message);
-    setProgress(4, 4, true);
-    btn.disabled = false;
-    btn.textContent = '▶ Run on device';
-  }
+        } catch (e) {
+            clearInterval(pollTimer);
+            pollTimer = null;
+            termWrite('\nPolling error: ' + (e.message || 'Unknown') + '\n');
+            setStatus('error', 'Polling failed');
+            setRunBtn(false);
+        }
+    }, 800);  // poll every 800 ms
 }
 
-function termLine(cls, text) {
-  const t = document.getElementById('ssh-terminal');
-  const span = document.createElement('span');
-  span.className = 't-' + cls;
-  span.textContent = text + '\n';
-  t.appendChild(span);
-  t.scrollTop = t.scrollHeight;
-}
-
-function termAppend(cls, text) {
-  if (!text) return;
-  const t = document.getElementById('ssh-terminal');
-  let last = t.lastElementChild;
-  if (!last || !last.classList.contains('t-' + cls)) {
-    last = document.createElement('span');
-    last.className = 't-' + cls;
-    t.appendChild(last);
-  }
-  last.textContent += text;
-  t.scrollTop = t.scrollHeight;
+// ── Terminal helpers ──────────────────────────────────────────
+function termWrite(text) {
+    const t = document.getElementById('terminal');
+    t.textContent += text;
+    t.scrollTop = t.scrollHeight;
 }
 
 function clearTerminal() {
-  document.getElementById('ssh-terminal').innerHTML = '';
-  resetProgress();
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    const t = document.getElementById('terminal');
+    t.textContent = '';
+    hideStatus();
 }
 
-// ── Misc ──────────────────────────────────────────────────────
-function copyOutput() {
-  navigator.clipboard.writeText(document.getElementById('output').innerText)
-    .then(() => toast('Copied!')).catch(() => toast('Copy failed', true));
+function setStatus(type, text) {
+    const s  = document.getElementById('ssh-status');
+    const d  = document.getElementById('status-dot');
+    const tx = document.getElementById('status-text');
+    s.className  = 'ssh-status visible';
+    d.className  = 'status-dot ' + type;
+    tx.textContent = text;
+}
+
+function hideStatus() {
+    document.getElementById('ssh-status').className = 'ssh-status';
+}
+
+function setRunBtn(running) {
+    const btn = document.getElementById('run-btn');
+    btn.disabled  = running || !document.getElementById('device-select').value;
+    btn.textContent = running ? '⏳ Running…' : '▶ Run on device';
+}
+
+// ── Utilities ─────────────────────────────────────────────────
+async function apiFetch(url, opts) {
+    const r = await fetch(url, opts);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || r.statusText);
+    return data;
+}
+
+function show(id) { document.getElementById(id).style.display = ''; }
+
+function toast(msg, isError = false) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.style.background = isError ? '#7f1d1d' : '#166534';
+    el.style.display = 'block';
+    setTimeout(() => { el.style.display = 'none'; }, 3000);
 }
 
 async function logout() {
-  await fetch('/auth/logout', { method: 'POST' });
-  window.location.href = '/login.html';
+    await fetch('/auth/logout', { method: 'POST' });
+    window.location.href = '/login.html';
 }
-
-function toast(msg, err = false) {
-  const el = document.getElementById('toast');
-  el.textContent = msg; el.style.background = err ? '#7f1d1d' : '#166534';
-  el.style.display = 'block';
-  setTimeout(() => { el.style.display = 'none'; }, 3000);
-}
-
-// ── Event listeners ───────────────────────────────────────────
-document.getElementById('generate-btn').addEventListener('click', updateOutput);
-
-document.getElementById('save-template-btn').addEventListener('click', async () => {
-  const text = document.getElementById('new-template-text').value.trim();
-  if (!text) return alert('Enter a template first.');
-  const name = prompt('Template name:', text.split('\n')[0].substring(0,30) || 'Unnamed');
-  if (name === null) return;
-  const res = await fetch(`${API_BASE}/templates`, {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ name: name || 'Unnamed', template_text: text })
-  });
-  if (!res.ok) return toast('Save failed', true);
-  const tpl = await res.json();
-  templatesList.push(tpl);
-  await fetchTemplatesList();
-  if (confirm('Saved! Switch to this template?')) await loadTemplateById(tpl.template_id);
-  document.getElementById('new-template-text').value = '';
-  toast('Template saved');
-});
-
-document.getElementById('reset-default-btn').addEventListener('click', () => {
-  setCurrentTemplate(DEFAULT_TEMPLATE, 'default');
-  const url = new URL(window.location); url.searchParams.delete('template');
-  history.replaceState({}, '', url);
-});
-
-document.getElementById('load-selected').addEventListener('click', async () => {
-  const id = document.getElementById('template-list').value;
-  if (!id) return alert('Select a template.');
-  await loadTemplateById(id);
-});
-
-document.getElementById('delete-selected').addEventListener('click', async () => {
-  const id = document.getElementById('template-list').value;
-  if (!id) return alert('Select a template to delete.');
-  if (!confirm('Delete this template?')) return;
-  const res = await fetch(`${API_BASE}/templates/${id}`, { method: 'DELETE' });
-  if (!res.ok) return toast('Delete failed', true);
-  if (currentTemplateId === id) setCurrentTemplate(DEFAULT_TEMPLATE, 'default');
-  await fetchTemplatesList();
-  toast('Deleted');
-});
-
-document.getElementById('refresh-list').addEventListener('click', fetchTemplatesList);
-
-document.getElementById('share-link').addEventListener('click', (e) => {
-  e.preventDefault();
-  const url = new URL(window.location);
-  if (currentTemplateId !== 'default') url.searchParams.set('template', currentTemplateId);
-  Object.entries(getFormValues()).forEach(([k,v]) => { if (v.trim()) url.searchParams.set(k,v); });
-  navigator.clipboard.writeText(url.toString()).then(() => toast('Link copied!'))
-    .catch(() => alert('Copy this link:\n' + url));
-});
 
 })();
 </script>

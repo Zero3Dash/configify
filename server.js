@@ -1,36 +1,35 @@
 /**
  * server.js  –  configify
- * Express + Passport (local/LDAP/SAML) + WebSocket SSH streaming
+ * Express + Passport (local/LDAP/SAML)
  */
 require('dotenv').config();
 
-const express        = require('express');
-const http           = require('http');
-const session        = require('express-session');
-const pgSession      = require('connect-pg-simple')(session);
-const cors           = require('cors');
-const WebSocket      = require('ws');
+const express    = require('express');
+const http       = require('http');
+const session    = require('express-session');
+const pgSession  = require('connect-pg-simple')(session);
+const cors       = require('cors');
 
-const db             = require('./db');
+const db                     = require('./db');
 const { passport, initAuth } = require('./auth');
-const authRoutes     = require('./routes/auth');
-const userRoutes     = require('./routes/users');
-const deviceRoutes   = require('./routes/devices');
-const sshRoutes      = require('./routes/ssh');
-const { requireAuth } = require('./middleware/auth');
+const authRoutes             = require('./routes/auth');
+const userRoutes             = require('./routes/users');
+const deviceRoutes           = require('./routes/devices');
+const sshRoutes              = require('./routes/ssh');
+const templateRoutes         = require('./routes/templates');
+const { requireAuth }        = require('./middleware/auth');
 
-const app    = express();
-const server = http.createServer(app);
-const PORT   = process.env.PORT || 3000;
+const app  = express();
+const PORT = process.env.PORT || 3000;
 
 app.set('trust proxy', 1);
 
 // ── Session store ──────────────────────────────────────────────
 const sessionMiddleware = session({
     store: new pgSession({
-        pool: db.pool,
-        tableName: 'user_sessions',
-        createTableIfMissing: true
+        pool:                 db.pool,
+        tableName:            'user_sessions',
+        createTableIfMissing: true,
     }),
     secret:            process.env.SESSION_SECRET || 'change-this-secret-in-production',
     resave:            false,
@@ -38,8 +37,8 @@ const sessionMiddleware = session({
     cookie: {
         secure:   process.env.NODE_ENV === 'production',
         httpOnly: true,
-        maxAge:   8 * 60 * 60 * 1000
-    }
+        maxAge:   8 * 60 * 60 * 1000,  // 8 hours
+    },
 });
 
 // ── Middleware ─────────────────────────────────────────────────
@@ -53,8 +52,8 @@ app.use(passport.session());
 // ── Auth gate for HTML pages ───────────────────────────────────
 app.use((req, res, next) => {
     const publicPaths = ['/login.html', '/auth/', '/favicon.ico'];
-    const isPublic = publicPaths.some(p => req.path.startsWith(p));
-    if (req.path.startsWith('/api') || req.path.startsWith('/auth') || isPublic) return next();
+    if (publicPaths.some(p => req.path.startsWith(p))) return next();
+    if (req.path.startsWith('/api') || req.path.startsWith('/auth')) return next();
     if (req.isAuthenticated()) return next();
     if (req.path === '/' || req.path.endsWith('.html')) return res.redirect('/login.html');
     next();
@@ -67,7 +66,7 @@ app.use('/auth',          authRoutes);
 app.use('/api/users',     userRoutes);
 app.use('/api/devices',   deviceRoutes);
 app.use('/api/ssh',       requireAuth, sshRoutes);
-app.use('/api/templates', requireAuth, require('./routes/templates'));
+app.use('/api/templates', requireAuth, templateRoutes);
 
 // ── SPA fallback ───────────────────────────────────────────────
 app.use((req, res) => {
@@ -75,27 +74,12 @@ app.use((req, res) => {
     res.redirect('/login.html');
 });
 
-// ── WebSocket — token auth, no session middleware needed ───────
-const wss = new WebSocket.Server({ noServer: true });
-sshRoutes.attachSshWebSocket(wss);
-
-server.on('upgrade', (req, socket, head) => {
-    if (!req.url.startsWith('/ws/ssh/')) {
-        socket.destroy();
-        return;
-    }
-    wss.handleUpgrade(req, socket, head, (ws) => {
-        wss.emit('connection', ws, req);
-    });
-});
-
 // ── Start ──────────────────────────────────────────────────────
 async function start() {
     await initAuth();
-    server.listen(PORT, () => {
+    http.createServer(app).listen(PORT, () => {
         console.log(`[server] configify running on http://localhost:${PORT}`);
         console.log(`[server] NODE_ENV=${process.env.NODE_ENV}`);
-        console.log(`[server] DEBUG_SSH=${process.env.DEBUG_SSH}`);
     });
 }
 

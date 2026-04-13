@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>configify · template studio</title>
+<title>configify · Use Template</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; color: #0f172a; margin: 0; }
@@ -19,57 +19,81 @@
   .layout { display: grid; grid-template-columns: 1fr 400px; gap: 1.5rem; max-width: 1300px; margin: 2rem auto; padding: 0 1.5rem; }
   @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
 
-  .container { background: white; border-radius: 16px; padding: 2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
-  h2 { font-size: 1.15rem; font-weight: 600; margin: 1.75rem 0 0.75rem; border-bottom: 2px solid #e9edf2; padding-bottom: 0.3rem; }
+  .panel { background: white; border-radius: 16px; padding: 2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
+
+  h2 { font-size: 1.1rem; font-weight: 600; margin: 1.75rem 0 0.75rem; border-bottom: 2px solid #e9edf2; padding-bottom: 0.3rem; }
   h2:first-of-type { margin-top: 0; }
-  .card { background: #f1f5f9; padding: 1.5rem; border-radius: 12px; margin: 1.25rem 0; }
-  .flex-row { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
-  textarea, input[type="text"] { width: 100%; padding: 0.75rem 1rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; background: white; font-family: 'Fira Code', monospace; outline: none; }
-  textarea:focus, input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.1); }
-  textarea { min-height: 130px; resize: vertical; }
-  button { background: #2563eb; color: white; border: none; padding: 0.65rem 1.3rem; border-radius: 8px; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: background 0.15s; }
-  button:hover { background: #1d4ed8; }
-  button.secondary { background: #475569; }
-  button.secondary:hover { background: #334155; }
-  .template-selector { display: flex; gap: 0.75rem; align-items: center; margin: 0.5rem 0 1.25rem; flex-wrap: wrap; }
-  .template-selector select { flex: 1; min-width: 200px; padding: 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1; background: white; font-size: 0.9rem; }
-  .form-grid { display: grid; gap: 0.9rem; margin: 1rem 0; }
-  .form-group label { font-weight: 500; display: block; margin-bottom: 0.2rem; color: #1e293b; font-size: 0.88rem; }
-  .output-area { background: #0f172a; color: #e2e8f0; padding: 1.2rem; border-radius: 8px; font-family: 'Fira Code', monospace; white-space: pre-wrap; word-break: break-all; border: 1px solid #334155; min-height: 80px; font-size: 0.85rem; }
-  .copy-btn { float: right; font-size: 0.75rem; padding: 0.25rem 0.6rem; background: #334155; color: #94a3b8; border: none; border-radius: 4px; cursor: pointer; margin-top: -0.2rem; }
-  .copy-btn:hover { background: #475569; color: white; }
 
-  /* ── SSH panel ── */
-  .ssh-panel { background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; height: fit-content; position: sticky; top: 72px; }
+  /* Template selector bar */
+  .tpl-bar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .tpl-bar select { flex: 1; min-width: 200px; padding: 0.6rem 0.8rem; border-radius: 7px; border: 1px solid #d1d5db; background: white; font-size: 0.9rem; outline: none; }
+  .tpl-bar select:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.1); }
+  .tpl-bar a { font-size: 0.82rem; color: #2563eb; text-decoration: none; white-space: nowrap; }
+  .tpl-bar a:hover { text-decoration: underline; }
+
+  /* Active template display */
+  .tpl-active-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1.25rem; display: none; }
+  .tpl-active-card.visible { display: block; }
+  .tpl-active-name { font-weight: 600; font-size: 0.95rem; color: #0f172a; margin-bottom: 0.35rem; }
+  .tpl-active-body { font-family: 'Fira Code', monospace; font-size: 0.8rem; color: #475569; white-space: pre-wrap; line-height: 1.55; max-height: 120px; overflow-y: auto; }
+
+  /* Variable form */
+  .form-grid { display: grid; gap: 0.85rem; margin: 0.5rem 0 1rem; }
+  .form-group label { display: block; font-size: 0.83rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem; }
+  .form-group input { width: 100%; padding: 0.65rem 0.9rem; border: 1px solid #d1d5db; border-radius: 7px; font-size: 0.9rem; outline: none; }
+  .form-group input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.1); }
+
+  .no-tpl-msg { color: #94a3b8; font-size: 0.92rem; padding: 1.5rem 0; text-align: center; }
+
+  /* Actions */
+  .action-row { display: flex; gap: 0.75rem; align-items: center; margin: 1rem 0 0.5rem; }
+  button { border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; transition: background 0.15s; }
+  .btn-primary   { background: #2563eb; color: white; }
+  .btn-primary:hover   { background: #1d4ed8; }
+  .btn-secondary { background: #e2e8f0; color: #475569; }
+  .btn-secondary:hover { background: #cbd5e1; }
+  .btn-clear     { background: none; color: #94a3b8; font-size: 0.8rem; padding: 0.3rem 0.6rem; }
+  .btn-clear:hover { color: #475569; }
+
+  /* Output */
+  .output-header { display: flex; justify-content: space-between; align-items: center; margin: 1.5rem 0 0.5rem; }
+  .output-header h2 { margin: 0; border: none; padding: 0; }
+  .copy-btn { padding: 0.3rem 0.75rem; font-size: 0.78rem; background: #334155; color: #e2e8f0; border-radius: 5px; }
+  .copy-btn:hover { background: #475569; }
+  .output-area { background: #0f172a; color: #e2e8f0; padding: 1.2rem; border-radius: 8px; font-family: 'Fira Code', monospace; white-space: pre-wrap; word-break: break-all; border: 1px solid #334155; min-height: 100px; font-size: 0.82rem; line-height: 1.6; }
+
+  /* SSH panel */
+  .ssh-panel { border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; background: white; height: fit-content; position: sticky; top: 72px; }
   .ssh-panel h2 { font-size: 1.05rem; margin-top: 0; }
-  .ssh-panel select { width: 100%; padding: 0.55rem 0.8rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.88rem; margin-bottom: 0.75rem; background: white; outline: none; }
-  .ssh-panel select:focus { border-color: #2563eb; }
-  .ssh-label { font-size: 0.8rem; color: #64748b; display: block; margin-bottom: 0.25rem; }
-
-  .run-btn { width: 100%; padding: 0.75rem; font-size: 0.95rem; margin-top: 0.25rem; background: #16a34a; border-radius: 8px; }
+  .ssh-label { font-size: 0.8rem; color: #64748b; display: block; margin-bottom: 0.3rem; }
+  .ssh-select { width: 100%; padding: 0.55rem 0.8rem; border: 1px solid #cbd5e1; border-radius: 7px; font-size: 0.88rem; margin-bottom: 0.9rem; background: white; outline: none; }
+  .ssh-select:focus { border-color: #2563eb; }
+  .run-btn { width: 100%; padding: 0.75rem; font-size: 0.95rem; background: #16a34a; color: white; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; transition: background 0.15s; }
   .run-btn:hover:not(:disabled) { background: #15803d; }
   .run-btn:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
 
-  /* status bar */
-  .ssh-status { display: none; align-items: center; gap: 0.6rem; margin: 0.75rem 0 0.5rem; font-size: 0.82rem; }
+  /* Status bar */
+  .ssh-status { display: none; align-items: center; gap: 0.6rem; margin: 0.75rem 0 0.4rem; font-size: 0.82rem; }
   .ssh-status.visible { display: flex; }
   .status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-  .status-dot.running  { background: #2563eb; animation: pulse 1s infinite; }
-  .status-dot.done     { background: #16a34a; }
-  .status-dot.error    { background: #dc2626; }
+  .status-dot.running { background: #2563eb; animation: pulse 1s infinite; }
+  .status-dot.done    { background: #16a34a; }
+  .status-dot.error   { background: #dc2626; }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-  .ssh-terminal { background: #0f172a; color: #e2e8f0; padding: 1rem; border-radius: 8px; font-family: 'Fira Code', monospace; font-size: 0.78rem; min-height: 220px; max-height: 420px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; border: 1px solid #334155; margin-top: 0.5rem; line-height: 1.5; }
-  .clear-btn { width: 100%; margin-top: 0.6rem; font-size: 0.8rem; padding: 0.4rem; background: #1e293b; color: #64748b; border: 1px solid #334155; border-radius: 6px; cursor: pointer; }
+  /* Terminal */
+  .ssh-terminal { background: #0f172a; color: #e2e8f0; padding: 1rem; border-radius: 8px; font-family: 'Fira Code', monospace; font-size: 0.77rem; min-height: 220px; max-height: 420px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; border: 1px solid #334155; margin-top: 0.6rem; line-height: 1.5; }
+  .clear-btn { width: 100%; margin-top: 0.5rem; font-size: 0.8rem; padding: 0.4rem; background: #1e293b; color: #64748b; border: 1px solid #334155; border-radius: 6px; cursor: pointer; }
   .clear-btn:hover { background: #334155; color: #94a3b8; }
 
-  #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #166534; color: white; padding: 0.75rem 1.25rem; border-radius: 8px; font-size: 0.9rem; display: none; z-index: 200; }
+  #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #166534; color: white; padding: 0.75rem 1.25rem; border-radius: 8px; font-size: 0.9rem; display: none; z-index: 200; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
 </style>
 </head>
 <body>
 <nav>
   <span class="brand">📄 configify</span>
-  <a href="/" class="active">Templates</a>
+  <a href="/" class="active">Use Templates</a>
+  <a href="/templates.html">Manage Templates</a>
   <a href="/devices.html">Devices</a>
   <a href="/admin.html" id="admin-nav-link" style="display:none">Admin</a>
   <div class="spacer"></div>
@@ -79,47 +103,62 @@
 
 <div class="layout">
 
-  <!-- ── Template panel ── -->
-  <div class="container">
-    <h2>📂 Templates</h2>
-    <div class="template-selector">
-      <select id="template-list"><option value="">— Select a saved template —</option></select>
-      <button id="load-btn" class="secondary">Load</button>
-      <button id="delete-btn" class="secondary" style="background:#b91c1c">Delete</button>
-      <button id="refresh-btn" class="secondary" title="Refresh list">🔄</button>
+  <!-- ── Left: template usage ── -->
+  <div class="panel">
+    <h2>📋 Select template</h2>
+
+    <div class="tpl-bar">
+      <select id="template-select" onchange="onTemplateChange()">
+        <option value="">— Choose a template —</option>
+      </select>
+      <a href="/templates.html">＋ Manage templates</a>
     </div>
 
-    <div class="card">
-      <h2 style="margin-top:0;border:none;padding:0;font-size:0.95rem;font-weight:600;">➕ New template</h2>
-      <textarea id="new-template-text" placeholder="e.g. interface {{Interface}}&#10; ip address {{IP Address}} {{Subnet Mask}}"></textarea>
-      <div class="flex-row" style="margin-top:0.75rem">
-        <button id="save-btn">💾 Save as new</button>
-        <button id="example-btn" class="secondary">↺ Router example</button>
+    <!-- Active template preview -->
+    <div class="tpl-active-card" id="tpl-active-card">
+      <div class="tpl-active-name" id="tpl-active-name"></div>
+      <div class="tpl-active-body"  id="tpl-active-body"></div>
+    </div>
+
+    <!-- Variable form -->
+    <div id="form-section" style="display:none">
+      <h2>✏️ Fill in variables</h2>
+      <div class="form-grid" id="form-container"></div>
+
+      <div class="action-row">
+        <button class="btn-primary" onclick="generateOutput()">⚡ Generate output</button>
+        <button class="btn-secondary" onclick="clearFields()">Clear fields</button>
       </div>
     </div>
 
-    <h2>📋 Active template</h2>
-    <pre id="tpl-preview" style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:1rem;font-family:'Fira Code',monospace;font-size:0.85rem;white-space:pre-wrap;word-break:break-all;margin:0 0 1rem;"></pre>
-
-    <div id="form-container" class="form-grid"></div>
-
-    <div style="margin:1rem 0 0.5rem">
-      <button id="generate-btn">⚡ Generate</button>
+    <div id="no-tpl-msg" class="no-tpl-msg">
+      Select a template above to get started, or
+      <a href="/templates.html" style="color:#2563eb">create a new one</a>.
     </div>
 
-    <h2>📎 Result <button class="copy-btn" id="copy-btn">Copy</button></h2>
-    <div id="output" class="output-area">Fill in the fields above and click Generate.</div>
+    <!-- Output -->
+    <div id="output-section" style="display:none">
+      <div class="output-header">
+        <h2>📎 Generated output</h2>
+        <button class="copy-btn" onclick="copyOutput()">Copy</button>
+      </div>
+      <div class="output-area" id="output-area"></div>
+    </div>
   </div>
 
-  <!-- ── SSH panel ── -->
+  <!-- ── Right: SSH execution ── -->
   <div class="ssh-panel">
-    <h2>🚀 Execute on Device</h2>
+    <h2>🚀 Execute on device</h2>
 
     <span class="ssh-label">Target device</span>
-    <select id="device-select"><option value="">— Select device —</option></select>
+    <select class="ssh-select" id="device-select" onchange="updateRunBtn()">
+      <option value="">— Select device —</option>
+    </select>
 
     <span class="ssh-label">Override credential <span style="color:#94a3b8">(optional)</span></span>
-    <select id="cred-select"><option value="">— Use device default —</option></select>
+    <select class="ssh-select" id="cred-select">
+      <option value="">— Use device default —</option>
+    </select>
 
     <button class="run-btn" id="run-btn" onclick="runSsh()" disabled>▶ Run on device</button>
 
@@ -128,7 +167,7 @@
       <span id="status-text"></span>
     </div>
 
-    <div class="ssh-terminal" id="terminal">Select a device, generate the template, then click Run.</div>
+    <div class="ssh-terminal" id="terminal">Select a device, generate output, then click Run.</div>
     <button class="clear-btn" onclick="clearTerminal()">🗑 Clear</button>
   </div>
 
@@ -137,326 +176,306 @@
 <div id="toast"></div>
 
 <script>
-(function () {
 'use strict';
 
-const API = '/api';
-const DEFAULT_TPL = `interface {{Interface}}
- ip address {{IP Address}} {{Subnet Mask}}
- no shutdown
-ip route 0.0.0.0 0.0.0.0 {{Default Gateway}}`;
-
-let currentText = DEFAULT_TPL;
-let currentId   = 'default';
+let templates   = [];
+let currentTpl  = null;   // { template_id, name, template_text }
 let pollTimer   = null;
 
 // ── Boot ─────────────────────────────────────────────────────
 (async function boot() {
-    try {
-        const me = await apiFetch('/auth/me');
-        document.getElementById('user-badge').textContent = me.username;
-        if (me.role === 'admin') show('admin-nav-link');
-    } catch (_) {}
+  try {
+    const me = await apiFetch('/auth/me');
+    document.getElementById('user-badge').textContent = me.username;
+    if (me.role === 'admin') show('admin-nav-link');
+  } catch (_) {}
 
-    setTemplate(DEFAULT_TPL, 'default');
-    await loadTemplateList();
-    await loadDevicesAndCreds();
+  await Promise.all([loadTemplates(), loadDevicesAndCreds()]);
+
+  // Auto-select template if ?template=xxx in URL
+  const params = new URLSearchParams(window.location.search);
+  const preselect = params.get('template');
+  if (preselect) {
+    document.getElementById('template-select').value = preselect;
+    onTemplateChange();
+  }
 })();
 
-// ── Template helpers ──────────────────────────────────────────
-function extractVars(text) {
-    const vars = [], re = /{{\s*([^}]+?)\s*}}/g;
-    let m;
-    while ((m = re.exec(text)) !== null) {
-        const v = m[1].trim();
-        if (!vars.includes(v)) vars.push(v);
-    }
-    return vars;
-}
-
-function varId(name) {
-    return 'v_' + name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-}
-
-function setTemplate(text, id) {
-    currentText = text;
-    currentId   = id;
-    document.getElementById('tpl-preview').textContent = text;
-    const vars = extractVars(text);
-    const fc = document.getElementById('form-container');
-    if (!vars.length) {
-        fc.innerHTML = '<p style="color:#94a3b8;font-size:0.88rem">No variables in this template.</p>';
-    } else {
-        fc.innerHTML = vars.map(v => `
-            <div class="form-group">
-              <label for="${varId(v)}">${v}</label>
-              <input type="text" id="${varId(v)}" placeholder="Enter value for ${v}" />
-            </div>`).join('');
-    }
-    document.getElementById('output').textContent = 'Fill in the fields above and click Generate.';
-    updateRunBtn();
-}
-
-function getValues() {
-    const out = {};
-    extractVars(currentText).forEach(v => {
-        const el = document.getElementById(varId(v));
-        out[v] = el ? el.value : '';
+// ── Templates ─────────────────────────────────────────────────
+async function loadTemplates() {
+  try {
+    templates = await apiFetch('/api/templates');
+    const sel = document.getElementById('template-select');
+    sel.innerHTML = '<option value="">— Choose a template —</option>';
+    [...templates].sort((a, b) => a.name.localeCompare(b.name)).forEach(t => {
+      const o = document.createElement('option');
+      o.value = t.template_id;
+      o.textContent = t.name;
+      sel.appendChild(o);
     });
-    return out;
+  } catch (_) { toast('Failed to load templates', true); }
 }
 
-function fill(text, values) {
-    let r = text;
-    for (const [k, v] of Object.entries(values)) {
-        r = r.replace(new RegExp('{{\\s*' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*}}', 'g'), v);
-    }
-    return r;
+async function onTemplateChange() {
+  const id = document.getElementById('template-select').value;
+  clearOutput();
+
+  if (!id) {
+    currentTpl = null;
+    hide('tpl-active-card');
+    hide('form-section');
+    hide('output-section');
+    show('no-tpl-msg');
+    updateRunBtn();
+    return;
+  }
+
+  hide('no-tpl-msg');
+
+  // Check if we already have it in memory
+  let t = templates.find(x => x.template_id === id);
+  if (!t || !t.template_text) {
+    try { t = await apiFetch('/api/templates/' + id); } catch (_) { toast('Failed to load template', true); return; }
+  }
+  currentTpl = t;
+
+  // Show preview card
+  document.getElementById('tpl-active-name').textContent = t.name;
+  document.getElementById('tpl-active-body').textContent  = t.template_text;
+  show('tpl-active-card');
+
+  // Build variable form
+  const vars = extractVars(t.template_text);
+  const fc = document.getElementById('form-container');
+  if (vars.length) {
+    fc.innerHTML = vars.map(v => `
+      <div class="form-group">
+        <label for="${varId(v)}">${escHtml(v)}</label>
+        <input type="text" id="${varId(v)}" placeholder="Value for ${escHtml(v)}" />
+      </div>`).join('');
+    show('form-section');
+  } else {
+    fc.innerHTML = '<p style="color:#94a3b8;font-size:0.88rem;margin:0">This template has no variables — generate directly.</p>';
+    show('form-section');
+  }
+
+  updateRunBtn();
 }
 
+// ── Generate ──────────────────────────────────────────────────
 function generateOutput() {
-    const result = fill(currentText, getValues());
-    document.getElementById('output').textContent = result;
-    return result;
+  if (!currentTpl) return toast('Select a template first', true);
+  const vars   = extractVars(currentTpl.template_text);
+  const values = {};
+  vars.forEach(v => {
+    const el = document.getElementById(varId(v));
+    values[v] = el ? el.value : '';
+  });
+  const result = fill(currentTpl.template_text, values);
+  document.getElementById('output-area').textContent = result;
+  show('output-section');
+  updateRunBtn();
+  return result;
 }
 
-// ── Template list ─────────────────────────────────────────────
-async function loadTemplateList() {
-    try {
-        const list = await apiFetch('/api/templates');
-        const sel  = document.getElementById('template-list');
-        sel.innerHTML = '<option value="">— Select a saved template —</option>';
-        [...list].sort((a, b) => a.name.localeCompare(b.name)).forEach(t => {
-            const o = document.createElement('option');
-            o.value = t.template_id;
-            o.textContent = t.name;
-            sel.appendChild(o);
-        });
-    } catch (_) {}
+function clearFields() {
+  if (!currentTpl) return;
+  extractVars(currentTpl.template_text).forEach(v => {
+    const el = document.getElementById(varId(v));
+    if (el) el.value = '';
+  });
+  clearOutput();
 }
 
-document.getElementById('load-btn').addEventListener('click', async () => {
-    const id = document.getElementById('template-list').value;
-    if (!id) return toast('Select a template first', true);
-    try {
-        const t = await apiFetch('/api/templates/' + id);
-        setTemplate(t.template_text, t.template_id);
-    } catch (_) { toast('Failed to load template', true); }
-});
+function clearOutput() {
+  hide('output-section');
+  document.getElementById('output-area').textContent = '';
+  updateRunBtn();
+}
 
-document.getElementById('delete-btn').addEventListener('click', async () => {
-    const id = document.getElementById('template-list').value;
-    if (!id) return toast('Select a template first', true);
-    if (!confirm('Delete this template?')) return;
-    try {
-        await apiFetch('/api/templates/' + id, { method: 'DELETE' });
-        if (currentId === id) setTemplate(DEFAULT_TPL, 'default');
-        await loadTemplateList();
-        toast('Template deleted');
-    } catch (_) { toast('Delete failed', true); }
-});
+function copyOutput() {
+  const text = document.getElementById('output-area').textContent;
+  if (!text) return toast('Nothing to copy', true);
+  navigator.clipboard.writeText(text).then(() => toast('Copied!')).catch(() => toast('Copy failed', true));
+}
 
-document.getElementById('refresh-btn').addEventListener('click', loadTemplateList);
-
-document.getElementById('save-btn').addEventListener('click', async () => {
-    const text = document.getElementById('new-template-text').value.trim();
-    if (!text) return toast('Enter a template first', true);
-    const name = prompt('Template name:', text.split('\n')[0].slice(0, 40) || 'Unnamed');
-    if (name === null) return;
-    try {
-        const t = await apiFetch('/api/templates', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: name || 'Unnamed', template_text: text }),
-        });
-        await loadTemplateList();
-        toast('Template saved');
-        if (confirm('Switch to this template?')) setTemplate(t.template_text, t.template_id);
-        document.getElementById('new-template-text').value = '';
-    } catch (_) { toast('Save failed', true); }
-});
-
-document.getElementById('example-btn').addEventListener('click', () => {
-    setTemplate(DEFAULT_TPL, 'default');
-});
-
-document.getElementById('generate-btn').addEventListener('click', generateOutput);
-
-document.getElementById('copy-btn').addEventListener('click', () => {
-    const text = document.getElementById('output').textContent;
-    navigator.clipboard.writeText(text).then(() => toast('Copied!')).catch(() => toast('Copy failed', true));
-});
-
-// ── SSH devices & credentials ─────────────────────────────────
+// ── Devices & credentials ─────────────────────────────────────
 async function loadDevicesAndCreds() {
-    try {
-        const [devices, creds] = await Promise.all([
-            apiFetch('/api/devices'),
-            apiFetch('/api/devices/credentials'),
-        ]);
+  try {
+    const [devices, creds] = await Promise.all([
+      apiFetch('/api/devices'),
+      apiFetch('/api/devices/credentials'),
+    ]);
 
-        const devSel = document.getElementById('device-select');
-        devSel.innerHTML = '<option value="">— Select device —</option>';
+    const devSel = document.getElementById('device-select');
+    devSel.innerHTML = '<option value="">— Select device —</option>';
+    const groups = {};
+    devices.forEach(d => {
+      const g = d.group_name || 'Ungrouped';
+      (groups[g] = groups[g] || []).push(d);
+    });
+    Object.entries(groups).sort().forEach(([gname, devs]) => {
+      const og = document.createElement('optgroup');
+      og.label = gname;
+      devs.forEach(d => {
+        const o = document.createElement('option');
+        o.value = d.id;
+        o.textContent = d.name + ' (' + d.hostname + ')';
+        og.appendChild(o);
+      });
+      devSel.appendChild(og);
+    });
 
-        // Group by group_name
-        const groups = {};
-        devices.forEach(d => {
-            const g = d.group_name || 'Ungrouped';
-            (groups[g] = groups[g] || []).push(d);
-        });
-        Object.entries(groups).sort().forEach(([gname, devs]) => {
-            const og = document.createElement('optgroup');
-            og.label = gname;
-            devs.forEach(d => {
-                const o = document.createElement('option');
-                o.value = d.id;
-                o.textContent = d.name + ' (' + d.hostname + ')';
-                og.appendChild(o);
-            });
-            devSel.appendChild(og);
-        });
-        devSel.addEventListener('change', updateRunBtn);
-
-        const credSel = document.getElementById('cred-select');
-        credSel.innerHTML = '<option value="">— Use device default —</option>';
-        creds.forEach(c => {
-            const o = document.createElement('option');
-            o.value = c.id;
-            o.textContent = c.name + ' (' + c.username + ')';
-            credSel.appendChild(o);
-        });
-    } catch (_) {}
+    const credSel = document.getElementById('cred-select');
+    credSel.innerHTML = '<option value="">— Use device default —</option>';
+    creds.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c.id;
+      o.textContent = c.name + ' (' + c.username + ')';
+      credSel.appendChild(o);
+    });
+  } catch (_) {}
 }
 
 function updateRunBtn() {
-    document.getElementById('run-btn').disabled =
-        !document.getElementById('device-select').value;
+  const hasDevice  = !!document.getElementById('device-select').value;
+  const hasOutput  = !!document.getElementById('output-area').textContent.trim();
+  document.getElementById('run-btn').disabled = !(hasDevice && hasOutput);
 }
 
-// ── SSH execution — polling ───────────────────────────────────
+// ── SSH execution ─────────────────────────────────────────────
 async function runSsh() {
-    const deviceId = document.getElementById('device-select').value;
-    const credId   = document.getElementById('cred-select').value;
-    if (!deviceId) return toast('Select a device first', true);
+  const deviceId = document.getElementById('device-select').value;
+  const credId   = document.getElementById('cred-select').value;
+  if (!deviceId) return toast('Select a device first', true);
 
-    const command = generateOutput();
-    if (!command || command.startsWith('Fill in')) return toast('Generate the template first', true);
+  const command = document.getElementById('output-area').textContent.trim();
+  if (!command) return toast('Generate output first', true);
 
-    // Reset UI
-    clearTerminal();
-    setStatus('running', 'Starting…');
-    setRunBtn(true);
+  clearTerminal();
+  setStatus('running', 'Starting…');
+  setRunBtn(true);
 
-    let jobId;
+  let jobId;
+  try {
+    const data = await apiFetch('/api/ssh/execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        device_id:     parseInt(deviceId),
+        credential_id: credId ? parseInt(credId) : undefined,
+        command,
+        template_id:   currentTpl ? currentTpl.template_id : undefined,
+      }),
+    });
+    jobId = data.jobId;
+  } catch (e) {
+    termWrite('Error starting job: ' + (e.message || 'Unknown') + '\n');
+    setStatus('error', 'Failed to start');
+    setRunBtn(false);
+    return;
+  }
+
+  pollTimer = setInterval(async () => {
     try {
-        const data = await apiFetch('/api/ssh/execute', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                device_id:     parseInt(deviceId),
-                credential_id: credId ? parseInt(credId) : undefined,
-                command,
-                template_id:   currentId !== 'default' ? currentId : undefined,
-            }),
-        });
-        jobId = data.jobId;
+      const poll = await apiFetch('/api/ssh/poll/' + jobId);
+      if (poll.newOutput) termWrite(poll.newOutput);
+      if (poll.status === 'running') return;
+      clearInterval(pollTimer);
+      pollTimer = null;
+      if (poll.status === 'done') {
+        setStatus('done', 'Completed (exit 0)');
+      } else {
+        setStatus('error', 'Failed' + (poll.exitCode != null ? ` (exit ${poll.exitCode})` : ''));
+      }
+      setRunBtn(false);
     } catch (e) {
-        termWrite('Error starting job: ' + (e.message || 'Unknown error') + '\n');
-        setStatus('error', 'Failed to start');
-        setRunBtn(false);
-        return;
+      clearInterval(pollTimer);
+      pollTimer = null;
+      termWrite('\nPolling error: ' + (e.message || 'Unknown') + '\n');
+      setStatus('error', 'Polling failed');
+      setRunBtn(false);
     }
-
-    // Poll until done
-    pollTimer = setInterval(async () => {
-        try {
-            const poll = await apiFetch('/api/ssh/poll/' + jobId);
-
-            if (poll.newOutput) termWrite(poll.newOutput);
-
-            if (poll.status === 'running') {
-                setStatus('running', 'Running…');
-                return;  // keep polling
-            }
-
-            // Job finished
-            clearInterval(pollTimer);
-            pollTimer = null;
-
-            if (poll.status === 'done') {
-                setStatus('done', 'Completed (exit 0)');
-            } else {
-                setStatus('error', 'Failed' + (poll.exitCode != null ? ` (exit ${poll.exitCode})` : ''));
-            }
-            setRunBtn(false);
-
-        } catch (e) {
-            clearInterval(pollTimer);
-            pollTimer = null;
-            termWrite('\nPolling error: ' + (e.message || 'Unknown') + '\n');
-            setStatus('error', 'Polling failed');
-            setRunBtn(false);
-        }
-    }, 800);  // poll every 800 ms
+  }, 800);
 }
 
-// ── Terminal helpers ──────────────────────────────────────────
 function termWrite(text) {
-    const t = document.getElementById('terminal');
-    t.textContent += text;
-    t.scrollTop = t.scrollHeight;
+  const t = document.getElementById('terminal');
+  t.textContent += text;
+  t.scrollTop = t.scrollHeight;
 }
 
 function clearTerminal() {
-    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-    const t = document.getElementById('terminal');
-    t.textContent = '';
-    hideStatus();
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  document.getElementById('terminal').textContent = '';
+  hideStatus();
 }
 
 function setStatus(type, text) {
-    const s  = document.getElementById('ssh-status');
-    const d  = document.getElementById('status-dot');
-    const tx = document.getElementById('status-text');
-    s.className  = 'ssh-status visible';
-    d.className  = 'status-dot ' + type;
-    tx.textContent = text;
+  const s  = document.getElementById('ssh-status');
+  const d  = document.getElementById('status-dot');
+  const tx = document.getElementById('status-text');
+  s.className   = 'ssh-status visible';
+  d.className   = 'status-dot ' + type;
+  tx.textContent = text;
 }
 
-function hideStatus() {
-    document.getElementById('ssh-status').className = 'ssh-status';
-}
+function hideStatus() { document.getElementById('ssh-status').className = 'ssh-status'; }
 
 function setRunBtn(running) {
-    const btn = document.getElementById('run-btn');
-    btn.disabled  = running || !document.getElementById('device-select').value;
-    btn.textContent = running ? '⏳ Running…' : '▶ Run on device';
+  const btn  = document.getElementById('run-btn');
+  const hasDevice = !!document.getElementById('device-select').value;
+  const hasOutput = !!document.getElementById('output-area').textContent.trim();
+  btn.disabled   = running || !(hasDevice && hasOutput);
+  btn.textContent = running ? '⏳ Running…' : '▶ Run on device';
 }
 
 // ── Utilities ─────────────────────────────────────────────────
+function extractVars(text) {
+  const vars = [], re = /{{\s*([^}]+?)\s*}}/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const v = m[1].trim();
+    if (!vars.includes(v)) vars.push(v);
+  }
+  return vars;
+}
+
+function varId(name) {
+  return 'v_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+}
+
+function fill(text, values) {
+  let r = text;
+  for (const [k, v] of Object.entries(values)) {
+    r = r.replace(new RegExp('{{\\s*' + k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '\\s*}}','g'), v);
+  }
+  return r;
+}
+
 async function apiFetch(url, opts) {
-    const r = await fetch(url, opts);
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(data.error || r.statusText);
-    return data;
+  const r = await fetch(url, opts);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || r.statusText);
+  return data;
 }
 
 function show(id) { document.getElementById(id).style.display = ''; }
+function hide(id) { document.getElementById(id).style.display = 'none'; }
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function toast(msg, isError = false) {
-    const el = document.getElementById('toast');
-    el.textContent = msg;
-    el.style.background = isError ? '#7f1d1d' : '#166534';
-    el.style.display = 'block';
-    setTimeout(() => { el.style.display = 'none'; }, 3000);
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = isError ? '#7f1d1d' : '#166534';
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 3000);
 }
 
 async function logout() {
-    await fetch('/auth/logout', { method: 'POST' });
-    window.location.href = '/login.html';
+  await fetch('/auth/logout', { method: 'POST' });
+  window.location.href = '/login.html';
 }
-
-})();
 </script>
 </body>
 </html>

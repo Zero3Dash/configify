@@ -5,68 +5,157 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>configify · Devices</title>
 <style>
-  *, *::before, *::after { box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; color: #0f172a; margin: 0; }
-  nav { background: #0f172a; color: white; padding: 0 1.5rem; height: 56px; display: flex; align-items: center; gap: 1.5rem; }
-  nav .brand { font-weight: 700; font-size: 1.1rem; color: #38bdf8; }
-  nav a { color: #94a3b8; text-decoration: none; font-size: 0.9rem; }
-  nav a:hover, nav a.active { color: white; }
-  nav .spacer { flex: 1; }
-  nav .user-badge { background: #1e3a5f; padding: 0.35rem 0.9rem; border-radius: 20px; font-size: 0.85rem; color: #7dd3fc; }
-  .container { max-width: 1200px; margin: 2rem auto; padding: 0 1.5rem; }
-  h1 { font-size: 1.6rem; font-weight: 600; margin-bottom: 0.25rem; }
-  .tabs { display: flex; gap: 0.5rem; margin: 1.5rem 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 0; }
-  .tab { padding: 0.6rem 1.2rem; border: none; background: none; cursor: pointer; font-size: 0.95rem; color: #64748b; border-bottom: 2px solid transparent; margin-bottom: -2px; }
-  .tab.active { color: #2563eb; border-bottom-color: #2563eb; font-weight: 500; }
-  .panel { display: none; } .panel.active { display: block; }
-  .card { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; margin-bottom: 1.5rem; }
-  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-  th { text-align: left; padding: 0.75rem 1rem; background: #f1f5f9; border-bottom: 1px solid #e2e8f0; color: #475569; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
-  td { padding: 0.75rem 1rem; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root { --sb: 76px; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+         background: #f8fafc; color: #0f172a; padding-left: var(--sb); min-height: 100vh; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0; width: var(--sb);
+    background: #0f172a; display: flex; flex-direction: column;
+    align-items: center; z-index: 100; padding: 10px 0; border-right: 1px solid #1e293b;
+  }
+  .sb-brand { font-size: 1.5rem; color: #38bdf8; padding: 8px 0 12px; font-weight: 800; letter-spacing: -1px; user-select: none; }
+  .sb-nav   { display: flex; flex-direction: column; gap: 3px; width: 100%; padding: 0 7px; flex: 1; }
+  .sb-item  {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 9px 4px 7px; border-radius: 10px; text-decoration: none;
+    color: #64748b; gap: 4px; border: none; background: none; width: 100%;
+    cursor: pointer; transition: background 0.15s, color 0.15s; min-height: 56px;
+  }
+  .sb-item:hover  { background: #1e293b; color: #cbd5e1; }
+  .sb-item.active { background: #1d4ed8; color: white; }
+  .sb-icon  { font-size: 1.3rem; line-height: 1; }
+  .sb-label { font-size: 0.6rem; font-weight: 600; text-align: center; letter-spacing: 0.03em; text-transform: uppercase; }
+  .sb-divider { width: 44px; height: 1px; background: #1e293b; margin: 6px auto; }
+  .sb-footer  { width: 100%; padding: 0 7px; display: flex; flex-direction: column; gap: 3px; }
+  .sb-user    { font-size: 0.6rem; color: #334155; text-align: center; padding: 4px 2px; word-break: break-all; }
+  .hidden { display: none !important; }
+
+  /* ── Layout ── */
+  .main { max-width: 1280px; margin: 0 auto; padding: 1.5rem; }
+  .page-header { padding-bottom: 1rem; }
+  .page-header h1 { font-size: 1.4rem; font-weight: 700; }
+  .page-header p  { font-size: 0.85rem; color: #64748b; margin-top: 3px; }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; gap: 3px; margin-bottom: 1.25rem; background: white;
+          border-radius: 10px; padding: 5px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+          border: 1px solid #e2e8f0; width: fit-content; }
+  .tab { padding: 0.5rem 1rem; border: none; background: none; cursor: pointer;
+         font-size: 0.85rem; color: #64748b; border-radius: 7px; font-weight: 500; transition: all 0.15s; }
+  .tab.active { background: #2563eb; color: white; }
+  .tab:not(.active):hover { background: #f1f5f9; color: #374151; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── Card ── */
+  .card { background: white; border-radius: 14px; padding: 1.5rem;
+          box-shadow: 0 1px 6px rgba(0,0,0,0.07); border: 1px solid #e2e8f0; margin-bottom: 1.25rem; }
+  .card-title { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; }
+  .section-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+  .section-row .card-title { margin-bottom: 0; }
+
+  /* ── Table ── */
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  th { text-align: left; padding: 0.6rem 0.9rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0;
+       color: #64748b; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; }
+  td { padding: 0.7rem 0.9rem; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
   tr:hover td { background: #f8fafc; }
-  .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
-  .group-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
-  button { border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; }
-  .btn-primary { background: #2563eb; color: white; }  .btn-primary:hover { background: #1d4ed8; }
-  .btn-danger  { background: #dc2626; color: white; }  .btn-danger:hover  { background: #b91c1c; }
-  .btn-secondary { background: #e2e8f0; color: #475569; } .btn-secondary:hover { background: #cbd5e1; }
-  .btn-green   { background: #16a34a; color: white; }  .btn-green:hover  { background: #15803d; }
-  .btn-sm { padding: 0.3rem 0.7rem; font-size: 0.8rem; }
-  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 100; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
+  .mono { font-family: 'Fira Code', monospace; font-size: 0.82rem; }
+
+  /* ── Group cards ── */
+  .group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 1rem; }
+  .group-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.1rem 1.2rem; }
+  .group-card-header { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.9rem; margin-bottom: 5px; }
+  .group-card-count  { font-size: 0.8rem; color: #64748b; }
+  .group-card-desc   { font-size: 0.78rem; color: #64748b; margin-bottom: 8px; }
+  .group-card-actions { display: flex; gap: 5px; margin-top: 10px; }
+
+  /* ── Buttons ── */
+  button { border: none; cursor: pointer; font-weight: 500; transition: background 0.15s; border-radius: 7px; }
+  .btn  { padding: 0.5rem 0.9rem; font-size: 0.83rem; }
+  .btn-primary  { background: #2563eb; color: white; }
+  .btn-primary:hover  { background: #1d4ed8; }
+  .btn-secondary { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+  .btn-secondary:hover { background: #e2e8f0; }
+  .btn-danger  { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+  .btn-danger:hover  { background: #fecaca; }
+  .btn-sm { padding: 0.28rem 0.65rem; font-size: 0.76rem; }
+
+  /* ── Search ── */
+  .search-bar { padding: 0.55rem 0.85rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem; outline: none; width: 220px; }
+  .search-bar:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
+
+  /* ── Modal ── */
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none;
+                    align-items: center; justify-content: center; z-index: 200; }
   .modal-backdrop.open { display: flex; }
-  .modal { background: white; border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
-  .modal h3 { margin-top: 0; }
-  label { display: block; font-size: 0.85rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem; margin-top: 0.75rem; }
-  input, select, textarea { width: 100%; padding: 0.6rem 0.8rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem; outline: none; }
-  input:focus, select:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.1); }
-  textarea { min-height: 120px; font-family: 'Fira Code', monospace; font-size: 0.82rem; resize: vertical; }
-  .flex { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
-  .flex-end { justify-content: flex-end; }
-  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-  #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #166534; color: white; padding: 0.75rem 1.25rem; border-radius: 8px; font-size: 0.9rem; display: none; z-index: 200; }
-  .search-bar { padding: 0.6rem 1rem; border: 1px solid #d1d5db; border-radius: 8px; width: 250px; font-size: 0.9rem; }
-  .device-type-icon { font-size: 1.1rem; margin-right: 4px; }
-  #group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
-  .group-card { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1.2rem; display: flex; flex-direction: column; gap: 0.5rem; }
-  .group-card .gc-header { display: flex; align-items: center; gap: 0.6rem; font-weight: 600; }
-  .group-card .gc-count { font-size: 0.85rem; color: #64748b; }
-  .group-card .gc-actions { display: flex; gap: 0.4rem; margin-top: 0.5rem; }
+  .modal { background: white; border-radius: 14px; padding: 1.5rem; width: 100%; max-width: 500px;
+           max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.25); }
+  .modal h3 { font-size: 1rem; font-weight: 700; margin-bottom: 1.1rem; }
+  label { display: block; font-size: 0.78rem; font-weight: 600; color: #374151; margin: 0.65rem 0 0.25rem; }
+  input[type="text"], input[type="password"], input[type="number"], select, textarea {
+    width: 100%; padding: 0.6rem 0.8rem; border: 1px solid #d1d5db; border-radius: 8px;
+    font-size: 0.875rem; outline: none; background: white;
+    transition: border-color 0.15s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
+  textarea { font-family: 'Fira Code', monospace; font-size: 0.78rem; min-height: 110px; resize: vertical; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+  .modal-footer { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.2rem; }
+
+  /* ── Badge ── */
+  .badge { display: inline-block; padding: 0.18rem 0.55rem; border-radius: 5px; font-size: 0.72rem; font-weight: 600; }
+  .badge-pw  { background: #f1f5f9; color: #475569; }
+  .badge-key { background: #ede9fe; color: #5b21b6; }
+
+  #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #166534; color: white;
+           padding: 0.7rem 1.1rem; border-radius: 8px; font-size: 0.85rem;
+           display: none; z-index: 300; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
 </style>
 </head>
 <body>
-<nav>
-  <span class="brand">📄 configify</span>
-  <a href="/">Templates</a>
-  <a href="/devices.html" class="active">Devices</a>
-  <a href="/admin.html" id="admin-link" style="display:none">Admin</a>
-  <div class="spacer"></div>
-  <span class="user-badge" id="user-badge">…</span>
-  <button class="btn-secondary btn-sm" onclick="logout()">Sign out</button>
-</nav>
 
-<div class="container">
-  <h1>🖥️ Device &amp; Credential Manager</h1>
+<!-- ── Sidebar ── -->
+<aside class="sidebar">
+  <div class="sb-brand">cf</div>
+  <nav class="sb-nav">
+    <a href="/" class="sb-item">
+      <span class="sb-icon">📋</span>
+      <span class="sb-label">Use</span>
+    </a>
+    <a href="/templates.html" class="sb-item">
+      <span class="sb-icon">📂</span>
+      <span class="sb-label">Templates</span>
+    </a>
+    <a href="/devices.html" class="sb-item active">
+      <span class="sb-icon">🖥️</span>
+      <span class="sb-label">Devices</span>
+    </a>
+    <a href="/admin.html" class="sb-item hidden" id="admin-link">
+      <span class="sb-icon">⚙️</span>
+      <span class="sb-label">Admin</span>
+    </a>
+  </nav>
+  <div class="sb-divider"></div>
+  <div class="sb-footer">
+    <div class="sb-user" id="user-badge">…</div>
+    <button class="sb-item" onclick="logout()">
+      <span class="sb-icon">↩️</span>
+      <span class="sb-label">Sign out</span>
+    </button>
+  </div>
+</aside>
+
+<!-- ── Main ── -->
+<main class="main">
+  <div class="page-header">
+    <h1>Devices &amp; Credentials</h1>
+    <p>Manage your device inventory, groups, and encrypted credential vault.</p>
+  </div>
 
   <div class="tabs">
     <button class="tab active" data-tab="devices">🖥️ Devices</button>
@@ -77,17 +166,16 @@
   <!-- ── Devices ── -->
   <div id="panel-devices" class="panel active">
     <div class="card">
-      <div class="section-header">
-        <div class="flex">
-          <strong>All devices</strong>
-          <input type="text" class="search-bar" id="device-search" placeholder="🔍 Search…" oninput="filterDevices()">
+      <div class="section-row">
+        <div style="display:flex;gap:0.6rem;align-items:center">
+          <span class="card-title">All devices</span>
+          <input type="text" class="search-bar" id="device-search" placeholder="🔍 Search…" oninput="filterDevices()" />
         </div>
-        <button class="btn-primary" onclick="openDeviceModal()">＋ Add device</button>
+        <button class="btn btn-primary" onclick="openDeviceModal()">＋ Add device</button>
       </div>
       <table>
         <thead><tr>
-          <th>Name</th><th>Host / Port</th><th>Type</th><th>Group</th>
-          <th>Default Credential</th><th>Actions</th>
+          <th>Name</th><th>Host / Port</th><th>Type</th><th>Group</th><th>Default Credential</th><th>Actions</th>
         </tr></thead>
         <tbody id="devices-tbody"></tbody>
       </table>
@@ -96,40 +184,40 @@
 
   <!-- ── Groups ── -->
   <div id="panel-groups" class="panel">
-    <div class="section-header">
-      <strong>Device groups</strong>
-      <button class="btn-primary" onclick="openGroupModal()">＋ New group</button>
+    <div class="section-row" style="margin-bottom:1rem">
+      <span style="font-weight:600;font-size:0.9rem">Device groups</span>
+      <button class="btn btn-primary" onclick="openGroupModal()">＋ New group</button>
     </div>
-    <div id="group-grid"></div>
+    <div class="group-grid" id="group-grid"></div>
   </div>
 
   <!-- ── Credentials ── -->
   <div id="panel-creds" class="panel">
     <div class="card">
-      <div class="section-header">
-        <strong>Credential vault</strong>
-        <button class="btn-primary" onclick="openCredModal()">＋ Add credential</button>
+      <div class="section-row">
+        <span class="card-title">Credential vault</span>
+        <button class="btn btn-primary" onclick="openCredModal()">＋ Add credential</button>
       </div>
-      <p style="font-size:0.85rem;color:#64748b;margin-top:0">All passwords and keys are encrypted at rest (AES-256-GCM). Secrets are never returned via the API.</p>
+      <p style="font-size:0.8rem;color:#64748b;margin-bottom:1rem">All secrets are AES-256-GCM encrypted at rest. Plaintext is never returned by the API.</p>
       <table>
         <thead><tr>
-          <th>Name</th><th>Username</th><th>Method</th><th>Created</th><th>Actions</th>
+          <th>Name</th><th>Username</th><th>Auth method</th><th>Created</th><th>Actions</th>
         </tr></thead>
         <tbody id="creds-tbody"></tbody>
       </table>
     </div>
   </div>
-</div>
+</main>
 
 <!-- Device modal -->
 <div class="modal-backdrop" id="device-modal">
   <div class="modal">
     <h3 id="device-modal-title">Add device</h3>
     <input type="hidden" id="d-id">
-    <label>Name</label><input id="d-name" placeholder="core-switch-01" />
-    <label>Hostname / IP</label><input id="d-host" placeholder="192.168.1.1" />
+    <label>Name</label><input type="text" id="d-name" placeholder="core-switch-01" />
+    <label>Hostname / IP</label><input type="text" id="d-host" placeholder="192.168.1.1" />
     <div class="row2">
-      <div><label>Port</label><input id="d-port" type="number" value="22" /></div>
+      <div><label>Port</label><input type="number" id="d-port" value="22" /></div>
       <div><label>Type</label>
         <select id="d-type">
           <option value="linux">Linux / Unix</option>
@@ -146,10 +234,10 @@
     <label>Default credential</label>
     <select id="d-cred"><option value="">— None —</option></select>
     <label>Description</label>
-    <input id="d-desc" placeholder="Optional notes" />
-    <div class="flex flex-end" style="margin-top:1.25rem">
-      <button class="btn-secondary" onclick="closeModals()">Cancel</button>
-      <button class="btn-primary" onclick="saveDevice()">Save</button>
+    <input type="text" id="d-desc" placeholder="Optional notes" />
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModals()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveDevice()">Save</button>
     </div>
   </div>
 </div>
@@ -159,16 +247,15 @@
   <div class="modal">
     <h3 id="group-modal-title">New group</h3>
     <input type="hidden" id="g-id">
-    <label>Name</label><input id="g-name" placeholder="Core Switches" />
-    <label>Description</label><input id="g-desc" placeholder="Optional" />
+    <label>Name</label><input type="text" id="g-name" placeholder="Core Switches" />
+    <label>Description</label><input type="text" id="g-desc" placeholder="Optional" />
     <label>Colour</label>
-    <div class="flex" style="gap:0.5rem;margin-top:0.3rem">
-      <input type="color" id="g-color" value="#475569" style="width:50px;height:38px;padding:2px;cursor:pointer">
-      <span id="g-color-preview" style="font-size:0.85rem;color:#64748b"></span>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+      <input type="color" id="g-color" value="#475569" style="width:46px;height:36px;padding:2px;border:1px solid #d1d5db;border-radius:7px;cursor:pointer">
     </div>
-    <div class="flex flex-end" style="margin-top:1.25rem">
-      <button class="btn-secondary" onclick="closeModals()">Cancel</button>
-      <button class="btn-primary" onclick="saveGroup()">Save</button>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModals()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveGroup()">Save</button>
     </div>
   </div>
 </div>
@@ -178,8 +265,8 @@
   <div class="modal">
     <h3 id="cred-modal-title">Add credential</h3>
     <input type="hidden" id="c-id">
-    <label>Name (friendly label)</label><input id="c-name" placeholder="DC Admin" />
-    <label>Username</label><input id="c-user" placeholder="admin" />
+    <label>Friendly name</label><input type="text" id="c-name" placeholder="DC Admin" />
+    <label>Username</label><input type="text" id="c-user" placeholder="admin" />
     <label>Auth method</label>
     <select id="c-method" onchange="toggleCredFields()">
       <option value="password">Password</option>
@@ -187,20 +274,20 @@
       <option value="key+passphrase">SSH Private Key + Passphrase</option>
     </select>
     <div id="c-password-section">
-      <label id="c-password-label">Password</label>
+      <label>Password</label>
       <input type="password" id="c-password" placeholder="leave blank to keep existing" />
     </div>
     <div id="c-key-section" style="display:none">
-      <label>Private key (PEM) — leave blank to keep existing</label>
-      <textarea id="c-key" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----"></textarea>
+      <label>Private key (PEM) — leave blank to keep</label>
+      <textarea id="c-key" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;..."></textarea>
     </div>
     <div id="c-passphrase-section" style="display:none">
-      <label>Key passphrase — leave blank to keep existing</label>
+      <label>Key passphrase — leave blank to keep</label>
       <input type="password" id="c-passphrase" placeholder="••••••••" />
     </div>
-    <div class="flex flex-end" style="margin-top:1.25rem">
-      <button class="btn-secondary" onclick="closeModals()">Cancel</button>
-      <button class="btn-primary" onclick="saveCredential()">Save</button>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModals()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCredential()">Save</button>
     </div>
   </div>
 </div>
@@ -208,18 +295,22 @@
 <div id="toast"></div>
 
 <script>
-let allDevices = [], allGroups = [], allCreds = [];
+'use strict';
+let allDevices=[], allGroups=[], allCreds=[];
+const TYPE_ICONS = { linux:'🐧', cisco_ios:'🔌', cisco_nxos:'🔌', junos:'🛡️', windows:'🪟', other:'🖥️' };
 
 (async function init() {
-  const me = await (await fetch('/auth/me')).json();
-  document.getElementById('user-badge').textContent = me.username;
-  if (me.role === 'admin') document.getElementById('admin-link').style.display = '';
+  try {
+    const me = await api('/auth/me');
+    document.getElementById('user-badge').textContent = me.username;
+    if (me.role==='admin') document.getElementById('admin-link').classList.remove('hidden');
+  } catch(_) {}
 
   document.querySelectorAll('.tabs .tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.tabs .tab, .panel').forEach(el => el.classList.remove('active'));
       tab.classList.add('active');
-      document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+      document.getElementById('panel-'+tab.dataset.tab).classList.add('active');
     });
   });
 
@@ -228,250 +319,213 @@ let allDevices = [], allGroups = [], allCreds = [];
 
 // ── Devices ───────────────────────────────────────────────────
 async function loadDevices() {
-  const res = await fetch('/api/devices');
-  allDevices = await res.json();
+  allDevices = await api('/api/devices');
   renderDevices(allDevices);
 }
-
-const TYPE_ICONS = { linux:'🐧', cisco_ios:'🔌', cisco_nxos:'🔌', junos:'🛡️', windows:'🪟', other:'🖥️' };
-
 function renderDevices(devices) {
   const tbody = document.getElementById('devices-tbody');
-  if (!devices.length) { tbody.innerHTML = '<tr><td colspan="6" style="color:#94a3b8">No devices. Click "+ Add device" to get started.</td></tr>'; return; }
+  if (!devices.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="color:#94a3b8;text-align:center;padding:2rem">No devices. Click "+ Add device" to get started.</td></tr>';
+    return;
+  }
   tbody.innerHTML = devices.map(d => `
     <tr>
-      <td><strong>${d.name}</strong>${d.description ? `<br><span style="font-size:0.78rem;color:#94a3b8">${d.description}</span>` : ''}</td>
-      <td style="font-family:monospace">${d.hostname}${d.port !== 22 ? ':'+d.port : ''}</td>
-      <td>${TYPE_ICONS[d.device_type]||'🖥️'} ${d.device_type.replace('_',' ')}</td>
-      <td>${d.group_name ? `<span class="group-dot" style="background:${d.group_color||'#94a3b8'}"></span>${d.group_name}` : '<span style="color:#94a3b8">—</span>'}</td>
-      <td>${d.credential_name ? `🔑 ${d.credential_name} (${d.credential_username})` : '<span style="color:#94a3b8">—</span>'}</td>
-      <td>
-        <button class="btn-secondary btn-sm" onclick="openDeviceModal(${d.id})">Edit</button>
-        <button class="btn-danger btn-sm" onclick="deleteDevice(${d.id},'${d.name}')">Delete</button>
+      <td><strong>${esc(d.name)}</strong>${d.description?`<br><span style="font-size:0.74rem;color:#94a3b8">${esc(d.description)}</span>`:''}</td>
+      <td class="mono">${esc(d.hostname)}${d.port!==22?':'+d.port:''}</td>
+      <td>${TYPE_ICONS[d.device_type]||'🖥️'} <span style="font-size:0.82rem">${esc(d.device_type.replace('_',' '))}</span></td>
+      <td>${d.group_name?`<span class="dot" style="background:${d.group_color||'#94a3b8'}"></span>${esc(d.group_name)}`:'<span style="color:#94a3b8">—</span>'}</td>
+      <td>${d.credential_name?`🔑 ${esc(d.credential_name)}`:'<span style="color:#94a3b8">—</span>'}</td>
+      <td style="display:flex;gap:4px">
+        <button class="btn btn-secondary btn-sm" onclick="openDeviceModal(${d.id})">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteDevice(${d.id},'${esc(d.name).replace(/'/g,"\\'")}')">Delete</button>
       </td>
-    </tr>
-  `).join('');
+    </tr>`).join('');
 }
-
 function filterDevices() {
   const q = document.getElementById('device-search').value.toLowerCase();
   renderDevices(allDevices.filter(d =>
-    d.name.toLowerCase().includes(q) || d.hostname.toLowerCase().includes(q) ||
-    (d.group_name||'').toLowerCase().includes(q)
+    d.name.toLowerCase().includes(q) || d.hostname.toLowerCase().includes(q) || (d.group_name||'').toLowerCase().includes(q)
   ));
 }
-
 async function openDeviceModal(id) {
   document.getElementById('d-group').innerHTML = '<option value="">— No group —</option>' +
-    allGroups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
-  document.getElementById('d-cred').innerHTML = '<option value="">— None —</option>' +
-    allCreds.map(c => `<option value="${c.id}">${c.name} (${c.username})</option>`).join('');
+    allGroups.map(g=>`<option value="${g.id}">${esc(g.name)}</option>`).join('');
+  document.getElementById('d-cred').innerHTML  = '<option value="">— None —</option>' +
+    allCreds.map(c=>`<option value="${c.id}">${esc(c.name)} (${esc(c.username)})</option>`).join('');
   if (id) {
-    const d = allDevices.find(x => x.id === id);
-    document.getElementById('device-modal-title').textContent = 'Edit device';
-    document.getElementById('d-id').value = d.id;
-    document.getElementById('d-name').value = d.name;
-    document.getElementById('d-host').value = d.hostname;
-    document.getElementById('d-port').value = d.port;
-    document.getElementById('d-type').value = d.device_type;
-    document.getElementById('d-group').value = d.group_id || '';
-    document.getElementById('d-cred').value = d.default_credential_id || '';
-    document.getElementById('d-desc').value = d.description || '';
+    const d = allDevices.find(x=>x.id===id);
+    document.getElementById('device-modal-title').textContent='Edit device';
+    document.getElementById('d-id').value=d.id;
+    document.getElementById('d-name').value=d.name;
+    document.getElementById('d-host').value=d.hostname;
+    document.getElementById('d-port').value=d.port;
+    document.getElementById('d-type').value=d.device_type;
+    document.getElementById('d-group').value=d.group_id||'';
+    document.getElementById('d-cred').value=d.default_credential_id||'';
+    document.getElementById('d-desc').value=d.description||'';
   } else {
-    document.getElementById('device-modal-title').textContent = 'Add device';
-    ['d-id','d-name','d-host','d-desc'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('d-port').value = 22;
-    document.getElementById('d-type').value = 'linux';
-    document.getElementById('d-group').value = '';
-    document.getElementById('d-cred').value = '';
+    document.getElementById('device-modal-title').textContent='Add device';
+    ['d-id','d-name','d-host','d-desc'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('d-port').value=22;
+    document.getElementById('d-type').value='linux';
+    document.getElementById('d-group').value='';
+    document.getElementById('d-cred').value='';
   }
   document.getElementById('device-modal').classList.add('open');
 }
-
 async function saveDevice() {
   const id = document.getElementById('d-id').value;
   const body = {
-    name: document.getElementById('d-name').value.trim(),
-    hostname: document.getElementById('d-host').value.trim(),
-    port: parseInt(document.getElementById('d-port').value) || 22,
-    device_type: document.getElementById('d-type').value,
-    group_id: document.getElementById('d-group').value || null,
-    default_credential_id: document.getElementById('d-cred').value || null,
-    description: document.getElementById('d-desc').value.trim() || null
+    name:document.getElementById('d-name').value.trim(),
+    hostname:document.getElementById('d-host').value.trim(),
+    port:parseInt(document.getElementById('d-port').value)||22,
+    device_type:document.getElementById('d-type').value,
+    group_id:document.getElementById('d-group').value||null,
+    default_credential_id:document.getElementById('d-cred').value||null,
+    description:document.getElementById('d-desc').value.trim()||null
   };
-  if (!body.name || !body.hostname) return toast('Name and hostname required', true);
-  const res = await fetch(id ? `/api/devices/${id}` : '/api/devices', {
-    method: id ? 'PATCH' : 'POST',
-    headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
-  });
-  if (!res.ok) { const d = await res.json(); return toast(d.error, true); }
+  if (!body.name||!body.hostname) return toast('Name and hostname required', true);
+  const res = await fetch(id?`/api/devices/${id}`:'/api/devices',{method:id?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if (!res.ok) { const d=await res.json(); return toast(d.error,true); }
   closeModals(); toast('Device saved'); await loadDevices();
 }
-
-async function deleteDevice(id, name) {
+async function deleteDevice(id,name) {
   if (!confirm(`Delete device "${name}"?`)) return;
-  const res = await fetch(`/api/devices/${id}`, { method: 'DELETE' });
-  if (!res.ok) return toast('Delete failed', true);
+  const res=await fetch(`/api/devices/${id}`,{method:'DELETE'});
+  if (!res.ok) return toast('Delete failed',true);
   toast('Device deleted'); await loadDevices();
 }
 
 // ── Groups ────────────────────────────────────────────────────
 async function loadGroups() {
-  allGroups = await (await fetch('/api/devices/groups')).json();
+  allGroups = await api('/api/devices/groups');
   renderGroups();
 }
-
 function renderGroups() {
   const grid = document.getElementById('group-grid');
-  if (!allGroups.length) { grid.innerHTML = '<p style="color:#94a3b8">No groups yet.</p>'; return; }
-  grid.innerHTML = allGroups.map(g => `
+  if (!allGroups.length) { grid.innerHTML='<p style="color:#94a3b8">No groups yet.</p>'; return; }
+  grid.innerHTML = allGroups.map(g=>`
     <div class="group-card">
-      <div class="gc-header">
-        <span class="group-dot" style="background:${g.color||'#94a3b8'};width:14px;height:14px"></span>
-        ${g.name}
+      <div class="group-card-header">
+        <span class="dot" style="background:${g.color||'#94a3b8'};width:14px;height:14px;border-radius:50%"></span>
+        ${esc(g.name)}
       </div>
-      ${g.description ? `<div style="font-size:0.82rem;color:#64748b">${g.description}</div>` : ''}
-      <div class="gc-count">${g.device_count} device${g.device_count !== 1 ? 's' : ''}</div>
-      <div class="gc-actions">
-        <button class="btn-secondary btn-sm" onclick="openGroupModal(${g.id})">Edit</button>
-        <button class="btn-danger btn-sm" onclick="deleteGroup(${g.id},'${g.name}')">Delete</button>
+      ${g.description?`<div class="group-card-desc">${esc(g.description)}</div>`:''}
+      <div class="group-card-count">${g.device_count} device${g.device_count!==1?'s':''}</div>
+      <div class="group-card-actions">
+        <button class="btn btn-secondary btn-sm" onclick="openGroupModal(${g.id})">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteGroup(${g.id},'${esc(g.name).replace(/'/g,"\\'")}')">Delete</button>
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
-
 async function openGroupModal(id) {
   if (id) {
-    const g = allGroups.find(x => x.id === id);
-    document.getElementById('group-modal-title').textContent = 'Edit group';
-    document.getElementById('g-id').value = g.id;
-    document.getElementById('g-name').value = g.name;
-    document.getElementById('g-desc').value = g.description || '';
-    document.getElementById('g-color').value = g.color || '#475569';
+    const g=allGroups.find(x=>x.id===id);
+    document.getElementById('group-modal-title').textContent='Edit group';
+    document.getElementById('g-id').value=g.id;
+    document.getElementById('g-name').value=g.name;
+    document.getElementById('g-desc').value=g.description||'';
+    document.getElementById('g-color').value=g.color||'#475569';
   } else {
-    document.getElementById('group-modal-title').textContent = 'New group';
-    ['g-id','g-name','g-desc'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('g-color').value = '#475569';
+    document.getElementById('group-modal-title').textContent='New group';
+    ['g-id','g-name','g-desc'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('g-color').value='#475569';
   }
   document.getElementById('group-modal').classList.add('open');
 }
-
 async function saveGroup() {
-  const id = document.getElementById('g-id').value;
-  const body = {
-    name: document.getElementById('g-name').value.trim(),
-    description: document.getElementById('g-desc').value.trim() || null,
-    color: document.getElementById('g-color').value
-  };
-  if (!body.name) return toast('Name required', true);
-  const res = await fetch(id ? `/api/devices/groups/${id}` : '/api/devices/groups', {
-    method: id ? 'PATCH' : 'POST',
-    headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
-  });
-  if (!res.ok) { const d = await res.json(); return toast(d.error, true); }
+  const id=document.getElementById('g-id').value;
+  const body={name:document.getElementById('g-name').value.trim(),description:document.getElementById('g-desc').value.trim()||null,color:document.getElementById('g-color').value};
+  if (!body.name) return toast('Name required',true);
+  const res=await fetch(id?`/api/devices/groups/${id}`:'/api/devices/groups',{method:id?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if (!res.ok) return toast('Save failed',true);
   closeModals(); toast('Group saved'); await loadGroups();
 }
-
-async function deleteGroup(id, name) {
+async function deleteGroup(id,name) {
   if (!confirm(`Delete group "${name}"? Devices will be ungrouped.`)) return;
-  const res = await fetch(`/api/devices/groups/${id}`, { method: 'DELETE' });
-  if (!res.ok) return toast('Delete failed', true);
-  toast('Group deleted'); await Promise.all([loadGroups(), loadDevices()]);
+  const res=await fetch(`/api/devices/groups/${id}`,{method:'DELETE'});
+  if (!res.ok) return toast('Delete failed',true);
+  toast('Group deleted'); await Promise.all([loadGroups(),loadDevices()]);
 }
 
 // ── Credentials ───────────────────────────────────────────────
 async function loadCreds() {
-  allCreds = await (await fetch('/api/devices/credentials')).json();
+  allCreds = await api('/api/devices/credentials');
   renderCreds();
 }
-
 function renderCreds() {
-  const tbody = document.getElementById('creds-tbody');
-  if (!allCreds.length) { tbody.innerHTML = '<tr><td colspan="5" style="color:#94a3b8">No credentials stored.</td></tr>'; return; }
-  tbody.innerHTML = allCreds.map(c => `
+  const tbody=document.getElementById('creds-tbody');
+  if (!allCreds.length) { tbody.innerHTML='<tr><td colspan="5" style="color:#94a3b8;text-align:center;padding:2rem">No credentials stored.</td></tr>'; return; }
+  tbody.innerHTML=allCreds.map(c=>`
     <tr>
-      <td><strong>${c.name}</strong></td>
-      <td style="font-family:monospace">${c.username}</td>
-      <td><span class="badge" style="background:#f1f5f9;color:#374151">${c.auth_method}</span></td>
-      <td style="font-size:0.8rem;color:#64748b">${new Date(c.created_at).toLocaleDateString()}</td>
-      <td>
-        <button class="btn-secondary btn-sm" onclick="openCredModal(${c.id})">Edit</button>
-        <button class="btn-danger btn-sm" onclick="deleteCred(${c.id},'${c.name}')">Delete</button>
+      <td><strong>${esc(c.name)}</strong></td>
+      <td class="mono">${esc(c.username)}</td>
+      <td><span class="badge badge-${c.auth_method==='password'?'pw':'key'}">${esc(c.auth_method)}</span></td>
+      <td style="font-size:0.78rem;color:#94a3b8">${new Date(c.created_at).toLocaleDateString()}</td>
+      <td style="display:flex;gap:4px">
+        <button class="btn btn-secondary btn-sm" onclick="openCredModal(${c.id})">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCred(${c.id},'${esc(c.name).replace(/'/g,"\\'")}')">Delete</button>
       </td>
-    </tr>
-  `).join('');
+    </tr>`).join('');
 }
-
 function toggleCredFields() {
-  const method = document.getElementById('c-method').value;
-  document.getElementById('c-password-section').style.display = method === 'password' ? '' : 'none';
-  document.getElementById('c-key-section').style.display      = method !== 'password'  ? '' : 'none';
-  document.getElementById('c-passphrase-section').style.display = method === 'key+passphrase' ? '' : 'none';
+  const m=document.getElementById('c-method').value;
+  document.getElementById('c-password-section').style.display=m==='password'?'':'none';
+  document.getElementById('c-key-section').style.display=m!=='password'?'':'none';
+  document.getElementById('c-passphrase-section').style.display=m==='key+passphrase'?'':'none';
 }
-
 async function openCredModal(id) {
   if (id) {
-    const c = allCreds.find(x => x.id === id);
-    document.getElementById('cred-modal-title').textContent = 'Edit credential';
-    document.getElementById('c-id').value = c.id;
-    document.getElementById('c-name').value = c.name;
-    document.getElementById('c-user').value = c.username;
-    document.getElementById('c-method').value = c.auth_method;
-    ['c-password','c-key','c-passphrase'].forEach(id => document.getElementById(id).value = '');
+    const c=allCreds.find(x=>x.id===id);
+    document.getElementById('cred-modal-title').textContent='Edit credential';
+    document.getElementById('c-id').value=c.id;
+    document.getElementById('c-name').value=c.name;
+    document.getElementById('c-user').value=c.username;
+    document.getElementById('c-method').value=c.auth_method;
+    ['c-password','c-key','c-passphrase'].forEach(i=>document.getElementById(i).value='');
   } else {
-    document.getElementById('cred-modal-title').textContent = 'Add credential';
-    ['c-id','c-name','c-user','c-password','c-key','c-passphrase'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('c-method').value = 'password';
+    document.getElementById('cred-modal-title').textContent='Add credential';
+    ['c-id','c-name','c-user','c-password','c-key','c-passphrase'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('c-method').value='password';
   }
   toggleCredFields();
   document.getElementById('cred-modal').classList.add('open');
 }
-
 async function saveCredential() {
-  const id = document.getElementById('c-id').value;
-  const method = document.getElementById('c-method').value;
-  const body = {
-    name: document.getElementById('c-name').value.trim(),
-    username: document.getElementById('c-user').value.trim(),
-    auth_method: method
-  };
-  const pw  = document.getElementById('c-password').value;
-  const key = document.getElementById('c-key').value;
-  const pp  = document.getElementById('c-passphrase').value;
-  if (pw)  body.password = pw;
-  if (key) body.private_key = key;
-  if (pp)  body.passphrase = pp;
-  if (!body.name || !body.username) return toast('Name and username required', true);
-  const res = await fetch(id ? `/api/devices/credentials/${id}` : '/api/devices/credentials', {
-    method: id ? 'PATCH' : 'POST',
-    headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
-  });
-  if (!res.ok) { const d = await res.json(); return toast(d.error, true); }
+  const id=document.getElementById('c-id').value;
+  const method=document.getElementById('c-method').value;
+  const body={name:document.getElementById('c-name').value.trim(),username:document.getElementById('c-user').value.trim(),auth_method:method};
+  const pw=document.getElementById('c-password').value;
+  const key=document.getElementById('c-key').value;
+  const pp=document.getElementById('c-passphrase').value;
+  if(pw)body.password=pw; if(key)body.private_key=key; if(pp)body.passphrase=pp;
+  if(!body.name||!body.username) return toast('Name and username required',true);
+  const res=await fetch(id?`/api/devices/credentials/${id}`:'/api/devices/credentials',{method:id?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!res.ok){const d=await res.json();return toast(d.error,true);}
   closeModals(); toast('Credential saved'); await loadCreds();
 }
-
-async function deleteCred(id, name) {
-  if (!confirm(`Delete credential "${name}"? Devices using it will lose their default.`)) return;
-  const res = await fetch(`/api/devices/credentials/${id}`, { method: 'DELETE' });
-  if (!res.ok) return toast('Delete failed', true);
-  toast('Credential deleted'); await Promise.all([loadCreds(), loadDevices()]);
+async function deleteCred(id,name) {
+  if (!confirm(`Delete credential "${name}"?`)) return;
+  const res=await fetch(`/api/devices/credentials/${id}`,{method:'DELETE'});
+  if(!res.ok) return toast('Delete failed',true);
+  toast('Credential deleted'); await Promise.all([loadCreds(),loadDevices()]);
 }
 
 function closeModals() {
-  document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
+  document.querySelectorAll('.modal-backdrop').forEach(m=>m.classList.remove('open'));
 }
 
-async function logout() {
-  await fetch('/auth/logout', { method: 'POST' });
-  window.location.href = '/login.html';
+async function api(url, opts) {
+  const r=await fetch(url,opts); const d=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(d.error||r.statusText); return d;
 }
-
-function toast(msg, err = false) {
-  const el = document.getElementById('toast');
-  el.textContent = msg; el.style.background = err ? '#7f1d1d' : '#166534';
-  el.style.display = 'block';
-  setTimeout(() => { el.style.display = 'none'; }, 3500);
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toast(msg,isErr=false) {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.style.background=isErr?'#7f1d1d':'#166534';
+  el.style.display='block'; setTimeout(()=>el.style.display='none',3200);
 }
+async function logout() { await fetch('/auth/logout',{method:'POST'}); location.href='/login.html'; }
 </script>
 </body>
 </html>

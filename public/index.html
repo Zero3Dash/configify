@@ -5,196 +5,272 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>configify · Use Template</title>
 <style>
-  *, *::before, *::after { box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; color: #0f172a; margin: 0; }
-  nav { background: #0f172a; color: white; padding: 0 1.5rem; height: 56px; display: flex; align-items: center; gap: 1.5rem; position: sticky; top: 0; z-index: 10; }
-  nav .brand { font-weight: 700; font-size: 1.1rem; color: #38bdf8; }
-  nav a { color: #94a3b8; text-decoration: none; font-size: 0.9rem; }
-  nav a:hover, nav a.active { color: white; }
-  nav .spacer { flex: 1; }
-  nav .user-badge { background: #1e3a5f; padding: 0.35rem 0.9rem; border-radius: 20px; font-size: 0.85rem; color: #7dd3fc; }
-  button.nav-btn { border: none; padding: 0.35rem 0.9rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; background: #334155; color: #e2e8f0; }
-  button.nav-btn:hover { background: #475569; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  .layout { display: grid; grid-template-columns: 1fr 400px; gap: 1.5rem; max-width: 1300px; margin: 2rem auto; padding: 0 1.5rem; }
-  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+  /* ── Sidebar ───────────────────────────────────────────────── */
+  :root { --sb: 76px; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+         background: #f8fafc; color: #0f172a; padding-left: var(--sb); min-height: 100vh; }
 
-  .panel { background: white; border-radius: 16px; padding: 2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
+  .sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0; width: var(--sb);
+    background: #0f172a; display: flex; flex-direction: column;
+    align-items: center; z-index: 100; padding: 10px 0;
+    border-right: 1px solid #1e293b;
+  }
+  .sb-brand {
+    font-size: 1.5rem; color: #38bdf8; padding: 8px 0 12px;
+    font-weight: 800; letter-spacing: -1px; user-select: none;
+  }
+  .sb-nav { display: flex; flex-direction: column; gap: 3px; width: 100%; padding: 0 7px; flex: 1; }
+  .sb-item {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 9px 4px 7px; border-radius: 10px; text-decoration: none;
+    color: #64748b; gap: 4px; border: none; background: none; width: 100%;
+    cursor: pointer; transition: background 0.15s, color 0.15s; min-height: 56px;
+  }
+  .sb-item:hover { background: #1e293b; color: #cbd5e1; }
+  .sb-item.active { background: #1d4ed8; color: white; }
+  .sb-icon { font-size: 1.3rem; line-height: 1; }
+  .sb-label { font-size: 0.6rem; font-weight: 600; text-align: center; letter-spacing: 0.03em; text-transform: uppercase; }
+  .sb-divider { width: 44px; height: 1px; background: #1e293b; margin: 6px auto; }
+  .sb-footer { width: 100%; padding: 0 7px; display: flex; flex-direction: column; gap: 3px; }
+  .sb-user { font-size: 0.6rem; color: #334155; text-align: center; padding: 4px 2px; word-break: break-all; line-height: 1.4; }
 
-  h2 { font-size: 1.1rem; font-weight: 600; margin: 1.75rem 0 0.75rem; border-bottom: 2px solid #e9edf2; padding-bottom: 0.3rem; }
-  h2:first-of-type { margin-top: 0; }
+  /* ── Layout ────────────────────────────────────────────────── */
+  .main { max-width: 1280px; margin: 0 auto; padding: 1.5rem; display: grid;
+          grid-template-columns: 1fr 380px; gap: 1.5rem; align-items: start; }
+  @media (max-width: 960px) { .main { grid-template-columns: 1fr; } }
 
-  /* Template selector bar */
-  .tpl-bar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
-  .tpl-bar select { flex: 1; min-width: 200px; padding: 0.6rem 0.8rem; border-radius: 7px; border: 1px solid #d1d5db; background: white; font-size: 0.9rem; outline: none; }
-  .tpl-bar select:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.1); }
-  .tpl-bar a { font-size: 0.82rem; color: #2563eb; text-decoration: none; white-space: nowrap; }
-  .tpl-bar a:hover { text-decoration: underline; }
+  .page-title { grid-column: 1 / -1; padding: 0.25rem 0 0.75rem; }
+  .page-title h1 { font-size: 1.4rem; font-weight: 700; color: #0f172a; }
+  .page-title p  { font-size: 0.85rem; color: #64748b; margin-top: 3px; }
 
-  /* Active template display */
-  .tpl-active-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1.25rem; display: none; }
-  .tpl-active-card.visible { display: block; }
-  .tpl-active-name { font-weight: 600; font-size: 0.95rem; color: #0f172a; margin-bottom: 0.35rem; }
-  .tpl-active-body { font-family: 'Fira Code', monospace; font-size: 0.8rem; color: #475569; white-space: pre-wrap; line-height: 1.55; max-height: 120px; overflow-y: auto; }
+  /* ── Cards ─────────────────────────────────────────────────── */
+  .card { background: white; border-radius: 14px; padding: 1.5rem;
+          box-shadow: 0 1px 6px rgba(0,0,0,0.07); border: 1px solid #e2e8f0; }
+  .card-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
+                letter-spacing: 0.08em; color: #94a3b8; margin-bottom: 1rem; }
+  .ssh-sticky { position: sticky; top: 1.5rem; }
 
-  /* Variable form */
-  .form-grid { display: grid; gap: 0.85rem; margin: 0.5rem 0 1rem; }
-  .form-group label { display: block; font-size: 0.83rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem; }
-  .form-group input { width: 100%; padding: 0.65rem 0.9rem; border: 1px solid #d1d5db; border-radius: 7px; font-size: 0.9rem; outline: none; }
-  .form-group input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.1); }
+  /* ── Template selector ─────────────────────────────────────── */
+  .tpl-bar { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+  select, input[type="text"] {
+    padding: 0.6rem 0.8rem; border: 1px solid #d1d5db; border-radius: 8px;
+    font-size: 0.88rem; outline: none; background: white; color: #0f172a;
+    transition: border-color 0.15s;
+  }
+  select:focus, input[type="text"]:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
+  #template-select { flex: 1; min-width: 180px; }
+  .manage-link { font-size: 0.8rem; color: #2563eb; text-decoration: none; white-space: nowrap; }
+  .manage-link:hover { text-decoration: underline; }
 
-  .no-tpl-msg { color: #94a3b8; font-size: 0.92rem; padding: 1.5rem 0; text-align: center; }
+  /* ── Active template preview ───────────────────────────────── */
+  .tpl-preview-card {
+    margin: 1rem 0 0; background: #f8fafc; border: 1px solid #e2e8f0;
+    border-radius: 10px; padding: 0.9rem 1rem; display: none;
+  }
+  .tpl-preview-card.visible { display: block; }
+  .tpl-preview-name { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.4rem; color: #0f172a; }
+  .tpl-preview-body { font-family: 'Fira Code', monospace; font-size: 0.76rem; color: #64748b;
+                      white-space: pre-wrap; line-height: 1.6; max-height: 100px; overflow-y: auto; }
 
-  /* Actions */
-  .action-row { display: flex; gap: 0.75rem; align-items: center; margin: 1rem 0 0.5rem; }
-  button { border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; transition: background 0.15s; }
-  .btn-primary   { background: #2563eb; color: white; }
-  .btn-primary:hover   { background: #1d4ed8; }
-  .btn-secondary { background: #e2e8f0; color: #475569; }
-  .btn-secondary:hover { background: #cbd5e1; }
-  .btn-clear     { background: none; color: #94a3b8; font-size: 0.8rem; padding: 0.3rem 0.6rem; }
-  .btn-clear:hover { color: #475569; }
+  /* ── Variable form ─────────────────────────────────────────── */
+  .vars-section { margin-top: 1.25rem; display: none; }
+  .vars-section.visible { display: block; }
+  .vars-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; margin-top: 0.6rem; }
+  .form-group label { display: block; font-size: 0.78rem; font-weight: 600; color: #374151; margin-bottom: 0.3rem; }
+  .form-group input { width: 100%; }
+  .no-vars-note { font-size: 0.83rem; color: #94a3b8; padding: 0.5rem 0; }
 
-  /* Output */
-  .output-header { display: flex; justify-content: space-between; align-items: center; margin: 1.5rem 0 0.5rem; }
-  .output-header h2 { margin: 0; border: none; padding: 0; }
-  .copy-btn { padding: 0.3rem 0.75rem; font-size: 0.78rem; background: #334155; color: #e2e8f0; border-radius: 5px; }
-  .copy-btn:hover { background: #475569; }
-  .output-area { background: #0f172a; color: #e2e8f0; padding: 1.2rem; border-radius: 8px; font-family: 'Fira Code', monospace; white-space: pre-wrap; word-break: break-all; border: 1px solid #334155; min-height: 100px; font-size: 0.82rem; line-height: 1.6; }
+  /* ── Output ────────────────────────────────────────────────── */
+  .output-section { margin-top: 1.25rem; display: none; }
+  .output-section.visible { display: block; }
+  .output-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+  .output-label { font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
+                  letter-spacing: 0.08em; color: #94a3b8; }
+  .output-area { background: #0f172a; color: #e2e8f0; padding: 1rem 1.1rem; border-radius: 10px;
+                 font-family: 'Fira Code', monospace; white-space: pre-wrap; word-break: break-all;
+                 font-size: 0.8rem; line-height: 1.65; min-height: 80px; border: 1px solid #1e293b; }
+  .output-area.has-content { border-color: #2563eb33; }
+  .unfilled-var { background: #fef08a; color: #854d0e; border-radius: 3px; padding: 0 2px; }
 
-  /* SSH panel */
-  .ssh-panel { border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; background: white; height: fit-content; position: sticky; top: 72px; }
-  .ssh-panel h2 { font-size: 1.05rem; margin-top: 0; }
-  .ssh-label { font-size: 0.8rem; color: #64748b; display: block; margin-bottom: 0.3rem; }
-  .ssh-select { width: 100%; padding: 0.55rem 0.8rem; border: 1px solid #cbd5e1; border-radius: 7px; font-size: 0.88rem; margin-bottom: 0.9rem; background: white; outline: none; }
-  .ssh-select:focus { border-color: #2563eb; }
-  .run-btn { width: 100%; padding: 0.75rem; font-size: 0.95rem; background: #16a34a; color: white; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; transition: background 0.15s; }
+  /* ── Buttons ────────────────────────────────────────────────── */
+  button { border: none; cursor: pointer; font-weight: 500; transition: background 0.15s; border-radius: 7px; }
+  .btn   { padding: 0.55rem 1rem; font-size: 0.85rem; }
+  .btn-primary  { background: #2563eb; color: white; }
+  .btn-primary:hover  { background: #1d4ed8; }
+  .btn-secondary { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+  .btn-secondary:hover { background: #e2e8f0; }
+  .btn-copy { background: #1e293b; color: #94a3b8; padding: 0.3rem 0.7rem; font-size: 0.75rem; }
+  .btn-copy:hover { background: #334155; color: #e2e8f0; }
+  .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+  .action-row { display: flex; gap: 0.6rem; align-items: center; margin-top: 1rem; flex-wrap: wrap; }
+
+  /* ── SSH Panel ─────────────────────────────────────────────── */
+  .ssh-label { font-size: 0.75rem; font-weight: 600; color: #64748b; display: block;
+               text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.3rem; }
+  .ssh-select { width: 100%; margin-bottom: 1rem; }
+  .run-btn {
+    width: 100%; padding: 0.75rem; font-size: 0.9rem; font-weight: 700;
+    background: #16a34a; color: white; border-radius: 9px; letter-spacing: 0.01em;
+  }
   .run-btn:hover:not(:disabled) { background: #15803d; }
-  .run-btn:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+  .run-btn:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
 
-  /* Status bar */
-  .ssh-status { display: none; align-items: center; gap: 0.6rem; margin: 0.75rem 0 0.4rem; font-size: 0.82rem; }
+  /* ── Status ─────────────────────────────────────────────────── */
+  .ssh-status { display: none; align-items: center; gap: 0.5rem; margin: 0.75rem 0 0.4rem; font-size: 0.8rem; color: #64748b; }
   .ssh-status.visible { display: flex; }
-  .status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-  .status-dot.running { background: #2563eb; animation: pulse 1s infinite; }
-  .status-dot.done    { background: #16a34a; }
-  .status-dot.error   { background: #dc2626; }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .dot.running { background: #2563eb; animation: blink 1s ease-in-out infinite; }
+  .dot.done    { background: #16a34a; }
+  .dot.error   { background: #dc2626; }
+  @keyframes blink { 0%,100%{opacity:1}50%{opacity:.3} }
 
-  /* Terminal */
-  .ssh-terminal { background: #0f172a; color: #e2e8f0; padding: 1rem; border-radius: 8px; font-family: 'Fira Code', monospace; font-size: 0.77rem; min-height: 220px; max-height: 420px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; border: 1px solid #334155; margin-top: 0.6rem; line-height: 1.5; }
-  .clear-btn { width: 100%; margin-top: 0.5rem; font-size: 0.8rem; padding: 0.4rem; background: #1e293b; color: #64748b; border: 1px solid #334155; border-radius: 6px; cursor: pointer; }
-  .clear-btn:hover { background: #334155; color: #94a3b8; }
+  /* ── Terminal ────────────────────────────────────────────────── */
+  .terminal {
+    background: #0f172a; color: #e2e8f0; padding: 0.9rem 1rem; border-radius: 9px;
+    font-family: 'Fira Code', monospace; font-size: 0.74rem; min-height: 180px;
+    max-height: 380px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;
+    border: 1px solid #1e293b; line-height: 1.55; margin-top: 0.6rem;
+  }
+  .terminal-clear { width: 100%; margin-top: 0.5rem; padding: 0.35rem;
+                    background: #1e293b; color: #475569; font-size: 0.75rem;
+                    border: 1px solid #334155; border-radius: 6px; }
+  .terminal-clear:hover { background: #334155; color: #94a3b8; }
 
-  #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #166534; color: white; padding: 0.75rem 1.25rem; border-radius: 8px; font-size: 0.9rem; display: none; z-index: 200; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+  #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #166534; color: white;
+           padding: 0.7rem 1.1rem; border-radius: 8px; font-size: 0.85rem;
+           display: none; z-index: 200; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+  .hidden { display: none !important; }
 </style>
 </head>
 <body>
-<nav>
-  <span class="brand">📄 configify</span>
-  <a href="/" class="active">Use Templates</a>
-  <a href="/templates.html">Manage Templates</a>
-  <a href="/devices.html">Devices</a>
-  <a href="/admin.html" id="admin-nav-link" style="display:none">Admin</a>
-  <div class="spacer"></div>
-  <span class="user-badge" id="user-badge">…</span>
-  <button class="nav-btn" onclick="logout()">Sign out</button>
-</nav>
 
-<div class="layout">
+<!-- ── Sidebar ─────────────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="sb-brand">cf</div>
+  <nav class="sb-nav">
+    <a href="/" class="sb-item active">
+      <span class="sb-icon">📋</span>
+      <span class="sb-label">Use</span>
+    </a>
+    <a href="/templates.html" class="sb-item">
+      <span class="sb-icon">📂</span>
+      <span class="sb-label">Templates</span>
+    </a>
+    <a href="/devices.html" class="sb-item">
+      <span class="sb-icon">🖥️</span>
+      <span class="sb-label">Devices</span>
+    </a>
+    <a href="/admin.html" class="sb-item hidden" id="admin-link">
+      <span class="sb-icon">⚙️</span>
+      <span class="sb-label">Admin</span>
+    </a>
+  </nav>
+  <div class="sb-divider"></div>
+  <div class="sb-footer">
+    <div class="sb-user" id="user-badge">…</div>
+    <button class="sb-item" onclick="logout()">
+      <span class="sb-icon">↩️</span>
+      <span class="sb-label">Sign out</span>
+    </button>
+  </div>
+</aside>
 
-  <!-- ── Left: template usage ── -->
-  <div class="panel">
-    <h2>📋 Select template</h2>
+<!-- ── Main ────────────────────────────────────────────────── -->
+<main class="main">
+  <div class="page-title">
+    <h1>Use a Template</h1>
+    <p>Select a template, fill in the variables, and push it to a device.</p>
+  </div>
 
-    <div class="tpl-bar">
-      <select id="template-select" onchange="onTemplateChange()">
-        <option value="">— Choose a template —</option>
+  <!-- Left column -->
+  <div>
+    <!-- Template selector card -->
+    <div class="card">
+      <div class="card-title">1 · Select template</div>
+      <div class="tpl-bar">
+        <select id="template-select" onchange="onTemplateChange()">
+          <option value="">— Choose a template —</option>
+        </select>
+        <a href="/templates.html" class="manage-link">＋ Manage</a>
+      </div>
+
+      <div class="tpl-preview-card" id="tpl-preview-card">
+        <div class="tpl-preview-name" id="tpl-preview-name"></div>
+        <div class="tpl-preview-body" id="tpl-preview-body"></div>
+      </div>
+
+      <!-- Variable form -->
+      <div class="vars-section" id="vars-section">
+        <div class="card-title" style="margin-top:1rem">2 · Fill in variables</div>
+        <div class="vars-grid" id="vars-grid"></div>
+      </div>
+
+      <!-- Output -->
+      <div class="output-section" id="output-section">
+        <div class="output-header" style="margin-top:1.25rem">
+          <span class="output-label">3 · Generated output</span>
+          <button class="btn-copy" onclick="copyOutput()">⎘ Copy</button>
+        </div>
+        <div class="output-area" id="output-area"></div>
+        <div class="action-row">
+          <button class="btn btn-secondary btn-sm" onclick="clearFields()">Clear fields</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right column: SSH -->
+  <div class="ssh-sticky">
+    <div class="card">
+      <div class="card-title">4 · Execute on device</div>
+
+      <span class="ssh-label">Target device</span>
+      <select class="ssh-select" id="device-select" onchange="onDeviceChange()">
+        <option value="">— Select device —</option>
       </select>
-      <a href="/templates.html">＋ Manage templates</a>
-    </div>
 
-    <!-- Active template preview -->
-    <div class="tpl-active-card" id="tpl-active-card">
-      <div class="tpl-active-name" id="tpl-active-name"></div>
-      <div class="tpl-active-body"  id="tpl-active-body"></div>
-    </div>
+      <span class="ssh-label">Override credential <span style="color:#cbd5e1;font-weight:400">(optional)</span></span>
+      <select class="ssh-select" id="cred-select">
+        <option value="">— Use device default —</option>
+      </select>
 
-    <!-- Variable form -->
-    <div id="form-section" style="display:none">
-      <h2>✏️ Fill in variables</h2>
-      <div class="form-grid" id="form-container"></div>
+      <button class="run-btn" id="run-btn" onclick="runSsh()" disabled>
+        ▶ Run on device
+      </button>
 
-      <div class="action-row">
-        <button class="btn-primary" onclick="generateOutput()">⚡ Generate output</button>
-        <button class="btn-secondary" onclick="clearFields()">Clear fields</button>
+      <div class="ssh-status" id="ssh-status">
+        <div class="dot" id="status-dot"></div>
+        <span id="status-text"></span>
       </div>
-    </div>
 
-    <div id="no-tpl-msg" class="no-tpl-msg">
-      Select a template above to get started, or
-      <a href="/templates.html" style="color:#2563eb">create a new one</a>.
-    </div>
-
-    <!-- Output -->
-    <div id="output-section" style="display:none">
-      <div class="output-header">
-        <h2>📎 Generated output</h2>
-        <button class="copy-btn" onclick="copyOutput()">Copy</button>
-      </div>
-      <div class="output-area" id="output-area"></div>
+      <div class="terminal" id="terminal">Select a device and template, then click Run.</div>
+      <button class="terminal-clear" onclick="clearTerminal()">🗑 Clear terminal</button>
     </div>
   </div>
-
-  <!-- ── Right: SSH execution ── -->
-  <div class="ssh-panel">
-    <h2>🚀 Execute on device</h2>
-
-    <span class="ssh-label">Target device</span>
-    <select class="ssh-select" id="device-select" onchange="updateRunBtn()">
-      <option value="">— Select device —</option>
-    </select>
-
-    <span class="ssh-label">Override credential <span style="color:#94a3b8">(optional)</span></span>
-    <select class="ssh-select" id="cred-select">
-      <option value="">— Use device default —</option>
-    </select>
-
-    <button class="run-btn" id="run-btn" onclick="runSsh()" disabled>▶ Run on device</button>
-
-    <div class="ssh-status" id="ssh-status">
-      <div class="status-dot" id="status-dot"></div>
-      <span id="status-text"></span>
-    </div>
-
-    <div class="ssh-terminal" id="terminal">Select a device, generate output, then click Run.</div>
-    <button class="clear-btn" onclick="clearTerminal()">🗑 Clear</button>
-  </div>
-
-</div>
+</main>
 
 <div id="toast"></div>
 
 <script>
 'use strict';
 
-let templates   = [];
-let currentTpl  = null;   // { template_id, name, template_text }
-let pollTimer   = null;
+let templates  = [];
+let currentTpl = null;
+let pollTimer  = null;
 
-// ── Boot ─────────────────────────────────────────────────────
+// ── Boot ──────────────────────────────────────────────────────
 (async function boot() {
   try {
-    const me = await apiFetch('/auth/me');
+    const me = await api('/auth/me');
     document.getElementById('user-badge').textContent = me.username;
-    if (me.role === 'admin') show('admin-nav-link');
+    if (me.role === 'admin') document.getElementById('admin-link').classList.remove('hidden');
   } catch (_) {}
-
   await Promise.all([loadTemplates(), loadDevicesAndCreds()]);
 
-  // Auto-select template if ?template=xxx in URL
-  const params = new URLSearchParams(window.location.search);
-  const preselect = params.get('template');
+  const preselect = new URLSearchParams(location.search).get('template');
   if (preselect) {
     document.getElementById('template-select').value = preselect;
     onTemplateChange();
@@ -204,7 +280,7 @@ let pollTimer   = null;
 // ── Templates ─────────────────────────────────────────────────
 async function loadTemplates() {
   try {
-    templates = await apiFetch('/api/templates');
+    templates = await api('/api/templates');
     const sel = document.getElementById('template-select');
     sel.innerHTML = '<option value="">— Choose a template —</option>';
     [...templates].sort((a, b) => a.name.localeCompare(b.name)).forEach(t => {
@@ -222,59 +298,87 @@ async function onTemplateChange() {
 
   if (!id) {
     currentTpl = null;
-    hide('tpl-active-card');
-    hide('form-section');
+    hide('tpl-preview-card');
+    hide('vars-section');
     hide('output-section');
-    show('no-tpl-msg');
     updateRunBtn();
     return;
   }
 
-  hide('no-tpl-msg');
-
-  // Check if we already have it in memory
   let t = templates.find(x => x.template_id === id);
   if (!t || !t.template_text) {
-    try { t = await apiFetch('/api/templates/' + id); } catch (_) { toast('Failed to load template', true); return; }
+    try { t = await api('/api/templates/' + id); } catch (_) {
+      toast('Failed to load template', true); return;
+    }
   }
   currentTpl = t;
 
-  // Show preview card
-  document.getElementById('tpl-active-name').textContent = t.name;
-  document.getElementById('tpl-active-body').textContent  = t.template_text;
-  show('tpl-active-card');
+  // Show preview
+  document.getElementById('tpl-preview-name').textContent = t.name;
+  document.getElementById('tpl-preview-body').textContent  = t.template_text;
+  show('tpl-preview-card');
 
   // Build variable form
   const vars = extractVars(t.template_text);
-  const fc = document.getElementById('form-container');
+  const grid = document.getElementById('vars-grid');
   if (vars.length) {
-    fc.innerHTML = vars.map(v => `
+    grid.innerHTML = vars.map(v => `
       <div class="form-group">
-        <label for="${varId(v)}">${escHtml(v)}</label>
-        <input type="text" id="${varId(v)}" placeholder="Value for ${escHtml(v)}" />
+        <label for="${varId(v)}">${esc(v)}</label>
+        <input type="text" id="${varId(v)}" placeholder="${esc(v)}" oninput="liveGenerate()" />
       </div>`).join('');
-    show('form-section');
+    show('vars-section');
+    // Auto-focus first field
+    const first = grid.querySelector('input');
+    if (first) first.focus();
   } else {
-    fc.innerHTML = '<p style="color:#94a3b8;font-size:0.88rem;margin:0">This template has no variables — generate directly.</p>';
-    show('form-section');
+    grid.innerHTML = '<p class="no-vars-note">No variables — output is the template as-is.</p>';
+    show('vars-section');
   }
 
+  // Show output immediately with raw template (unfilled vars highlighted)
+  show('output-section');
+  liveGenerate();
   updateRunBtn();
 }
 
-// ── Generate ──────────────────────────────────────────────────
-function generateOutput() {
-  if (!currentTpl) return toast('Select a template first', true);
+// Live-generate as user types — replaces manual "Generate" button
+function liveGenerate() {
+  if (!currentTpl) return;
   const vars   = extractVars(currentTpl.template_text);
   const values = {};
   vars.forEach(v => {
     const el = document.getElementById(varId(v));
     values[v] = el ? el.value : '';
   });
-  const result = fill(currentTpl.template_text, values);
-  document.getElementById('output-area').textContent = result;
-  show('output-section');
+
+  // Build highlighted HTML for the output
+  let result = esc(currentTpl.template_text);
+  vars.forEach(v => {
+    const val = values[v];
+    const pattern = new RegExp('\\{\\{\\s*' + escRegex(v) + '\\s*\\}\\}', 'g');
+    if (val) {
+      result = result.replace(pattern, `<span style="color:#86efac">${esc(val)}</span>`);
+    } else {
+      result = result.replace(pattern, `<span class="unfilled-var">{{${esc(v)}}}</span>`);
+    }
+  });
+
+  const area = document.getElementById('output-area');
+  area.innerHTML = result;
+  area.classList.toggle('has-content', vars.every(v => values[v]));
   updateRunBtn();
+}
+
+function getFilledOutput() {
+  if (!currentTpl) return '';
+  const vars = extractVars(currentTpl.template_text);
+  let result = currentTpl.template_text;
+  vars.forEach(v => {
+    const el  = document.getElementById(varId(v));
+    const val = el ? el.value : '';
+    result = result.replace(new RegExp('\\{\\{\\s*' + escRegex(v) + '\\s*\\}\\}', 'g'), val);
+  });
   return result;
 }
 
@@ -284,18 +388,20 @@ function clearFields() {
     const el = document.getElementById(varId(v));
     if (el) el.value = '';
   });
-  clearOutput();
+  liveGenerate();
 }
 
 function clearOutput() {
+  const area = document.getElementById('output-area');
+  area.innerHTML = '';
+  area.classList.remove('has-content');
   hide('output-section');
-  document.getElementById('output-area').textContent = '';
   updateRunBtn();
 }
 
 function copyOutput() {
-  const text = document.getElementById('output-area').textContent;
-  if (!text) return toast('Nothing to copy', true);
+  const text = getFilledOutput();
+  if (!text.trim()) return toast('Nothing to copy', true);
   navigator.clipboard.writeText(text).then(() => toast('Copied!')).catch(() => toast('Copy failed', true));
 }
 
@@ -303,74 +409,71 @@ function copyOutput() {
 async function loadDevicesAndCreds() {
   try {
     const [devices, creds] = await Promise.all([
-      apiFetch('/api/devices'),
-      apiFetch('/api/devices/credentials'),
+      api('/api/devices'),
+      api('/api/devices/credentials'),
     ]);
-
     const devSel = document.getElementById('device-select');
     devSel.innerHTML = '<option value="">— Select device —</option>';
     const groups = {};
-    devices.forEach(d => {
-      const g = d.group_name || 'Ungrouped';
-      (groups[g] = groups[g] || []).push(d);
-    });
-    Object.entries(groups).sort().forEach(([gname, devs]) => {
+    devices.forEach(d => { const g = d.group_name||'Ungrouped'; (groups[g]=groups[g]||[]).push(d); });
+    Object.entries(groups).sort().forEach(([g, devs]) => {
       const og = document.createElement('optgroup');
-      og.label = gname;
+      og.label = g;
       devs.forEach(d => {
         const o = document.createElement('option');
         o.value = d.id;
-        o.textContent = d.name + ' (' + d.hostname + ')';
+        o.textContent = `${d.name} (${d.hostname})`;
         og.appendChild(o);
       });
       devSel.appendChild(og);
     });
-
     const credSel = document.getElementById('cred-select');
     credSel.innerHTML = '<option value="">— Use device default —</option>';
     creds.forEach(c => {
       const o = document.createElement('option');
       o.value = c.id;
-      o.textContent = c.name + ' (' + c.username + ')';
+      o.textContent = `${c.name} (${c.username})`;
       credSel.appendChild(o);
     });
   } catch (_) {}
 }
 
+function onDeviceChange() { updateRunBtn(); }
+
 function updateRunBtn() {
   const hasDevice  = !!document.getElementById('device-select').value;
-  const hasOutput  = !!document.getElementById('output-area').textContent.trim();
-  document.getElementById('run-btn').disabled = !(hasDevice && hasOutput);
+  const hasTemplate = !!currentTpl;
+  document.getElementById('run-btn').disabled = !(hasDevice && hasTemplate);
 }
 
 // ── SSH execution ─────────────────────────────────────────────
 async function runSsh() {
   const deviceId = document.getElementById('device-select').value;
   const credId   = document.getElementById('cred-select').value;
-  if (!deviceId) return toast('Select a device first', true);
+  if (!deviceId || !currentTpl) return;
 
-  const command = document.getElementById('output-area').textContent.trim();
-  if (!command) return toast('Generate output first', true);
+  const command = getFilledOutput().trim();
+  if (!command) return toast('Template produced empty output', true);
 
   clearTerminal();
-  setStatus('running', 'Starting…');
+  setStatus('running', 'Starting job…');
   setRunBtn(true);
 
   let jobId;
   try {
-    const data = await apiFetch('/api/ssh/execute', {
+    const data = await api('/api/ssh/execute', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         device_id:     parseInt(deviceId),
         credential_id: credId ? parseInt(credId) : undefined,
         command,
-        template_id:   currentTpl ? currentTpl.template_id : undefined,
+        template_id:   currentTpl.template_id,
       }),
     });
     jobId = data.jobId;
   } catch (e) {
-    termWrite('Error starting job: ' + (e.message || 'Unknown') + '\n');
+    termWrite('Error: ' + (e.message || 'Unknown') + '\n');
     setStatus('error', 'Failed to start');
     setRunBtn(false);
     return;
@@ -378,103 +481,73 @@ async function runSsh() {
 
   pollTimer = setInterval(async () => {
     try {
-      const poll = await apiFetch('/api/ssh/poll/' + jobId);
+      const poll = await api('/api/ssh/poll/' + jobId);
       if (poll.newOutput) termWrite(poll.newOutput);
       if (poll.status === 'running') return;
-      clearInterval(pollTimer);
-      pollTimer = null;
+      clearInterval(pollTimer); pollTimer = null;
       if (poll.status === 'done') {
-        setStatus('done', 'Completed (exit 0)');
+        setStatus('done', `Done (exit 0)`);
       } else {
-        setStatus('error', 'Failed' + (poll.exitCode != null ? ` (exit ${poll.exitCode})` : ''));
+        setStatus('error', `Failed (exit ${poll.exitCode ?? '?'})`);
       }
       setRunBtn(false);
     } catch (e) {
-      clearInterval(pollTimer);
-      pollTimer = null;
-      termWrite('\nPolling error: ' + (e.message || 'Unknown') + '\n');
+      clearInterval(pollTimer); pollTimer = null;
+      termWrite('\nPolling error: ' + e.message + '\n');
       setStatus('error', 'Polling failed');
       setRunBtn(false);
     }
   }, 800);
 }
 
-function termWrite(text) {
-  const t = document.getElementById('terminal');
-  t.textContent += text;
-  t.scrollTop = t.scrollHeight;
+function termWrite(t) {
+  const el = document.getElementById('terminal');
+  el.textContent += t;
+  el.scrollTop = el.scrollHeight;
 }
-
 function clearTerminal() {
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
   document.getElementById('terminal').textContent = '';
-  hideStatus();
+  document.getElementById('ssh-status').className = 'ssh-status';
 }
-
 function setStatus(type, text) {
-  const s  = document.getElementById('ssh-status');
-  const d  = document.getElementById('status-dot');
-  const tx = document.getElementById('status-text');
-  s.className   = 'ssh-status visible';
-  d.className   = 'status-dot ' + type;
-  tx.textContent = text;
+  document.getElementById('ssh-status').className = 'ssh-status visible';
+  document.getElementById('status-dot').className  = 'dot ' + type;
+  document.getElementById('status-text').textContent = text;
 }
-
-function hideStatus() { document.getElementById('ssh-status').className = 'ssh-status'; }
-
 function setRunBtn(running) {
-  const btn  = document.getElementById('run-btn');
-  const hasDevice = !!document.getElementById('device-select').value;
-  const hasOutput = !!document.getElementById('output-area').textContent.trim();
-  btn.disabled   = running || !(hasDevice && hasOutput);
+  const btn = document.getElementById('run-btn');
+  const ok  = !!document.getElementById('device-select').value && !!currentTpl;
+  btn.disabled    = running || !ok;
   btn.textContent = running ? '⏳ Running…' : '▶ Run on device';
 }
 
 // ── Utilities ─────────────────────────────────────────────────
 function extractVars(text) {
-  const vars = [], re = /{{\s*([^}]+?)\s*}}/g;
-  let m;
-  while ((m = re.exec(text)) !== null) {
-    const v = m[1].trim();
-    if (!vars.includes(v)) vars.push(v);
-  }
+  const vars = [], re = /{{\s*([^}]+?)\s*}}/g; let m;
+  while ((m = re.exec(text)) !== null) { const v = m[1].trim(); if (!vars.includes(v)) vars.push(v); }
   return vars;
 }
-
-function varId(name) {
-  return 'v_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
-}
-
-function fill(text, values) {
-  let r = text;
-  for (const [k, v] of Object.entries(values)) {
-    r = r.replace(new RegExp('{{\\s*' + k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '\\s*}}','g'), v);
-  }
-  return r;
-}
-
-async function apiFetch(url, opts) {
-  const r = await fetch(url, opts);
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(data.error || r.statusText);
-  return data;
-}
-
+function varId(n) { return 'v_' + n.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,''); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
 function show(id) { document.getElementById(id).style.display = ''; }
 function hide(id) { document.getElementById(id).style.display = 'none'; }
-function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-function toast(msg, isError = false) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.style.background = isError ? '#7f1d1d' : '#166534';
-  el.style.display = 'block';
-  setTimeout(() => { el.style.display = 'none'; }, 3000);
+async function api(url, opts) {
+  const r = await fetch(url, opts);
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || r.statusText);
+  return d;
 }
-
+function toast(msg, isErr=false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.style.background = isErr ? '#7f1d1d' : '#166534';
+  el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 3000);
+}
 async function logout() {
   await fetch('/auth/logout', { method: 'POST' });
-  window.location.href = '/login.html';
+  location.href = '/login.html';
 }
 </script>
 </body>

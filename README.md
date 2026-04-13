@@ -6,62 +6,111 @@
 
 ---
 
+## UI Navigation
+
+configify uses a **left sidebar** for navigation. Each item is a square tile with an icon and label:
+
+| Icon | Label | Page | Description |
+|------|-------|------|-------------|
+| 📋 | Use | `/` | Select a template, fill variables, execute over SSH |
+| 📂 | Templates | `/templates.html` | Create, preview, and delete templates |
+| 🖥️ | Devices | `/devices.html` | Manage devices, groups, and credential vault |
+| ⚙️ | Admin | `/admin.html` | User accounts and auth providers (admin only) |
+| ↩️ | Sign out | — | End the current session |
+
+The active page is highlighted in blue. The Admin item is hidden for non-admin users.
+
+---
+
+## Using Templates
+
+### Workflow
+
+1. **Select template** — pick from the dropdown on the Use page
+2. **Fill variables** — the output updates **live as you type** (no need to click "Generate")
+3. **Select device** — choose a target from the SSH panel on the right
+4. **Click Run** — configify connects via SSH and streams output to the terminal
+
+### Variable syntax
+
+Use `{{Variable Name}}` in your template body. Variables are extracted automatically and a form field is generated for each one. Unfilled variables are highlighted in yellow in the output preview; filled values appear in green.
+
+```
+interface {{Interface}}
+ ip address {{IP Address}} {{Subnet Mask}}
+ no shutdown
+ip route 0.0.0.0 0.0.0.0 {{Default Gateway}}
+```
+
+### Tips
+
+- Variables are case-sensitive: `{{Interface}}` and `{{interface}}` are different
+- Spaces are allowed in variable names: `{{IP Address}}` is valid
+- Templates with no variables execute as-is
+- The Run button enables as soon as a device is selected (variables don't need to be filled)
+
+---
+
 ## Architecture
 
 ```
 Browser
   │
   ▼
-Nginx (443 TLS)          ← reverse proxy
+Nginx (443 TLS)           ← reverse proxy
   │
   ▼
-Node.js / Express (3000) ← API + static files
+Node.js / Express (3000)  ← API + static files
   │
   ▼
-PostgreSQL               ← templates, users, devices, credentials, logs
+PostgreSQL                ← templates, users, devices, credentials, logs
 ```
 
 ### Pages
 
-| URL               | Description                           |
-| ----------------- | ------------------------------------- |
-| `/`               | Template studio + SSH execution panel |
-| `/login.html`     | Login (local / LDAP / SAML)           |
-| `/devices.html`   | Device + credential vault manager     |
-| `/admin.html`     | User admin + auth provider config     |
+| URL | Description |
+|-----|-------------|
+| `/` | Template studio + SSH execution panel |
+| `/login.html` | Login (local / LDAP / SAML) |
+| `/templates.html` | Template management (create, preview, edit, delete) |
+| `/devices.html` | Device inventory + credential vault |
+| `/admin.html` | User admin + auth provider config |
 
 ### API routes
 
-| Method | Path                                 | Auth      | Description                            |
-| ------ | ------------------------------------ | --------- | -------------------------------------- |
-| POST   | `/auth/login/local`                  | public    | Local login                            |
-| POST   | `/auth/login/ldap`                   | public    | LDAP login                             |
-| GET    | `/auth/saml/login`                   | public    | SAML redirect to IdP                   |
-| POST   | `/auth/saml/callback`                | public    | SAML ACS callback                      |
-| GET    | `/auth/me`                           | user      | Current user info                      |
-| POST   | `/auth/logout`                       | user      | Destroy session                        |
-| GET    | `/api/templates`                     | user      | List templates                         |
-| POST   | `/api/templates`                     | user      | Create template                        |
-| DELETE | `/api/templates/:id`                 | user      | Delete template                        |
-| GET    | `/api/devices`                       | user      | List devices                           |
-| POST   | `/api/devices`                       | user      | Add device                             |
-| PATCH  | `/api/devices/:id`                   | user      | Edit device                            |
-| DELETE | `/api/devices/:id`                   | **admin** | Delete device                          |
-| GET    | `/api/devices/groups`                | user      | List groups                            |
-| POST   | `/api/devices/groups`                | user      | Add group                              |
-| DELETE | `/api/devices/groups/:id`            | **admin** | Delete group                           |
-| GET    | `/api/devices/credentials`           | user      | List credentials (no secrets returned) |
-| POST   | `/api/devices/credentials`           | user      | Add credential                         |
-| DELETE | `/api/devices/credentials/:id`       | **admin** | Delete credential                      |
-| POST   | `/api/ssh/execute`                   | user      | Start SSH job → `{ jobId }`            |
-| GET    | `/api/ssh/poll/:jobId`               | user      | Poll job output                        |
-| GET    | `/api/devices/:id/logs`              | user      | Execution history for a device         |
-| GET    | `/api/users`                         | **admin** | List users                             |
-| POST   | `/api/users`                         | **admin** | Create local user                      |
-| PATCH  | `/api/users/:id`                     | **admin** | Edit user                              |
-| DELETE | `/api/users/:id`                     | **admin** | Delete user                            |
-| GET    | `/api/users/auth-config/:provider`   | **admin** | Get LDAP/SAML config                   |
-| PUT    | `/api/users/auth-config/:provider`   | **admin** | Update LDAP/SAML config                |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/auth/login/local` | public | Local login |
+| POST | `/auth/login/ldap` | public | LDAP login |
+| GET | `/auth/saml/login` | public | SAML redirect to IdP |
+| POST | `/auth/saml/callback` | public | SAML ACS callback |
+| GET | `/auth/me` | user | Current user info |
+| POST | `/auth/logout` | user | Destroy session |
+| GET | `/api/templates` | user | List templates |
+| POST | `/api/templates` | user | Create template |
+| GET | `/api/templates/:id` | user | Get single template |
+| DELETE | `/api/templates/:id` | user | Delete template |
+| GET | `/api/devices` | user | List devices |
+| POST | `/api/devices` | user | Add device |
+| PATCH | `/api/devices/:id` | user | Edit device |
+| DELETE | `/api/devices/:id` | **admin** | Delete device |
+| GET | `/api/devices/groups` | user | List groups |
+| POST | `/api/devices/groups` | user | Add group |
+| PATCH | `/api/devices/groups/:id` | user | Edit group |
+| DELETE | `/api/devices/groups/:id` | **admin** | Delete group |
+| GET | `/api/devices/credentials` | user | List credentials (no secrets) |
+| POST | `/api/devices/credentials` | user | Add credential |
+| PATCH | `/api/devices/credentials/:id` | user | Edit credential |
+| DELETE | `/api/devices/credentials/:id` | **admin** | Delete credential |
+| POST | `/api/ssh/execute` | user | Start SSH job → `{ jobId }` |
+| GET | `/api/ssh/poll/:jobId` | user | Poll job output |
+| GET | `/api/devices/:id/logs` | user | Execution history for device |
+| GET | `/api/users` | **admin** | List users |
+| POST | `/api/users` | **admin** | Create local user |
+| PATCH | `/api/users/:id` | **admin** | Edit user |
+| DELETE | `/api/users/:id` | **admin** | Delete user |
+| GET | `/api/users/auth-config/:provider` | **admin** | Get LDAP/SAML config |
+| PUT | `/api/users/auth-config/:provider` | **admin** | Update LDAP/SAML config |
 
 ---
 
@@ -69,22 +118,16 @@ PostgreSQL               ← templates, users, devices, credentials, logs
 
 ### How it works
 
-configify uses **HTTP polling** for SSH execution — no WebSockets required.
+configify uses **HTTP polling** — no WebSockets required.
 
-1. Click **▶ Run on device** → `POST /api/ssh/execute` starts the SSH job
-   in the background and returns a `jobId` immediately.
-2. The browser polls `GET /api/ssh/poll/:jobId` every 800 ms.
-3. Each poll response returns any new output since the last poll and the
-   current job status (`running` / `done` / `error`).
-4. When the job finishes the terminal shows the result and polling stops.
-
-This approach works through any reverse proxy (including Nginx) without any
-special WebSocket configuration.
+1. Click **▶ Run on device** → `POST /api/ssh/execute` starts the SSH job in the background and returns `{ jobId }`
+2. Browser polls `GET /api/ssh/poll/:jobId` every 800 ms
+3. Each poll returns new output since the last call and the job status (`running` / `done` / `error`)
+4. Terminal updates in real time; polling stops when the job finishes
 
 ### One-time DB migration
 
-If your `execution_logs` table was created before `credential_id` was added,
-run this once:
+If your `execution_logs` table was created before `credential_id` was added:
 
 ```sql
 ALTER TABLE execution_logs
@@ -92,39 +135,28 @@ ALTER TABLE execution_logs
   INTEGER REFERENCES credentials(id) ON DELETE SET NULL;
 ```
 
-The server also runs this automatically on every `POST /api/ssh/execute`, so
-it self-heals on first use.
+The server also runs this automatically on every `POST /api/ssh/execute`.
 
 ### Troubleshooting SSH
-
-Check the server log first:
 
 ```bash
 pm2 logs configify-app --lines 50
 ```
 
-Every SSH job logs `[SSH] job N started` and `[SSH] job N finished` lines.
-
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| "No credential specified" | Device has no default credential set | Edit the device in Devices and assign a default credential |
-| "Credential not found" | Credential was deleted | Re-create the credential in Devices → Credentials |
-| "Failed to decrypt password" | `VAULT_SECRET` changed | Restore the original `VAULT_SECRET` or re-enter the credential |
-| "connect ECONNREFUSED" | Wrong host/port or firewall | Test: `ssh -p <port> <user>@<host>` from the configify server |
-| "All configured authentication methods failed" | Wrong password or key | Re-enter the credential in the vault |
-| Job starts but no output | Command produces no output | Expected — exit code still shown when done |
-| Poll returns 404 | Server restarted mid-job (jobs are in-memory) | Click Run again |
+| "No credential specified" | Device has no default credential | Edit device → assign default credential |
+| "Failed to decrypt password" | `VAULT_SECRET` changed | Restore original `VAULT_SECRET` or re-enter credential |
+| "connect ECONNREFUSED" | Wrong host/port or firewall | Test: `ssh -p <port> <user>@<host>` from server |
+| "All configured authentication methods failed" | Wrong password/key | Re-enter credential in vault |
+| Poll returns 404 | Server restarted mid-job (in-memory) | Click Run again |
 
 ---
 
 ## Prerequisites
 
-- Ubuntu 24.04 (or compatible Debian-based OS), minimum 1 GB RAM
+- Ubuntu 24.04 (or compatible Debian-based OS), min 1 GB RAM
 - SSH access with sudo
-
-```bash
-sudo apt install git cron
-```
 
 ## Quick install (Ubuntu 24.04)
 
@@ -134,11 +166,7 @@ cd configify
 sudo bash setup.sh
 ```
 
-`setup.sh` will install Node.js 20, PostgreSQL 17, Nginx, PM2, generate secrets,
-apply the schema, and configure a self-signed SSL certificate.
-
-At the end it prints the URL, generated database password, and a reminder to
-change the default admin password immediately.
+Installs Node.js 20, PostgreSQL 17, Nginx, PM2, generates secrets, applies schema, configures self-signed SSL.
 
 ---
 
@@ -203,8 +231,7 @@ Edit `.env` — generate secrets with:
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-> ⚠️ **Back up `VAULT_SECRET` immediately.** If lost, all stored SSH
-> credentials become permanently unrecoverable.
+> ⚠️ **Back up `VAULT_SECRET` immediately.** If lost, all stored SSH credentials become permanently unrecoverable.
 
 ### 7 — PM2
 
@@ -269,16 +296,15 @@ Managed through **Admin → Users**. Passwords bcrypt-hashed at cost 12.
 
 ## Device & credential vault
 
-All passwords and private keys are AES-256-GCM encrypted at rest using
-`VAULT_SECRET`. The API never returns plaintext secrets.
+All passwords and private keys are AES-256-GCM encrypted at rest using `VAULT_SECRET`. The API never returns plaintext secrets.
 
 ### Auth methods
 
-| Method                       | When to use                           |
-| ---------------------------- | ------------------------------------- |
-| Password                     | Standard SSH password auth            |
-| SSH Private Key              | RSA/Ed25519 PEM key, no passphrase    |
-| SSH Private Key + Passphrase | Encrypted private key                 |
+| Method | When to use |
+|--------|-------------|
+| Password | Standard SSH password auth |
+| SSH Private Key | RSA/Ed25519 PEM key, no passphrase |
+| SSH Private Key + Passphrase | Encrypted private key |
 
 ---
 
@@ -287,7 +313,7 @@ All passwords and private keys are AES-256-GCM encrypted at rest using
 ```bash
 sudo cp backup-configify-db.sh /usr/local/bin/
 sudo chmod +x /usr/local/bin/backup-configify-db.sh
-# Add daily cron at 02:00
+# Daily cron at 02:00
 sudo crontab -u postgres -e
 # 0 2 * * * /usr/local/bin/backup-configify-db.sh
 ```
@@ -327,7 +353,7 @@ pm2 restart configify-app
 - Session cookies are `httpOnly`, `secure` (production), 8-hour expiry
 - Only `admin` role can delete users, devices, credentials, and groups
 - PostgreSQL bound to `localhost` only
-- SSH host keys are accepted automatically; verify fingerprints out-of-band if MITM is a concern
+- SSH host keys accepted automatically; verify fingerprints out-of-band if MITM is a concern
 
 ```bash
 sudo apt install -y fail2ban && sudo systemctl enable --now fail2ban
@@ -362,8 +388,20 @@ sudo apt install -y fail2ban && sudo systemctl enable --now fail2ban
 │   ├── ssh.js               ← /api/ssh/* (polling-based execution)
 │   └── templates.js         ← /api/templates/*
 └── public/
-    ├── index.html           ← Template studio + SSH panel
-    ├── login.html           ← Login page
-    ├── admin.html           ← User + auth config
-    └── devices.html         ← Device inventory + credential vault
+    ├── index.html           ← Template use page + SSH panel (left sidebar nav)
+    ├── login.html           ← Login page (local / LDAP / SAML)
+    ├── templates.html       ← Template management (left sidebar nav)
+    ├── devices.html         ← Device inventory + credential vault (left sidebar nav)
+    └── admin.html           ← User + auth config (left sidebar nav)
 ```
+
+---
+
+## Changelog
+
+### v2.1 (current)
+- **Left sidebar navigation** — nav moved from top bar to a fixed left sidebar with square icon tiles (📋 Use / 📂 Templates / 🖥️ Devices / ⚙️ Admin)
+- **Live template variable filling** — output now updates in real time as you type into variable fields; no need to click "Generate output" manually
+- Unfilled variables highlighted in yellow; filled values shown in green in the output preview
+- Improved form layout on the Use page: variables displayed in a responsive grid
+- Cleaner card-based UI with consistent spacing throughout

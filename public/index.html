@@ -6,148 +6,155 @@
 <title>configify · Use Template</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  /* ── Sidebar ───────────────────────────────────────────────── */
   :root { --sb: 76px; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-         background: #f8fafc; color: #0f172a; padding-left: var(--sb); min-height: 100vh; }
 
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f8fafc; color: #0f172a;
+    padding-left: var(--sb); min-height: 100vh;
+  }
+
+  /* ── Sidebar ── */
   .sidebar {
     position: fixed; left: 0; top: 0; bottom: 0; width: var(--sb);
     background: #0f172a; display: flex; flex-direction: column;
     align-items: center; z-index: 100; padding: 10px 0;
     border-right: 1px solid #1e293b;
   }
-  .sb-brand {
-    font-size: 1.5rem; color: #38bdf8; padding: 8px 0 12px;
-    font-weight: 800; letter-spacing: -1px; user-select: none;
-  }
-  .sb-nav { display: flex; flex-direction: column; gap: 3px; width: 100%; padding: 0 7px; flex: 1; }
-  .sb-item {
+  .sb-brand { font-size: 1.5rem; color: #38bdf8; padding: 8px 0 12px; font-weight: 800; letter-spacing: -1px; user-select: none; }
+  .sb-nav   { display: flex; flex-direction: column; gap: 3px; width: 100%; padding: 0 7px; flex: 1; }
+  .sb-item  {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     padding: 9px 4px 7px; border-radius: 10px; text-decoration: none;
     color: #64748b; gap: 4px; border: none; background: none; width: 100%;
     cursor: pointer; transition: background 0.15s, color 0.15s; min-height: 56px;
   }
-  .sb-item:hover { background: #1e293b; color: #cbd5e1; }
+  .sb-item:hover  { background: #1e293b; color: #cbd5e1; }
   .sb-item.active { background: #1d4ed8; color: white; }
-  .sb-icon { font-size: 1.3rem; line-height: 1; }
+  .sb-icon  { font-size: 1.3rem; line-height: 1; }
   .sb-label { font-size: 0.6rem; font-weight: 600; text-align: center; letter-spacing: 0.03em; text-transform: uppercase; }
   .sb-divider { width: 44px; height: 1px; background: #1e293b; margin: 6px auto; }
-  .sb-footer { width: 100%; padding: 0 7px; display: flex; flex-direction: column; gap: 3px; }
-  .sb-user { font-size: 0.6rem; color: #334155; text-align: center; padding: 4px 2px; word-break: break-all; line-height: 1.4; }
+  .sb-footer  { width: 100%; padding: 0 7px; display: flex; flex-direction: column; gap: 3px; }
+  .sb-user    { font-size: 0.6rem; color: #334155; text-align: center; padding: 4px 2px; word-break: break-all; line-height: 1.4; }
+  .hidden { display: none !important; }
 
-  /* ── Layout ────────────────────────────────────────────────── */
-  .main { max-width: 1280px; margin: 0 auto; padding: 1.5rem; display: grid;
-          grid-template-columns: 1fr 380px; gap: 1.5rem; align-items: start; }
+  /* ── Layout ── */
+  .main {
+    max-width: 1280px; margin: 0 auto; padding: 1.5rem;
+    display: grid; grid-template-columns: 1fr 360px; gap: 1.5rem; align-items: start;
+  }
   @media (max-width: 960px) { .main { grid-template-columns: 1fr; } }
-
-  .page-title { grid-column: 1 / -1; padding: 0.25rem 0 0.75rem; }
-  .page-title h1 { font-size: 1.4rem; font-weight: 700; color: #0f172a; }
+  .page-title { grid-column: 1 / -1; padding: 0.25rem 0 0.5rem; }
+  .page-title h1 { font-size: 1.4rem; font-weight: 700; }
   .page-title p  { font-size: 0.85rem; color: #64748b; margin-top: 3px; }
 
-  /* ── Cards ─────────────────────────────────────────────────── */
-  .card { background: white; border-radius: 14px; padding: 1.5rem;
-          box-shadow: 0 1px 6px rgba(0,0,0,0.07); border: 1px solid #e2e8f0; }
-  .card-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
-                letter-spacing: 0.08em; color: #94a3b8; margin-bottom: 1rem; }
-  .ssh-sticky { position: sticky; top: 1.5rem; }
+  /* ── Cards ── */
+  .card {
+    background: white; border-radius: 14px; padding: 1.5rem;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.07); border: 1px solid #e2e8f0;
+  }
+  .card + .card { margin-top: 1.25rem; }
 
-  /* ── Template selector ─────────────────────────────────────── */
-  .tpl-bar { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+  /* ── Step labels ── */
+  .step-label {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: #94a3b8; margin-bottom: 0.9rem;
+  }
+  .step-label .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #e2e8f0; color: #64748b; font-size: 0.7rem; font-weight: 800; flex-shrink: 0;
+  }
+  .step-label .num.on { background: #2563eb; color: white; }
+
+  /* ── Selects / inputs ── */
   select, input[type="text"] {
-    padding: 0.6rem 0.8rem; border: 1px solid #d1d5db; border-radius: 8px;
-    font-size: 0.88rem; outline: none; background: white; color: #0f172a;
+    width: 100%; padding: 0.6rem 0.8rem; border: 1px solid #d1d5db; border-radius: 8px;
+    font-size: 0.875rem; outline: none; background: white; color: #0f172a;
     transition: border-color 0.15s;
   }
-  select:focus, input[type="text"]:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
-  #template-select { flex: 1; min-width: 180px; }
-  .manage-link { font-size: 0.8rem; color: #2563eb; text-decoration: none; white-space: nowrap; }
-  .manage-link:hover { text-decoration: underline; }
-
-  /* ── Active template preview ───────────────────────────────── */
-  .tpl-preview-card {
-    margin: 1rem 0 0; background: #f8fafc; border: 1px solid #e2e8f0;
-    border-radius: 10px; padding: 0.9rem 1rem; display: none;
+  select:focus, input[type="text"]:focus {
+    border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
   }
-  .tpl-preview-card.visible { display: block; }
-  .tpl-preview-name { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.4rem; color: #0f172a; }
-  .tpl-preview-body { font-family: 'Fira Code', monospace; font-size: 0.76rem; color: #64748b;
-                      white-space: pre-wrap; line-height: 1.6; max-height: 100px; overflow-y: auto; }
 
-  /* ── Variable form ─────────────────────────────────────────── */
-  .vars-section { margin-top: 1.25rem; display: none; }
-  .vars-section.visible { display: block; }
-  .vars-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; margin-top: 0.6rem; }
-  .form-group label { display: block; font-size: 0.78rem; font-weight: 600; color: #374151; margin-bottom: 0.3rem; }
-  .form-group input { width: 100%; }
-  .no-vars-note { font-size: 0.83rem; color: #94a3b8; padding: 0.5rem 0; }
+  /* ── Variable block — toggled by JS adding .visible ── */
+  .vars-block  { display: none; margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #f1f5f9; }
+  .vars-block.visible { display: block; }
+  .vars-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.75rem; margin-top: 0.6rem;
+  }
+  .var-field label { display: block; font-size: 0.78rem; font-weight: 600; color: #374151; margin-bottom: 0.3rem; }
+  .var-field input { width: 100%; }
+  .no-vars-note { font-size: 0.83rem; color: #94a3b8; }
 
-  /* ── Output ────────────────────────────────────────────────── */
-  .output-section { margin-top: 1.25rem; display: none; }
-  .output-section.visible { display: block; }
-  .output-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
-  .output-label { font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
-                  letter-spacing: 0.08em; color: #94a3b8; }
-  .output-area { background: #0f172a; color: #e2e8f0; padding: 1rem 1.1rem; border-radius: 10px;
-                 font-family: 'Fira Code', monospace; white-space: pre-wrap; word-break: break-all;
-                 font-size: 0.8rem; line-height: 1.65; min-height: 80px; border: 1px solid #1e293b; }
-  .output-area.has-content { border-color: #2563eb33; }
-  .unfilled-var { background: #fef08a; color: #854d0e; border-radius: 3px; padding: 0 2px; }
+  /* ── Output block — toggled by JS adding .visible ── */
+  .output-block { display: none; margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #f1f5f9; }
+  .output-block.visible { display: block; }
+  .output-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+  .output-area {
+    background: #0f172a; color: #e2e8f0; padding: 1rem 1.1rem; border-radius: 10px;
+    font-family: 'Fira Code', monospace; white-space: pre-wrap; word-break: break-all;
+    font-size: 0.8rem; line-height: 1.7; min-height: 80px; border: 1px solid #1e293b;
+  }
+  .unfilled { background: #fef08a; color: #854d0e; border-radius: 3px; padding: 0 3px; }
+  .filled   { color: #86efac; }
 
-  /* ── Buttons ────────────────────────────────────────────────── */
-  button { border: none; cursor: pointer; font-weight: 500; transition: background 0.15s; border-radius: 7px; }
-  .btn   { padding: 0.55rem 1rem; font-size: 0.85rem; }
-  .btn-primary  { background: #2563eb; color: white; }
-  .btn-primary:hover  { background: #1d4ed8; }
-  .btn-secondary { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
-  .btn-secondary:hover { background: #e2e8f0; }
-  .btn-copy { background: #1e293b; color: #94a3b8; padding: 0.3rem 0.7rem; font-size: 0.75rem; }
-  .btn-copy:hover { background: #334155; color: #e2e8f0; }
-  .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
-  .action-row { display: flex; gap: 0.6rem; align-items: center; margin-top: 1rem; flex-wrap: wrap; }
+  /* ── Buttons ── */
+  button { border: none; cursor: pointer; font-weight: 500; border-radius: 7px; transition: all 0.15s; }
+  .btn-sm  { padding: 0.3rem 0.7rem; font-size: 0.78rem; }
+  .btn-ghost { background: #1e293b; color: #94a3b8; }
+  .btn-ghost:hover { background: #334155; color: #e2e8f0; }
+  .btn-muted { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+  .btn-muted:hover { background: #e2e8f0; }
 
-  /* ── SSH Panel ─────────────────────────────────────────────── */
-  .ssh-label { font-size: 0.75rem; font-weight: 600; color: #64748b; display: block;
-               text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.3rem; }
-  .ssh-select { width: 100%; margin-bottom: 1rem; }
+  /* ── SSH panel ── */
+  .ssh-sticky { position: sticky; top: 1.5rem; }
+  .ssh-row { margin-bottom: 1rem; }
+  .ssh-row label {
+    display: block; font-size: 0.72rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8; margin-bottom: 0.35rem;
+  }
   .run-btn {
-    width: 100%; padding: 0.75rem; font-size: 0.9rem; font-weight: 700;
-    background: #16a34a; color: white; border-radius: 9px; letter-spacing: 0.01em;
+    width: 100%; padding: 0.8rem; font-size: 0.9rem; font-weight: 700;
+    background: #16a34a; color: white; border-radius: 9px;
   }
   .run-btn:hover:not(:disabled) { background: #15803d; }
   .run-btn:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
 
-  /* ── Status ─────────────────────────────────────────────────── */
-  .ssh-status { display: none; align-items: center; gap: 0.5rem; margin: 0.75rem 0 0.4rem; font-size: 0.8rem; color: #64748b; }
-  .ssh-status.visible { display: flex; }
+  /* ── Status ── */
+  .status-row { display: none; align-items: center; gap: 0.5rem; margin-top: 0.75rem; font-size: 0.8rem; color: #64748b; }
+  .status-row.visible { display: flex; }
   .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-  .dot.running { background: #2563eb; animation: blink 1s ease-in-out infinite; }
+  .dot.running { background: #2563eb; animation: pulse 1s ease-in-out infinite; }
   .dot.done    { background: #16a34a; }
   .dot.error   { background: #dc2626; }
-  @keyframes blink { 0%,100%{opacity:1}50%{opacity:.3} }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
 
-  /* ── Terminal ────────────────────────────────────────────────── */
+  /* ── Terminal ── */
   .terminal {
-    background: #0f172a; color: #e2e8f0; padding: 0.9rem 1rem; border-radius: 9px;
-    font-family: 'Fira Code', monospace; font-size: 0.74rem; min-height: 180px;
-    max-height: 380px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;
-    border: 1px solid #1e293b; line-height: 1.55; margin-top: 0.6rem;
+    margin-top: 0.75rem; background: #0f172a; color: #e2e8f0;
+    padding: 0.9rem 1rem; border-radius: 9px; font-family: 'Fira Code', monospace;
+    font-size: 0.74rem; min-height: 200px; max-height: 420px; overflow-y: auto;
+    white-space: pre-wrap; word-break: break-all; border: 1px solid #1e293b; line-height: 1.55;
   }
-  .terminal-clear { width: 100%; margin-top: 0.5rem; padding: 0.35rem;
-                    background: #1e293b; color: #475569; font-size: 0.75rem;
-                    border: 1px solid #334155; border-radius: 6px; }
-  .terminal-clear:hover { background: #334155; color: #94a3b8; }
+  .term-clear {
+    width: 100%; margin-top: 0.4rem; padding: 0.3rem; background: #1e293b;
+    color: #475569; font-size: 0.72rem; border: 1px solid #334155; border-radius: 6px;
+  }
+  .term-clear:hover { background: #334155; color: #94a3b8; }
 
-  #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #166534; color: white;
-           padding: 0.7rem 1.1rem; border-radius: 8px; font-size: 0.85rem;
-           display: none; z-index: 200; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-  .hidden { display: none !important; }
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 1.5rem; right: 1.5rem; background: #166534;
+    color: white; padding: 0.65rem 1rem; border-radius: 8px; font-size: 0.83rem;
+    display: none; z-index: 300; box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+  }
 </style>
 </head>
 <body>
 
-<!-- ── Sidebar ─────────────────────────────────────────────── -->
 <aside class="sidebar">
   <div class="sb-brand">cf</div>
   <nav class="sb-nav">
@@ -171,83 +178,95 @@
   <div class="sb-divider"></div>
   <div class="sb-footer">
     <div class="sb-user" id="user-badge">…</div>
-    <button class="sb-item" onclick="logout()">
+    <button class="sb-item" onclick="doLogout()">
       <span class="sb-icon">↩️</span>
       <span class="sb-label">Sign out</span>
     </button>
   </div>
 </aside>
 
-<!-- ── Main ────────────────────────────────────────────────── -->
 <main class="main">
   <div class="page-title">
     <h1>Use a Template</h1>
-    <p>Select a template, fill in the variables, and push it to a device.</p>
+    <p>Select a template, fill in the variables, then push it to a device.</p>
   </div>
 
   <!-- Left column -->
   <div>
-    <!-- Template selector card -->
     <div class="card">
-      <div class="card-title">1 · Select template</div>
-      <div class="tpl-bar">
-        <select id="template-select" onchange="onTemplateChange()">
-          <option value="">— Choose a template —</option>
-        </select>
-        <a href="/templates.html" class="manage-link">＋ Manage</a>
-      </div>
 
-      <div class="tpl-preview-card" id="tpl-preview-card">
-        <div class="tpl-preview-name" id="tpl-preview-name"></div>
-        <div class="tpl-preview-body" id="tpl-preview-body"></div>
+      <!-- 1 · Select template -->
+      <div class="step-label">
+        <span class="num on">1</span>
+        Select template
+        <a href="/templates.html" style="margin-left:auto;font-size:0.75rem;color:#2563eb;text-decoration:none;font-weight:500;text-transform:none;letter-spacing:0">＋ New template</a>
       </div>
+      <select id="tpl-select" onchange="onTplChange()">
+        <option value="">— Choose a template —</option>
+      </select>
 
-      <!-- Variable form -->
-      <div class="vars-section" id="vars-section">
-        <div class="card-title" style="margin-top:1rem">2 · Fill in variables</div>
+      <!-- 2 · Variables — hidden until a template is chosen, shown via .visible class -->
+      <div class="vars-block" id="vars-block">
+        <div class="step-label">
+          <span class="num on">2</span>
+          Fill in variables
+        </div>
         <div class="vars-grid" id="vars-grid"></div>
       </div>
 
-      <!-- Output -->
-      <div class="output-section" id="output-section">
-        <div class="output-header" style="margin-top:1.25rem">
-          <span class="output-label">3 · Generated output</span>
-          <button class="btn-copy" onclick="copyOutput()">⎘ Copy</button>
+      <!-- 3 · Output — same approach -->
+      <div class="output-block" id="output-block">
+        <div class="output-hdr">
+          <div class="step-label" style="margin-bottom:0">
+            <span class="num on">3</span>
+            Generated output
+          </div>
+          <div style="display:flex;gap:0.4rem">
+            <button class="btn-sm btn-muted" onclick="clearVars()">Clear</button>
+            <button class="btn-sm btn-ghost" onclick="copyOut()">⎘ Copy</button>
+          </div>
         </div>
         <div class="output-area" id="output-area"></div>
-        <div class="action-row">
-          <button class="btn btn-secondary btn-sm" onclick="clearFields()">Clear fields</button>
-        </div>
       </div>
+
     </div>
   </div>
 
   <!-- Right column: SSH -->
   <div class="ssh-sticky">
     <div class="card">
-      <div class="card-title">4 · Execute on device</div>
 
-      <span class="ssh-label">Target device</span>
-      <select class="ssh-select" id="device-select" onchange="onDeviceChange()">
-        <option value="">— Select device —</option>
-      </select>
+      <div class="step-label">
+        <span class="num" id="step4num">4</span>
+        Execute on device
+      </div>
 
-      <span class="ssh-label">Override credential <span style="color:#cbd5e1;font-weight:400">(optional)</span></span>
-      <select class="ssh-select" id="cred-select">
-        <option value="">— Use device default —</option>
-      </select>
+      <div class="ssh-row">
+        <label>Target device</label>
+        <select id="dev-select" onchange="onDevChange()">
+          <option value="">— Select device —</option>
+        </select>
+      </div>
+
+      <div class="ssh-row">
+        <label>Credential override <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+        <select id="cred-select">
+          <option value="">— Use device default —</option>
+        </select>
+      </div>
 
       <button class="run-btn" id="run-btn" onclick="runSsh()" disabled>
         ▶ Run on device
       </button>
 
-      <div class="ssh-status" id="ssh-status">
+      <div class="status-row" id="status-row">
         <div class="dot" id="status-dot"></div>
         <span id="status-text"></span>
       </div>
 
-      <div class="terminal" id="terminal">Select a device and template, then click Run.</div>
-      <button class="terminal-clear" onclick="clearTerminal()">🗑 Clear terminal</button>
+      <div class="terminal" id="terminal">Select a template and device, then click Run.</div>
+      <button class="term-clear" onclick="clearTerm()">🗑 Clear terminal</button>
+
     </div>
   </div>
 </main>
@@ -262,240 +281,227 @@ let currentTpl = null;
 let pollTimer  = null;
 
 // ── Boot ──────────────────────────────────────────────────────
-(async function boot() {
+(async () => {
   try {
     const me = await api('/auth/me');
     document.getElementById('user-badge').textContent = me.username;
     if (me.role === 'admin') document.getElementById('admin-link').classList.remove('hidden');
   } catch (_) {}
-  await Promise.all([loadTemplates(), loadDevicesAndCreds()]);
 
-  const preselect = new URLSearchParams(location.search).get('template');
-  if (preselect) {
-    document.getElementById('template-select').value = preselect;
-    onTemplateChange();
+  await Promise.all([loadTemplates(), loadDevsCreds()]);
+
+  const tid = new URLSearchParams(location.search).get('template');
+  if (tid) {
+    document.getElementById('tpl-select').value = tid;
+    await onTplChange();
   }
 })();
 
-// ── Templates ─────────────────────────────────────────────────
+// ── Load template list ─────────────────────────────────────────
 async function loadTemplates() {
   try {
     templates = await api('/api/templates');
-    const sel = document.getElementById('template-select');
+    const sel = document.getElementById('tpl-select');
     sel.innerHTML = '<option value="">— Choose a template —</option>';
-    [...templates].sort((a, b) => a.name.localeCompare(b.name)).forEach(t => {
-      const o = document.createElement('option');
-      o.value = t.template_id;
-      o.textContent = t.name;
-      sel.appendChild(o);
-    });
-  } catch (_) { toast('Failed to load templates', true); }
+    [...templates]
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .forEach(t => {
+        const o = document.createElement('option');
+        o.value       = t.template_id;
+        o.textContent = t.name;
+        sel.appendChild(o);
+      });
+  } catch (_) { toast('Could not load templates', true); }
 }
 
-async function onTemplateChange() {
-  const id = document.getElementById('template-select').value;
-  clearOutput();
+// ── Template selected ──────────────────────────────────────────
+async function onTplChange() {
+  const id = document.getElementById('tpl-select').value;
 
-  if (!id) {
-    currentTpl = null;
-    hide('tpl-preview-card');
-    hide('vars-section');
-    hide('output-section');
-    updateRunBtn();
+  // Collapse both sections
+  document.getElementById('vars-block').classList.remove('visible');
+  document.getElementById('output-block').classList.remove('visible');
+  document.getElementById('output-area').innerHTML = '';
+  document.getElementById('vars-grid').innerHTML   = '';
+  currentTpl = null;
+  updateRunBtn();
+
+  if (!id) return;
+
+  // Fetch full record — the list endpoint omits template_text
+  try {
+    currentTpl = await api('/api/templates/' + id);
+  } catch (_) {
+    toast('Could not load template body', true);
     return;
   }
 
-  let t = templates.find(x => x.template_id === id);
-  if (!t || !t.template_text) {
-    try { t = await api('/api/templates/' + id); } catch (_) {
-      toast('Failed to load template', true); return;
-    }
-  }
-  currentTpl = t;
-
-  // Show preview
-  document.getElementById('tpl-preview-name').textContent = t.name;
-  document.getElementById('tpl-preview-body').textContent  = t.template_text;
-  show('tpl-preview-card');
-
-  // Build variable form
-  const vars = extractVars(t.template_text);
+  // Build variable input fields
+  const vars = extractVars(currentTpl.template_text);
   const grid = document.getElementById('vars-grid');
-  if (vars.length) {
-    grid.innerHTML = vars.map(v => `
-      <div class="form-group">
-        <label for="${varId(v)}">${esc(v)}</label>
-        <input type="text" id="${varId(v)}" placeholder="${esc(v)}" oninput="liveGenerate()" />
-      </div>`).join('');
-    show('vars-section');
-    // Auto-focus first field
-    const first = grid.querySelector('input');
-    if (first) first.focus();
+
+  if (vars.length === 0) {
+    grid.innerHTML = '<p class="no-vars-note">No variables — this template will execute as-is.</p>';
   } else {
-    grid.innerHTML = '<p class="no-vars-note">No variables — output is the template as-is.</p>';
-    show('vars-section');
+    grid.innerHTML = vars.map(v => `
+      <div class="var-field">
+        <label for="${vid(v)}">${esc(v)}</label>
+        <input type="text" id="${vid(v)}" placeholder="${esc(v)}" oninput="liveRender()" />
+      </div>`).join('');
   }
 
-  // Show output immediately with raw template (unfilled vars highlighted)
-  show('output-section');
-  liveGenerate();
+  // Show both sections by adding .visible (CSS: .vars-block.visible { display:block })
+  document.getElementById('vars-block').classList.add('visible');
+  document.getElementById('output-block').classList.add('visible');
+
+  liveRender();
   updateRunBtn();
+
+  // Auto-focus first variable
+  const first = grid.querySelector('input');
+  if (first) first.focus();
 }
 
-// Live-generate as user types — replaces manual "Generate" button
-function liveGenerate() {
+// ── Live render ────────────────────────────────────────────────
+function liveRender() {
   if (!currentTpl) return;
-  const vars   = extractVars(currentTpl.template_text);
-  const values = {};
+  const vars = extractVars(currentTpl.template_text);
+  let   html = esc(currentTpl.template_text);
+
   vars.forEach(v => {
-    const el = document.getElementById(varId(v));
-    values[v] = el ? el.value : '';
+    const el  = document.getElementById(vid(v));
+    const val = el ? el.value : '';
+    const re  = new RegExp('\\{\\{\\s*' + reEsc(v) + '\\s*\\}\\}', 'g');
+    html = val
+      ? html.replace(re, `<span class="filled">${esc(val)}</span>`)
+      : html.replace(re, `<span class="unfilled">{{${esc(v)}}}</span>`);
   });
 
-  // Build highlighted HTML for the output
-  let result = esc(currentTpl.template_text);
-  vars.forEach(v => {
-    const val = values[v];
-    const pattern = new RegExp('\\{\\{\\s*' + escRegex(v) + '\\s*\\}\\}', 'g');
-    if (val) {
-      result = result.replace(pattern, `<span style="color:#86efac">${esc(val)}</span>`);
-    } else {
-      result = result.replace(pattern, `<span class="unfilled-var">{{${esc(v)}}}</span>`);
-    }
-  });
-
-  const area = document.getElementById('output-area');
-  area.innerHTML = result;
-  area.classList.toggle('has-content', vars.every(v => values[v]));
-  updateRunBtn();
+  document.getElementById('output-area').innerHTML = html;
 }
 
-function getFilledOutput() {
+// Plain-text version (for SSH execution and clipboard)
+function renderedText() {
   if (!currentTpl) return '';
   const vars = extractVars(currentTpl.template_text);
-  let result = currentTpl.template_text;
+  let   out  = currentTpl.template_text;
   vars.forEach(v => {
-    const el  = document.getElementById(varId(v));
-    const val = el ? el.value : '';
-    result = result.replace(new RegExp('\\{\\{\\s*' + escRegex(v) + '\\s*\\}\\}', 'g'), val);
+    const el = document.getElementById(vid(v));
+    out = out.replace(new RegExp('\\{\\{\\s*' + reEsc(v) + '\\s*\\}\\}', 'g'), el ? el.value : '');
   });
-  return result;
+  return out;
 }
 
-function clearFields() {
+function clearVars() {
   if (!currentTpl) return;
   extractVars(currentTpl.template_text).forEach(v => {
-    const el = document.getElementById(varId(v));
+    const el = document.getElementById(vid(v));
     if (el) el.value = '';
   });
-  liveGenerate();
+  liveRender();
 }
 
-function clearOutput() {
-  const area = document.getElementById('output-area');
-  area.innerHTML = '';
-  area.classList.remove('has-content');
-  hide('output-section');
-  updateRunBtn();
+function copyOut() {
+  const t = renderedText();
+  if (!t.trim()) return toast('Nothing to copy', true);
+  navigator.clipboard.writeText(t)
+    .then(() => toast('Copied to clipboard'))
+    .catch(() => toast('Copy failed', true));
 }
 
-function copyOutput() {
-  const text = getFilledOutput();
-  if (!text.trim()) return toast('Nothing to copy', true);
-  navigator.clipboard.writeText(text).then(() => toast('Copied!')).catch(() => toast('Copy failed', true));
-}
-
-// ── Devices & credentials ─────────────────────────────────────
-async function loadDevicesAndCreds() {
+// ── Devices & credentials ──────────────────────────────────────
+async function loadDevsCreds() {
   try {
-    const [devices, creds] = await Promise.all([
+    const [devs, creds] = await Promise.all([
       api('/api/devices'),
       api('/api/devices/credentials'),
     ]);
-    const devSel = document.getElementById('device-select');
-    devSel.innerHTML = '<option value="">— Select device —</option>';
+
+    const ds = document.getElementById('dev-select');
+    ds.innerHTML = '<option value="">— Select device —</option>';
     const groups = {};
-    devices.forEach(d => { const g = d.group_name||'Ungrouped'; (groups[g]=groups[g]||[]).push(d); });
-    Object.entries(groups).sort().forEach(([g, devs]) => {
+    devs.forEach(d => { const g = d.group_name || 'Ungrouped'; (groups[g] = groups[g] || []).push(d); });
+    Object.entries(groups).sort().forEach(([g, list]) => {
       const og = document.createElement('optgroup');
       og.label = g;
-      devs.forEach(d => {
+      list.forEach(d => {
         const o = document.createElement('option');
-        o.value = d.id;
+        o.value       = d.id;
         o.textContent = `${d.name} (${d.hostname})`;
         og.appendChild(o);
       });
-      devSel.appendChild(og);
+      ds.appendChild(og);
     });
-    const credSel = document.getElementById('cred-select');
-    credSel.innerHTML = '<option value="">— Use device default —</option>';
+
+    const cs = document.getElementById('cred-select');
+    cs.innerHTML = '<option value="">— Use device default —</option>';
     creds.forEach(c => {
       const o = document.createElement('option');
-      o.value = c.id;
+      o.value       = c.id;
       o.textContent = `${c.name} (${c.username})`;
-      credSel.appendChild(o);
+      cs.appendChild(o);
     });
   } catch (_) {}
 }
 
-function onDeviceChange() { updateRunBtn(); }
+function onDevChange() { updateRunBtn(); }
 
 function updateRunBtn() {
-  const hasDevice  = !!document.getElementById('device-select').value;
-  const hasTemplate = !!currentTpl;
-  document.getElementById('run-btn').disabled = !(hasDevice && hasTemplate);
+  const ready = !!document.getElementById('dev-select').value && !!currentTpl;
+  document.getElementById('run-btn').disabled = !ready;
+  document.getElementById('step4num').classList.toggle('on', ready);
 }
 
-// ── SSH execution ─────────────────────────────────────────────
+// ── SSH execution ──────────────────────────────────────────────
 async function runSsh() {
-  const deviceId = document.getElementById('device-select').value;
-  const credId   = document.getElementById('cred-select').value;
-  if (!deviceId || !currentTpl) return;
+  const devId  = document.getElementById('dev-select').value;
+  const credId = document.getElementById('cred-select').value;
+  if (!devId || !currentTpl) return;
 
-  const command = getFilledOutput().trim();
-  if (!command) return toast('Template produced empty output', true);
+  const cmd = renderedText().trim();
+  if (!cmd) return toast('Template output is empty', true);
 
-  clearTerminal();
-  setStatus('running', 'Starting job…');
-  setRunBtn(true);
+  clearTerm();
+  setStatus('running', 'Connecting…');
+  setBusy(true);
 
   let jobId;
   try {
-    const data = await api('/api/ssh/execute', {
+    const r = await api('/api/ssh/execute', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        device_id:     parseInt(deviceId),
+        device_id:     parseInt(devId),
         credential_id: credId ? parseInt(credId) : undefined,
-        command,
+        command:       cmd,
         template_id:   currentTpl.template_id,
       }),
     });
-    jobId = data.jobId;
+    jobId = r.jobId;
   } catch (e) {
-    termWrite('Error: ' + (e.message || 'Unknown') + '\n');
+    termWrite('Error: ' + (e.message || 'unknown') + '\n');
     setStatus('error', 'Failed to start');
-    setRunBtn(false);
+    setBusy(false);
     return;
   }
 
   pollTimer = setInterval(async () => {
     try {
-      const poll = await api('/api/ssh/poll/' + jobId);
-      if (poll.newOutput) termWrite(poll.newOutput);
-      if (poll.status === 'running') return;
+      const p = await api('/api/ssh/poll/' + jobId);
+      if (p.newOutput) termWrite(p.newOutput);
+      if (p.status === 'running') return;
       clearInterval(pollTimer); pollTimer = null;
-      if (poll.status === 'done') {
-        setStatus('done', `Done (exit 0)`);
+      if (p.status === 'done') {
+        setStatus('done', 'Done (exit 0)');
       } else {
-        setStatus('error', `Failed (exit ${poll.exitCode ?? '?'})`);
+        setStatus('error', `Failed (exit ${p.exitCode ?? '?'})`);
       }
-      setRunBtn(false);
+      setBusy(false);
     } catch (e) {
       clearInterval(pollTimer); pollTimer = null;
-      termWrite('\nPolling error: ' + e.message + '\n');
+      termWrite('\nPoll error: ' + e.message + '\n');
       setStatus('error', 'Polling failed');
-      setRunBtn(false);
+      setBusy(false);
     }
   }, 800);
 }
@@ -505,34 +511,37 @@ function termWrite(t) {
   el.textContent += t;
   el.scrollTop = el.scrollHeight;
 }
-function clearTerminal() {
+function clearTerm() {
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
   document.getElementById('terminal').textContent = '';
-  document.getElementById('ssh-status').className = 'ssh-status';
+  document.getElementById('status-row').classList.remove('visible');
 }
 function setStatus(type, text) {
-  document.getElementById('ssh-status').className = 'ssh-status visible';
+  document.getElementById('status-row').classList.add('visible');
   document.getElementById('status-dot').className  = 'dot ' + type;
   document.getElementById('status-text').textContent = text;
 }
-function setRunBtn(running) {
+function setBusy(busy) {
   const btn = document.getElementById('run-btn');
-  const ok  = !!document.getElementById('device-select').value && !!currentTpl;
-  btn.disabled    = running || !ok;
-  btn.textContent = running ? '⏳ Running…' : '▶ Run on device';
+  btn.disabled    = busy || !document.getElementById('dev-select').value || !currentTpl;
+  btn.textContent = busy ? '⏳ Running…' : '▶ Run on device';
 }
 
-// ── Utilities ─────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────
 function extractVars(text) {
-  const vars = [], re = /{{\s*([^}]+?)\s*}}/g; let m;
-  while ((m = re.exec(text)) !== null) { const v = m[1].trim(); if (!vars.includes(v)) vars.push(v); }
-  return vars;
+  const out = [], re = /{{\s*([^}]+?)\s*}}/g; let m;
+  while ((m = re.exec(text)) !== null) {
+    const v = m[1].trim();
+    if (!out.includes(v)) out.push(v);
+  }
+  return out;
 }
-function varId(n) { return 'v_' + n.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,''); }
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function escRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
-function show(id) { document.getElementById(id).style.display = ''; }
-function hide(id) { document.getElementById(id).style.display = 'none'; }
+// Deterministic, collision-safe id from variable name
+function vid(name) {
+  return 'v__' + name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+}
+function esc(s)   { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function reEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
 async function api(url, opts) {
   const r = await fetch(url, opts);
@@ -540,12 +549,14 @@ async function api(url, opts) {
   if (!r.ok) throw new Error(d.error || r.statusText);
   return d;
 }
-function toast(msg, isErr=false) {
+function toast(msg, err = false) {
   const el = document.getElementById('toast');
-  el.textContent = msg; el.style.background = isErr ? '#7f1d1d' : '#166534';
-  el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 3000);
+  el.textContent = msg;
+  el.style.background = err ? '#7f1d1d' : '#166534';
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3000);
 }
-async function logout() {
+async function doLogout() {
   await fetch('/auth/logout', { method: 'POST' });
   location.href = '/login.html';
 }

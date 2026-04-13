@@ -13,7 +13,7 @@ configify uses a **left sidebar** for navigation. Each item is a square tile wit
 | Icon | Label | Page | Description |
 |------|-------|------|-------------|
 | 📋 | Use | `/` | Select a template, fill variables, execute over SSH |
-| 📂 | Templates | `/templates.html` | Create, preview, and delete templates |
+| 📂 | Templates | `/templates.html` | Create and delete templates |
 | 🖥️ | Devices | `/devices.html` | Manage devices, groups, and credential vault |
 | ⚙️ | Admin | `/admin.html` | User accounts and auth providers (admin only) |
 | ↩️ | Sign out | — | End the current session |
@@ -26,14 +26,14 @@ The active page is highlighted in blue. The Admin item is hidden for non-admin u
 
 ### Workflow
 
-1. **Select template** — pick from the dropdown on the Use page
-2. **Fill variables** — the output updates **live as you type** (no need to click "Generate")
+1. **Select template** — pick from the dropdown on the Use page (`/`)
+2. **Fill variables** — input fields appear immediately; output updates **live as you type**
 3. **Select device** — choose a target from the SSH panel on the right
 4. **Click Run** — configify connects via SSH and streams output to the terminal
 
 ### Variable syntax
 
-Use `{{Variable Name}}` in your template body. Variables are extracted automatically and a form field is generated for each one. Unfilled variables are highlighted in yellow in the output preview; filled values appear in green.
+Use `{{Variable Name}}` in your template body. Variables are extracted automatically and an input field is generated for each one. Unfilled variables show highlighted in yellow in the output preview; filled values appear in green.
 
 ```
 interface {{Interface}}
@@ -44,10 +44,10 @@ ip route 0.0.0.0 0.0.0.0 {{Default Gateway}}
 
 ### Tips
 
-- Variables are case-sensitive: `{{Interface}}` and `{{interface}}` are different
+- Variables are case-sensitive: `{{Interface}}` and `{{interface}}` are treated as separate variables
 - Spaces are allowed in variable names: `{{IP Address}}` is valid
 - Templates with no variables execute as-is
-- The Run button enables as soon as a device is selected (variables don't need to be filled)
+- The Run button enables once both a template and a device are selected
 
 ---
 
@@ -70,9 +70,9 @@ PostgreSQL                ← templates, users, devices, credentials, logs
 
 | URL | Description |
 |-----|-------------|
-| `/` | Template studio + SSH execution panel |
+| `/` | Template use page + SSH execution panel |
 | `/login.html` | Login (local / LDAP / SAML) |
-| `/templates.html` | Template management (create, preview, edit, delete) |
+| `/templates.html` | Template creation + delete list |
 | `/devices.html` | Device inventory + credential vault |
 | `/admin.html` | User admin + auth provider config |
 
@@ -88,7 +88,7 @@ PostgreSQL                ← templates, users, devices, credentials, logs
 | POST | `/auth/logout` | user | Destroy session |
 | GET | `/api/templates` | user | List templates |
 | POST | `/api/templates` | user | Create template |
-| GET | `/api/templates/:id` | user | Get single template |
+| GET | `/api/templates/:id` | user | Get single template (includes body) |
 | DELETE | `/api/templates/:id` | user | Delete template |
 | GET | `/api/devices` | user | List devices |
 | POST | `/api/devices` | user | Add device |
@@ -120,9 +120,9 @@ PostgreSQL                ← templates, users, devices, credentials, logs
 
 configify uses **HTTP polling** — no WebSockets required.
 
-1. Click **▶ Run on device** → `POST /api/ssh/execute` starts the SSH job in the background and returns `{ jobId }`
+1. Click **▶ Run on device** → `POST /api/ssh/execute` starts the SSH job and returns `{ jobId }`
 2. Browser polls `GET /api/ssh/poll/:jobId` every 800 ms
-3. Each poll returns new output since the last call and the job status (`running` / `done` / `error`)
+3. Each poll returns new output since the last call plus the job status (`running` / `done` / `error`)
 4. Terminal updates in real time; polling stops when the job finishes
 
 ### One-time DB migration
@@ -149,7 +149,7 @@ pm2 logs configify-app --lines 50
 | "Failed to decrypt password" | `VAULT_SECRET` changed | Restore original `VAULT_SECRET` or re-enter credential |
 | "connect ECONNREFUSED" | Wrong host/port or firewall | Test: `ssh -p <port> <user>@<host>` from server |
 | "All configured authentication methods failed" | Wrong password/key | Re-enter credential in vault |
-| Poll returns 404 | Server restarted mid-job (in-memory) | Click Run again |
+| Poll returns 404 | Server restarted mid-job (in-memory jobs lost) | Click Run again |
 
 ---
 
@@ -353,7 +353,7 @@ pm2 restart configify-app
 - Session cookies are `httpOnly`, `secure` (production), 8-hour expiry
 - Only `admin` role can delete users, devices, credentials, and groups
 - PostgreSQL bound to `localhost` only
-- SSH host keys accepted automatically; verify fingerprints out-of-band if MITM is a concern
+- SSH host keys accepted automatically; verify fingerprints out-of-band if needed
 
 ```bash
 sudo apt install -y fail2ban && sudo systemctl enable --now fail2ban
@@ -380,7 +380,7 @@ sudo apt install -y fail2ban && sudo systemctl enable --now fail2ban
 ├── configify-selfsigned     ← Nginx config (self-signed)
 ├── auth/index.js            ← Passport: local / LDAP / SAML
 ├── crypto/vault.js          ← AES-256-GCM encrypt/decrypt
-├── middleware/auth.js        ← requireAuth / requireAdmin
+├── middleware/auth.js       ← requireAuth / requireAdmin
 ├── routes/
 │   ├── auth.js              ← /auth/*
 │   ├── users.js             ← /api/users/* + auth-config
@@ -388,20 +388,23 @@ sudo apt install -y fail2ban && sudo systemctl enable --now fail2ban
 │   ├── ssh.js               ← /api/ssh/* (polling-based execution)
 │   └── templates.js         ← /api/templates/*
 └── public/
-    ├── index.html           ← Template use page + SSH panel (left sidebar nav)
+    ├── index.html           ← Template use + SSH execution (left sidebar)
     ├── login.html           ← Login page (local / LDAP / SAML)
-    ├── templates.html       ← Template management (left sidebar nav)
-    ├── devices.html         ← Device inventory + credential vault (left sidebar nav)
-    └── admin.html           ← User + auth config (left sidebar nav)
+    ├── templates.html       ← Template creation + delete list (left sidebar)
+    ├── devices.html         ← Device inventory + credential vault (left sidebar)
+    └── admin.html           ← User + auth config (left sidebar)
 ```
 
 ---
 
 ## Changelog
 
-### v2.1 (current)
-- **Left sidebar navigation** — nav moved from top bar to a fixed left sidebar with square icon tiles (📋 Use / 📂 Templates / 🖥️ Devices / ⚙️ Admin)
-- **Live template variable filling** — output now updates in real time as you type into variable fields; no need to click "Generate output" manually
-- Unfilled variables highlighted in yellow; filled values shown in green in the output preview
-- Improved form layout on the Use page: variables displayed in a responsive grid
-- Cleaner card-based UI with consistent spacing throughout
+### v2.2 (current)
+- **Fixed variable fields not appearing on Use page** — root cause was `show()` setting `style.display = ''` which cannot override a CSS-class `display:none`; now uses `classList.add/remove('visible')` which correctly triggers the `.visible` rule
+- **Templates page simplified** — now a focused creation form; existing templates shown as a compact deletable list below with a Use button linking directly to the Use page
+- **Use page step indicators** — numbered step badges highlight as you progress through select → variables → device → run
+
+### v2.1
+- Left sidebar navigation with square icon tiles
+- Live template variable filling — output updates as you type
+- Unfilled variables highlighted yellow; filled values shown green

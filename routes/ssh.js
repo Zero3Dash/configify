@@ -206,6 +206,14 @@ async function runSsh(jobId, logId, device, cred, command) {
         ssh = new NodeSSH();
         await ssh.connect(sshCfg);
 
+        // Absorb socket-level errors (e.g. EPIPE on close) so they
+        // don't become unhandled exceptions and crash the process.
+        if (ssh.connection) {
+            ssh.connection.on('error', (err) => {
+                console.warn(`[SSH] job ${jobId} connection error (suppressed): ${err.message}`);
+            });
+        }
+
         console.log(`[SSH] job ${jobId} connected`);
         appendOutput(`Connected. Running command...\n`);
 
@@ -214,7 +222,7 @@ async function runSsh(jobId, logId, device, cred, command) {
             onStderr: (chunk) => appendOutput(chunk.toString()),
         });
 
-        ssh.dispose();
+        try { ssh.dispose(); } catch (_) {}
         ssh = null;
 
         await finishJob(result.code, result.code === 0 ? 'done' : 'error');

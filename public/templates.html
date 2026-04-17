@@ -272,6 +272,12 @@
 <script>
 'use strict';
 
+// ── Module-level template store — populated by loadList() ─────
+// Storing templates here lets openEditModal look up data by ID instead of
+// embedding raw content in onclick attributes (which broke when template
+// bodies contained quotes, backticks, or other special characters).
+let allTemplates = [];
+
 const EXAMPLE_NAME = 'Router interface config';
 const EXAMPLE_BODY = `interface {{Interface}}\n ip address {{IP Address}} {{Subnet Mask}}\n no shutdown\nip route 0.0.0.0 0.0.0.0 {{Default Gateway}}`;
 
@@ -346,6 +352,10 @@ async function loadList() {
   const container = document.getElementById('tpl-list');
   try {
     const templates = await api('/api/templates');
+
+    // Keep a module-level copy so openEditModal can look up by ID safely.
+    allTemplates = templates;
+
     if (!templates.length) {
       container.innerHTML = '<div class="empty-note">No templates yet — create your first one above.</div>';
       return;
@@ -357,6 +367,7 @@ async function loadList() {
       const varLabel  = vars.length === 0 ? 'no variables'
                       : vars.length === 1 ? '1 variable'
                       : `${vars.length} variables`;
+      // Pass only the template_id in the onclick — no raw content in attributes.
       return `
         <div class="tpl-row" id="row-${t.template_id}">
           <span class="tpl-name">${esc(t.name)}</span>
@@ -367,11 +378,11 @@ async function loadList() {
               <button class="btn btn-secondary btn-sm">▶ Use</button>
             </a>
             <button class="btn btn-secondary btn-sm"
-              onclick="openEditModal('${t.template_id}', ${JSON.stringify(esc(t.name))}, ${JSON.stringify(t.template_text || '')})">
+              onclick="openEditModal('${esc(t.template_id)}')">
               ✏️ Edit
             </button>
             <button class="btn btn-danger btn-sm"
-              onclick="deleteTemplate('${t.template_id}', '${esc(t.name).replace(/'/g, "\\'")}')">
+              onclick="deleteTemplate('${esc(t.template_id)}', '${esc(t.name).replace(/'/g, "\\'")}')">
               Delete
             </button>
           </div>
@@ -383,16 +394,26 @@ async function loadList() {
 }
 
 // ── Edit modal ────────────────────────────────────────────────
-function openEditModal(templateId, name, body) {
-  document.getElementById('e-id').value   = templateId;
-  document.getElementById('e-name').value = name;
-  document.getElementById('e-body').value = body;
-  // Trigger live preview
-  const text = body;
+// Accepts only a template_id and retrieves the full record from allTemplates.
+// Previously the name and body were passed directly as onclick arguments, which
+// caused them to leak into the create form when template content contained
+// characters that broke the HTML attribute boundary.
+function openEditModal(templateId) {
+  const t = allTemplates.find(x => x.template_id === templateId);
+  if (!t) {
+    toast('Could not find template — try refreshing the list', true);
+    return;
+  }
+
+  document.getElementById('e-id').value   = t.template_id;
+  document.getElementById('e-name').value = t.name;
+  document.getElementById('e-body').value = t.template_text || '';
+
+  const text = t.template_text || '';
   document.getElementById('e-char-count').textContent = `${text.length} chars`;
   updateVarPreview(text, 'e-var-preview');
+
   document.getElementById('edit-modal').classList.add('open');
-  // Focus the name field
   setTimeout(() => document.getElementById('e-name').focus(), 50);
 }
 
@@ -400,12 +421,34 @@ function closeEditModal() {
   document.getElementById('edit-modal').classList.remove('open');
 }
 
+// Saves edits — shows a confirmation dialog describing what will change
+// before committing to the server.
 async function saveEdit() {
   const id   = document.getElementById('e-id').value;
   const name = document.getElementById('e-name').value.trim();
   const body = document.getElementById('e-body').value.trim();
   if (!name) return toast('Template name is required', true);
   if (!body) return toast('Template body is empty', true);
+
+  const original    = allTemplates.find(x => x.template_id === id);
+  const nameChanged = original && original.name          !== name;
+  const bodyChanged = original && original.template_text !== body;
+
+  if (!nameChanged && !bodyChanged) {
+    toast('No changes to save');
+    closeEditModal();
+    return;
+  }
+
+  const changes = [];
+  if (nameChanged) changes.push(`rename to "${name}"`);
+  if (bodyChanged) changes.push('update the template body');
+
+  const confirmed = confirm(
+    `Save changes to "${original ? original.name : name}"?\n\n` +
+    `This will ${changes.join(' and ')}.`
+  );
+  if (!confirmed) return;
 
   try {
     await api(`/api/templates/${id}`, {

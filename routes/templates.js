@@ -1,5 +1,5 @@
 /**
- * routes/templates.js  (extracted from original server.js)
+ * routes/templates.js
  */
 const express = require('express');
 const db      = require('../db');
@@ -8,7 +8,7 @@ const router  = express.Router();
 router.get('/', async (req, res) => {
     try {
         const result = await db.query(
-            'SELECT id, template_id, name, created_at FROM templates ORDER BY created_at DESC'
+            'SELECT id, template_id, name, template_text, created_at FROM templates ORDER BY created_at DESC'
         );
         res.json(result.rows);
     } catch (err) {
@@ -42,6 +42,27 @@ router.post('/', async (req, res) => {
             [template_id, name, template_text]
         );
         res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+router.put('/:template_id', async (req, res) => {
+    try {
+        const { template_id } = req.params;
+        const { name, template_text } = req.body;
+        if (!name || !template_text)
+            return res.status(400).json({ error: 'Name and template_text are required' });
+        const result = await db.query(
+            `UPDATE templates
+             SET name = $1, template_text = $2, updated_at = CURRENT_TIMESTAMP
+             WHERE template_id = $3
+             RETURNING id, template_id, name, template_text, created_at, updated_at`,
+            [name, template_text, template_id]
+        );
+        if (!result.rows.length) return res.status(404).json({ error: 'Template not found' });
+        res.json(result.rows[0]);
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Database error' });

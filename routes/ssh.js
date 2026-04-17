@@ -7,6 +7,12 @@
  *   POST /api/ssh/execute          → starts SSH job, returns { jobId }
  *   GET  /api/ssh/poll/:jobId      → returns { status, newOutput, exitCode }
  *
+ * Execution strategy:
+ *   - Single-line commands on Linux/Unix: execCommand  (clean exit code)
+ *   - Multi-line templates OR network device types:  PTY shell mode
+ *     Commands are sent line-by-line; output is streamed back in real time.
+ *     The shell is closed after 2 s of output silence (or 90 s hard cap).
+ *
  * Jobs are kept in memory for 10 minutes then cleaned up.
  * All routes require a valid session (requireAuth).
  */
@@ -20,18 +26,11 @@ const { requireAuth } = require('../middleware/auth');
 const router = express.Router();
 
 // ── In-memory job store ───────────────────────────────────────
-//
-// jobId → {
-//   userId,
-//   status: 'running' | 'done' | 'error',
-//   output: string,          // full output so far
-//   sentUpTo: number,        // how many chars the client has already received
-//   exitCode: number | null,
-//   error: string | null,
-//   createdAt: number,
-// }
 const jobs = new Map();
 let jobCounter = 0;
+
+// Device types that must use shell mode regardless of line count
+const SHELL_DEVICE_TYPES = new Set(['cisco_ios', 'cisco_nxos', 'junos', 'windows']);
 
 // Clean up jobs older than 10 minutes
 setInterval(() => {
@@ -40,6 +39,8 @@ setInterval(() => {
         if (job.createdAt < cutoff) jobs.delete(id);
     }
 }, 60 * 1000);
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 // ── POST /api/ssh/execute ─────────────────────────────────────
 router.post('/execute', requireAuth, async (req, res) => {
@@ -103,7 +104,11 @@ router.post('/execute', requireAuth, async (req, res) => {
         return res.status(500).json({ error: 'Database error' });
     }
 
-    // 5. Create in-memory job
+    // 5. Determine execution strategy
+    const lines = command.split('\n').map(l => l.trimEnd()).filter(l => l.length > 0);
+    const useShell = lines.length > 1 || SHELL_DEVICE_TYPES.has(device.device_type);
+
+    // 6. Create in-memory job
     const jobId = ++jobCounter;
     jobs.set(jobId, {
         userId:    req.user.id,
@@ -116,10 +121,13 @@ router.post('/execute', requireAuth, async (req, res) => {
         createdAt: Date.now(),
     });
 
-    console.log(`[SSH] job ${jobId} started — device=${device.hostname}:${device.port} user=${req.user.id} logId=${logId}`);
+    console.log(
+        `[SSH] job ${jobId} started — device=${device.hostname}:${device.port}` +
+        ` user=${req.user.id} logId=${logId} mode=${useShell ? 'shell' : 'exec'}`
+    );
 
-    // 6. Run SSH asynchronously (do not await)
-    runSsh(jobId, logId, device, cred, command);
+    // 7. Run SSH asynchronously (do not await)
+    runSsh(jobId, logId, device, cred, lines, useShell);
 
     return res.json({ ok: true, jobId });
 });
@@ -136,20 +144,19 @@ router.get('/poll/:jobId', requireAuth, (req, res) => {
         return res.status(403).json({ error: 'Forbidden' });
     }
 
-    // Return only new output since last poll
     const newOutput = job.output.slice(job.sentUpTo);
     job.sentUpTo    = job.output.length;
 
     return res.json({
-        status:    job.status,           // 'running' | 'done' | 'error'
+        status:    job.status,
         newOutput,
         exitCode:  job.exitCode,
         error:     job.error,
     });
 });
 
-// ── SSH runner (async, does not block the request) ────────────
-async function runSsh(jobId, logId, device, cred, command) {
+// ── SSH runner ────────────────────────────────────────────────
+async function runSsh(jobId, logId, device, cred, lines, useShell) {
     const job = jobs.get(jobId);
     let   ssh = null;
 
@@ -182,7 +189,6 @@ async function runSsh(jobId, logId, device, cred, command) {
             port:         device.port || 22,
             username:     cred.username,
             readyTimeout: 20000,
-            // Accept all host keys automatically
             hostVerifier: () => true,
         };
 
@@ -206,26 +212,32 @@ async function runSsh(jobId, logId, device, cred, command) {
         ssh = new NodeSSH();
         await ssh.connect(sshCfg);
 
-        // Absorb socket-level errors (e.g. EPIPE on close) so they
-        // don't become unhandled exceptions and crash the process.
         if (ssh.connection) {
             ssh.connection.on('error', (err) => {
                 console.warn(`[SSH] job ${jobId} connection error (suppressed): ${err.message}`);
             });
         }
 
-        console.log(`[SSH] job ${jobId} connected`);
+        console.log(`[SSH] job ${jobId} connected — mode=${useShell ? 'shell' : 'exec'}`);
         appendOutput(`Connected. Running command...\n`);
 
-        const result = await ssh.execCommand(command, {
-            onStdout: (chunk) => appendOutput(chunk.toString()),
-            onStderr: (chunk) => appendOutput(chunk.toString()),
-        });
+        let exitCode;
+
+        if (useShell) {
+            exitCode = await runWithShell(ssh, jobId, lines, device.device_type, appendOutput);
+        } else {
+            // Single-line non-network command: use execCommand
+            const result = await ssh.execCommand(lines[0], {
+                onStdout: (chunk) => appendOutput(chunk.toString()),
+                onStderr: (chunk) => appendOutput(chunk.toString()),
+            });
+            exitCode = result.code;
+        }
 
         try { ssh.dispose(); } catch (_) {}
         ssh = null;
 
-        await finishJob(result.code, result.code === 0 ? 'done' : 'error');
+        await finishJob(exitCode, exitCode === 0 ? 'done' : 'error');
 
     } catch (e) {
         console.error(`[SSH] job ${jobId} error:`, e.message);
@@ -233,6 +245,92 @@ async function runSsh(jobId, logId, device, cred, command) {
         if (ssh) { try { ssh.dispose(); } catch (_) {} }
         await finishJob(-1, 'error', e.message);
     }
+}
+
+// ── Shell-mode runner ─────────────────────────────────────────
+//
+// Opens a PTY shell, sends each line individually (with a small inter-line
+// delay so the device has time to process), then waits for the output to
+// go quiet before closing.
+//
+// Quiet detection:  2 000 ms of no new output after all lines are sent.
+// Hard cap:         90 seconds total, after which the shell is force-closed.
+//
+async function runWithShell(ssh, jobId, lines, deviceType, appendOutput) {
+    const INTER_LINE_DELAY_MS  =  150;   // delay between each sent line
+    const QUIET_SETTLE_MS      = 2000;   // idle time before we consider it done
+    const HARD_TIMEOUT_MS      = 90000;  // absolute maximum
+
+    return new Promise(async (resolve) => {
+        let settled = false;
+        let lastOutputAt = Date.now();
+        let quietTimer   = null;
+        let hardTimer    = null;
+
+        const finish = (code) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(quietTimer);
+            clearTimeout(hardTimer);
+            resolve(code);
+        };
+
+        let shell;
+        try {
+            shell = await ssh.requestShell({ term: 'vt100', rows: 80, cols: 220 });
+        } catch (e) {
+            appendOutput(`\nFailed to open shell: ${e.message}\n`);
+            finish(1);
+            return;
+        }
+
+        shell.on('data', (chunk) => {
+            appendOutput(chunk.toString());
+            lastOutputAt = Date.now();
+
+            // Restart the quiet timer every time new data arrives
+            clearTimeout(quietTimer);
+            quietTimer = setTimeout(closeShell, QUIET_SETTLE_MS);
+        });
+
+        shell.on('close', () => finish(0));
+        shell.on('error', (err) => {
+            appendOutput(`\nShell error: ${err.message}\n`);
+            finish(1);
+        });
+
+        // Hard timeout
+        hardTimer = setTimeout(() => {
+            appendOutput('\n[configify] Hard timeout reached — closing session.\n');
+            closeShell();
+        }, HARD_TIMEOUT_MS);
+
+        // Send all lines, then arm the initial quiet timer in case the device
+        // sends no output at all (e.g. it never echoes)
+        const sendLines = async () => {
+            for (const line of lines) {
+                if (settled) return;
+                console.log(`[SSH] job ${jobId} → ${line}`);
+                shell.write(line + '\n');
+                await sleep(INTER_LINE_DELAY_MS);
+            }
+            // Arm quiet timer after last line (in case no data arrives at all)
+            clearTimeout(quietTimer);
+            quietTimer = setTimeout(closeShell, QUIET_SETTLE_MS);
+        };
+
+        const closeShell = () => {
+            if (settled) return;
+            try { shell.write('exit\n'); } catch (_) {}
+            // Give a final second for the shell to close gracefully
+            setTimeout(() => finish(0), 1000);
+        };
+
+        sendLines().catch((e) => {
+            appendOutput(`\nSend error: ${e.message}\n`);
+            closeShell();
+        });
+    });
 }
 
 module.exports = router;

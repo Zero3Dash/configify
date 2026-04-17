@@ -125,6 +125,31 @@
   .tpl-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
   .empty-note { text-align: center; padding: 1.5rem; color: #94a3b8; font-size: 0.85rem; }
 
+  /* ── Modal ── */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    display: none; align-items: center; justify-content: center; z-index: 200;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: white; border-radius: 14px; padding: 1.5rem;
+    width: 100%; max-width: 620px; max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+  }
+  .modal h3 { font-size: 1rem; font-weight: 700; margin-bottom: 1.1rem; }
+  .modal label {
+    display: block; font-size: 0.8rem; font-weight: 600;
+    color: #374151; margin-bottom: 0.3rem; margin-top: 0.85rem;
+  }
+  .modal label:first-of-type { margin-top: 0; }
+  .modal input[type="text"] { font-size: 0.875rem; }
+  .modal textarea {
+    min-height: 260px; font-family: 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 0.8rem; line-height: 1.65; resize: vertical;
+  }
+  .modal-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 0.4rem; }
+  .modal-footer { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.2rem; }
+
   /* ── Toast ── */
   #toast {
     position: fixed; bottom: 1.5rem; right: 1.5rem; background: #166534;
@@ -214,6 +239,34 @@
   </div>
 </main>
 
+<!-- ── Edit modal ── -->
+<div class="modal-backdrop" id="edit-modal">
+  <div class="modal">
+    <h3>Edit template</h3>
+    <input type="hidden" id="e-id" />
+
+    <label for="e-name">Template name</label>
+    <input type="text" id="e-name" maxlength="120" />
+
+    <label for="e-body">
+      Template body
+      <span style="font-weight:400;color:#94a3b8;font-size:0.75rem;margin-left:0.4rem">— {{Variable Name}} for placeholders</span>
+    </label>
+    <textarea id="e-body" oninput="onEditBodyInput()"></textarea>
+    <div class="modal-meta">
+      <div class="var-preview" id="e-var-preview">
+        <span class="var-none">No variables detected yet</span>
+      </div>
+      <span class="char-count" id="e-char-count">0 chars</span>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEdit()">💾 Save changes</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -232,21 +285,29 @@ const EXAMPLE_BODY = `interface {{Interface}}\n ip address {{IP Address}} {{Subn
   await loadList();
 })();
 
-// ── Live body input ────────────────────────────────────────────
+// ── Live body input (create form) ─────────────────────────────
 function onBodyInput() {
   const text = document.getElementById('t-body').value;
   document.getElementById('char-count').textContent = `${text.length} chars`;
-
-  const vars = extractVars(text);
-  const preview = document.getElementById('var-preview');
-  if (vars.length === 0) {
-    preview.innerHTML = '<span class="var-none">No variables detected yet</span>';
-  } else {
-    preview.innerHTML = vars.map(v => `<span class="var-chip">{{${esc(v)}}}</span>`).join('');
-  }
+  updateVarPreview(text, 'var-preview');
 }
 
-// ── Save ──────────────────────────────────────────────────────
+// ── Live body input (edit modal) ──────────────────────────────
+function onEditBodyInput() {
+  const text = document.getElementById('e-body').value;
+  document.getElementById('e-char-count').textContent = `${text.length} chars`;
+  updateVarPreview(text, 'e-var-preview');
+}
+
+function updateVarPreview(text, previewId) {
+  const vars    = extractVars(text);
+  const preview = document.getElementById(previewId);
+  preview.innerHTML = vars.length === 0
+    ? '<span class="var-none">No variables detected yet</span>'
+    : vars.map(v => `<span class="var-chip">{{${esc(v)}}}</span>`).join('');
+}
+
+// ── Save (create) ─────────────────────────────────────────────
 async function saveTemplate() {
   const name = document.getElementById('t-name').value.trim();
   const body = document.getElementById('t-body').value.trim();
@@ -259,7 +320,6 @@ async function saveTemplate() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, template_text: body }),
     });
-    // Clear form
     document.getElementById('t-name').value = '';
     document.getElementById('t-body').value = '';
     document.getElementById('char-count').textContent = '0 chars';
@@ -292,11 +352,11 @@ async function loadList() {
     }
     const sorted = [...templates].sort((a, b) => a.name.localeCompare(b.name));
     container.innerHTML = sorted.map(t => {
-      const vars     = extractVars(t.template_text || '');
+      const vars      = extractVars(t.template_text || '');
       const firstLine = (t.template_text || '').split('\n')[0];
-      const varLabel = vars.length === 0 ? 'no variables'
-                     : vars.length === 1 ? '1 variable'
-                     : `${vars.length} variables`;
+      const varLabel  = vars.length === 0 ? 'no variables'
+                      : vars.length === 1 ? '1 variable'
+                      : `${vars.length} variables`;
       return `
         <div class="tpl-row" id="row-${t.template_id}">
           <span class="tpl-name">${esc(t.name)}</span>
@@ -306,6 +366,10 @@ async function loadList() {
             <a href="/?template=${encodeURIComponent(t.template_id)}">
               <button class="btn btn-secondary btn-sm">▶ Use</button>
             </a>
+            <button class="btn btn-secondary btn-sm"
+              onclick="openEditModal('${t.template_id}', ${JSON.stringify(esc(t.name))}, ${JSON.stringify(t.template_text || '')})">
+              ✏️ Edit
+            </button>
             <button class="btn btn-danger btn-sm"
               onclick="deleteTemplate('${t.template_id}', '${esc(t.name).replace(/'/g, "\\'")}')">
               Delete
@@ -318,6 +382,51 @@ async function loadList() {
   }
 }
 
+// ── Edit modal ────────────────────────────────────────────────
+function openEditModal(templateId, name, body) {
+  document.getElementById('e-id').value   = templateId;
+  document.getElementById('e-name').value = name;
+  document.getElementById('e-body').value = body;
+  // Trigger live preview
+  const text = body;
+  document.getElementById('e-char-count').textContent = `${text.length} chars`;
+  updateVarPreview(text, 'e-var-preview');
+  document.getElementById('edit-modal').classList.add('open');
+  // Focus the name field
+  setTimeout(() => document.getElementById('e-name').focus(), 50);
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.remove('open');
+}
+
+async function saveEdit() {
+  const id   = document.getElementById('e-id').value;
+  const name = document.getElementById('e-name').value.trim();
+  const body = document.getElementById('e-body').value.trim();
+  if (!name) return toast('Template name is required', true);
+  if (!body) return toast('Template body is empty', true);
+
+  try {
+    await api(`/api/templates/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, template_text: body }),
+    });
+    closeEditModal();
+    toast('Template updated');
+    await loadList();
+  } catch (e) {
+    toast(e.message || 'Update failed', true);
+  }
+}
+
+// Close modal on backdrop click
+document.getElementById('edit-modal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeEditModal();
+});
+
+// ── Delete ────────────────────────────────────────────────────
 async function deleteTemplate(id, name) {
   if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
   try {

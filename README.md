@@ -13,7 +13,7 @@ configify uses a **left sidebar** for navigation. Each item is a square tile wit
 | Icon | Label | Page | Description |
 |------|-------|------|-------------|
 | 📋 | Use | `/` | Select a template, fill variables, execute over SSH |
-| 📂 | Templates | `/templates.html` | Create and delete templates |
+| 📂 | Templates | `/templates.html` | Create, edit, and delete templates |
 | 🖥️ | Devices | `/devices.html` | Manage devices, groups, and credential vault |
 | ⚙️ | Admin | `/admin.html` | User accounts and auth providers (admin only) |
 | ↩️ | Sign out | — | End the current session |
@@ -72,7 +72,7 @@ PostgreSQL                ← templates, users, devices, credentials, logs
 |-----|-------------|
 | `/` | Template use page + SSH execution panel |
 | `/login.html` | Login (local / LDAP / SAML) |
-| `/templates.html` | Template creation + delete list |
+| `/templates.html` | Template creation, editing, + delete list |
 | `/devices.html` | Device inventory + credential vault |
 | `/admin.html` | User admin + auth provider config |
 
@@ -89,6 +89,7 @@ PostgreSQL                ← templates, users, devices, credentials, logs
 | GET | `/api/templates` | user | List templates |
 | POST | `/api/templates` | user | Create template |
 | GET | `/api/templates/:id` | user | Get single template (includes body) |
+| **PUT** | **`/api/templates/:id`** | **user** | **Edit template name and body** |
 | DELETE | `/api/templates/:id` | user | Delete template |
 | GET | `/api/devices` | user | List devices |
 | POST | `/api/devices` | user | Add device |
@@ -116,7 +117,25 @@ PostgreSQL                ← templates, users, devices, credentials, logs
 
 ## SSH Execution
 
-### How it works
+### Execution strategy
+
+configify automatically selects the right execution mode based on the template and device type:
+
+| Condition | Mode | Why |
+|-----------|------|-----|
+| Single-line command on Linux/Unix | `execCommand` | Clean exit code, minimal overhead |
+| Multi-line template (any device) | PTY shell | Commands must be sent one at a time |
+| `cisco_ios`, `cisco_nxos`, `junos`, `windows` (any line count) | PTY shell | These devices do not support `execCommand`-style execution |
+
+In shell mode, configify:
+1. Opens a PTY shell on the device
+2. Sends each line individually with a 150 ms inter-line delay
+3. Monitors output and closes the session after 2 s of silence
+4. Enforces a 90 s hard timeout to prevent hung sessions
+
+This fixes the Cisco IOS error `Line has invalid autocommand "..."` which occurred when multi-line templates were sent as a single string.
+
+### How polling works
 
 configify uses **HTTP polling** — no WebSockets required.
 
@@ -150,6 +169,7 @@ pm2 logs configify-app --lines 50
 | "connect ECONNREFUSED" | Wrong host/port or firewall | Test: `ssh -p <port> <user>@<host>` from server |
 | "All configured authentication methods failed" | Wrong password/key | Re-enter credential in vault |
 | Poll returns 404 | Server restarted mid-job (in-memory jobs lost) | Click Run again |
+| Commands execute but session hangs | Device prompt not detected | Session will auto-close after 2 s idle or 90 s hard cap |
 
 ---
 
@@ -385,12 +405,12 @@ sudo apt install -y fail2ban && sudo systemctl enable --now fail2ban
 │   ├── auth.js              ← /auth/*
 │   ├── users.js             ← /api/users/* + auth-config
 │   ├── devices.js           ← /api/devices/*
-│   ├── ssh.js               ← /api/ssh/* (polling-based execution)
-│   └── templates.js         ← /api/templates/*
+│   ├── ssh.js               ← /api/ssh/* (polling-based; auto shell/exec mode)
+│   └── templates.js         ← /api/templates/* (CRUD including PUT edit)
 └── public/
     ├── index.html           ← Template use + SSH execution (left sidebar)
     ├── login.html           ← Login page (local / LDAP / SAML)
-    ├── templates.html       ← Template creation + delete list (left sidebar)
+    ├── templates.html       ← Template create, edit, delete list (left sidebar)
     ├── devices.html         ← Device inventory + credential vault (left sidebar)
     └── admin.html           ← User + auth config (left sidebar)
 ```
@@ -399,7 +419,12 @@ sudo apt install -y fail2ban && sudo systemctl enable --now fail2ban
 
 ## Changelog
 
-### v2.2 (current)
+### v2.3 (current)
+
+- **Fixed multi-line SSH execution for network devices** — `execCommand` sent the entire template as a single string, causing Cisco IOS to error with `Line has invalid autocommand "..."`. Multi-line templates and network device types (`cisco_ios`, `cisco_nxos`, `junos`, `windows`) now use PTY shell mode, sending each line individually with a 150 ms inter-line delay. Sessions close automatically after 2 s of output silence or a 90 s hard cap.
+- **Added template editing** — Templates page now has an ✏️ Edit button per template that opens a full-screen modal pre-populated with the template name and body. Changes are saved via `PUT /api/templates/:id`. Variable chip preview and character count update live while editing.
+
+### v2.2
 - **Fixed variable fields not appearing on Use page** — root cause was `show()` setting `style.display = ''` which cannot override a CSS-class `display:none`; now uses `classList.add/remove('visible')` which correctly triggers the `.visible` rule
 - **Templates page simplified** — now a focused creation form; existing templates shown as a compact deletable list below with a Use button linking directly to the Use page
 - **Use page step indicators** — numbered step badges highlight as you progress through select → variables → device → run

@@ -2,7 +2,7 @@
 
 **configify** is a self-hosted template studio. Write any text with `{{variable}}` placeholders, save templates to a shared PostgreSQL database, fill them in via an auto-generated form, and execute the result over SSH against a managed device inventory — all from the browser.
 
-**Features:** local accounts · LDAP/AD · SAML 2.0 SSO · AES-256-GCM credential vault · SSH execution with live output · device groups
+**Features:** local accounts · LDAP/AD · SAML 2.0 SSO · AES-256-GCM credential vault · SSH execution with live output · device groups · template folder tree
 
 ---
 
@@ -13,7 +13,7 @@ configify uses a **left sidebar** for navigation. Each item is a square tile wit
 | Icon | Label | Page | Description |
 |------|-------|------|-------------|
 | 📋 | Use | `/` | Select a template, fill variables, execute over SSH |
-| 📂 | Templates | `/templates.html` | Create, edit, and delete templates |
+| 📂 | Templates | `/templates.html` | Create, edit, and delete templates; organise into folders |
 | 🖥️ | Devices | `/devices.html` | Manage devices, groups, and credential vault |
 | ⚙️ | Admin | `/admin.html` | User accounts and auth providers (admin only) |
 | ↩️ | Sign out | — | End the current session |
@@ -26,7 +26,7 @@ The active page is highlighted in blue. The Admin item is hidden for non-admin u
 
 ### Workflow
 
-1. **Select template** — pick from the dropdown on the Use page (`/`)
+1. **Select template** — pick from the dropdown on the Use page (`/`). Templates are grouped into folders in the dropdown.
 2. **Fill variables** — input fields appear immediately; output updates **live as you type**
 3. **Select device** — choose a target from the SSH panel on the right
 4. **Click Run** — configify connects via SSH and streams output to the terminal
@@ -41,6 +41,16 @@ interface {{Interface}}
  no shutdown
 ip route 0.0.0.0 0.0.0.0 {{Default Gateway}}
 ```
+
+### Template folders
+
+Templates can be organised into a multi-level folder tree on the **Templates** page:
+
+- The left panel shows the folder tree. Click any folder to filter the template list.
+- Use **＋** (top of folder panel) to create a top-level folder.
+- Hover a folder node to reveal inline **📁+ subfolder**, **✏ rename**, and **✕ delete** buttons.
+- Each template row has a **📁 Move** button to change its folder without opening the editor.
+- When a folder is deleted, its templates become ungrouped and direct child folders are promoted one level up.
 
 ### Tips
 
@@ -63,7 +73,7 @@ Nginx (443 TLS)           ← reverse proxy
 Node.js / Express (3000)  ← API + static files
   │
   ▼
-PostgreSQL                ← templates, users, devices, credentials, logs
+PostgreSQL                ← templates, template_groups, users, devices, credentials, logs
 ```
 
 ### Pages
@@ -72,7 +82,7 @@ PostgreSQL                ← templates, users, devices, credentials, logs
 |-----|-------------|
 | `/` | Template use page + SSH execution panel |
 | `/login.html` | Login (local / LDAP / SAML) |
-| `/templates.html` | Template creation, editing, + delete list |
+| `/templates.html` | Template creation, editing, folder tree |
 | `/devices.html` | Device inventory + credential vault |
 | `/admin.html` | User admin + auth provider config |
 
@@ -86,19 +96,23 @@ PostgreSQL                ← templates, users, devices, credentials, logs
 | POST | `/auth/saml/callback` | public | SAML ACS callback |
 | GET | `/auth/me` | user | Current user info |
 | POST | `/auth/logout` | user | Destroy session |
-| GET | `/api/templates` | user | List templates |
-| POST | `/api/templates` | user | Create template |
+| GET | `/api/templates` | user | List templates (includes group_id, group_name) |
+| POST | `/api/templates` | user | Create template (accepts group_id) |
 | GET | `/api/templates/:id` | user | Get single template (includes body) |
-| **PUT** | **`/api/templates/:id`** | **user** | **Edit template name and body** |
+| PUT | `/api/templates/:id` | user | Edit template name, body, and/or group_id |
 | DELETE | `/api/templates/:id` | user | Delete template |
+| GET | `/api/templates/groups` | user | List all template folders (flat; build tree client-side) |
+| POST | `/api/templates/groups` | user | Create folder (accepts name, parent_id) |
+| PATCH | `/api/templates/groups/:id` | user | Rename / reparent folder |
+| DELETE | `/api/templates/groups/:id` | user | Delete folder (templates ungrouped; children promoted) |
 | GET | `/api/devices` | user | List devices |
 | POST | `/api/devices` | user | Add device |
 | PATCH | `/api/devices/:id` | user | Edit device |
 | DELETE | `/api/devices/:id` | **admin** | Delete device |
-| GET | `/api/devices/groups` | user | List groups |
-| POST | `/api/devices/groups` | user | Add group |
-| PATCH | `/api/devices/groups/:id` | user | Edit group |
-| DELETE | `/api/devices/groups/:id` | **admin** | Delete group |
+| GET | `/api/devices/groups` | user | List device groups |
+| POST | `/api/devices/groups` | user | Add device group |
+| PATCH | `/api/devices/groups/:id` | user | Edit device group |
+| DELETE | `/api/devices/groups/:id` | **admin** | Delete device group |
 | GET | `/api/devices/credentials` | user | List credentials (no secrets) |
 | POST | `/api/devices/credentials` | user | Add credential |
 | PATCH | `/api/devices/credentials/:id` | user | Edit credential |
@@ -133,8 +147,6 @@ In shell mode, configify:
 3. Monitors output and closes the session after 2 s of silence
 4. Enforces a 90 s hard timeout to prevent hung sessions
 
-This fixes the Cisco IOS error `Line has invalid autocommand "..."` which occurred when multi-line templates were sent as a single string.
-
 ### How polling works
 
 configify uses **HTTP polling** — no WebSockets required.
@@ -143,18 +155,6 @@ configify uses **HTTP polling** — no WebSockets required.
 2. Browser polls `GET /api/ssh/poll/:jobId` every 800 ms
 3. Each poll returns new output since the last call plus the job status (`running` / `done` / `error`)
 4. Terminal updates in real time; polling stops when the job finishes
-
-### One-time DB migration
-
-If your `execution_logs` table was created before `credential_id` was added:
-
-```sql
-ALTER TABLE execution_logs
-  ADD COLUMN IF NOT EXISTS credential_id
-  INTEGER REFERENCES credentials(id) ON DELETE SET NULL;
-```
-
-The server also runs this automatically on every `POST /api/ssh/execute`.
 
 ### Troubleshooting SSH
 
@@ -235,7 +235,6 @@ SQL
 
 ```bash
 psql -h localhost -U configify_user -d configify_db -f schema.sql -W
-psql -h localhost -U configify_user -d configify_db -f schema_v2.sql -W
 ```
 
 ### 6 — Install packages & configure environment
@@ -283,6 +282,34 @@ sudo cp configify-selfsigned /etc/nginx/sites-available/configify
 sudo ln -s /etc/nginx/sites-available/configify /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t && sudo systemctl reload nginx
+```
+
+---
+
+## Upgrading from an earlier version
+
+If you have an existing install that was set up before the schema was unified, run this migration instead of re-applying `schema.sql` (which is for fresh installs):
+
+```sql
+-- Run as configify_user against configify_db
+
+-- Template folder tree (v3 additions)
+CREATE TABLE IF NOT EXISTS template_groups (
+    id         SERIAL PRIMARY KEY,
+    name       VARCHAR(255) NOT NULL,
+    parent_id  INTEGER REFERENCES template_groups(id) ON DELETE CASCADE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_tpl_groups_parent ON template_groups(parent_id);
+ALTER TABLE templates ADD COLUMN IF NOT EXISTS group_id
+    INTEGER REFERENCES template_groups(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_templates_group ON templates(group_id);
+
+-- SSH log credential tracking (added in v2.3)
+ALTER TABLE execution_logs ADD COLUMN IF NOT EXISTS credential_id
+    INTEGER REFERENCES credentials(id) ON DELETE SET NULL;
 ```
 
 ---
@@ -391,8 +418,7 @@ sudo apt install -y fail2ban && sudo systemctl enable --now fail2ban
 ├── ecosystem.config.js      ← PM2 config
 ├── .env                     ← runtime secrets (chmod 600, not in git)
 ├── .env.example
-├── schema.sql               ← templates table
-├── schema_v2.sql            ← users, devices, credentials, groups, logs
+├── schema.sql               ← unified database schema (all tables, indexes, triggers, seed data)
 ├── setup.sh                 ← one-shot install script
 ├── check-status.sh          ← health check
 ├── backup-configify-db.sh   ← DB backup + rotation
@@ -406,21 +432,25 @@ sudo apt install -y fail2ban && sudo systemctl enable --now fail2ban
 │   ├── users.js             ← /api/users/* + auth-config
 │   ├── devices.js           ← /api/devices/*
 │   ├── ssh.js               ← /api/ssh/* (polling-based; auto shell/exec mode)
-│   └── templates.js         ← /api/templates/* (CRUD including PUT edit)
+│   └── templates.js         ← /api/templates/* + /api/templates/groups/*
 └── public/
-    ├── index.html           ← Template use + SSH execution (left sidebar)
+    ├── index.html           ← Template use + SSH execution
     ├── login.html           ← Login page (local / LDAP / SAML)
-    ├── templates.html       ← Template create, edit, delete list (left sidebar)
-    ├── devices.html         ← Device inventory + credential vault (left sidebar)
-    └── admin.html           ← User + auth config (left sidebar)
+    ├── templates.html       ← Template CRUD + folder tree panel
+    ├── devices.html         ← Device inventory + credential vault
+    └── admin.html           ← User + auth config
 ```
 
 ---
 
 ## Changelog
 
-### v2.3 (current)
+### v2.4 (current)
 
+- **Unified schema** — `schema.sql`, `schema_v2.sql`, and `schema_v3.sql` merged into a single `schema.sql`. Fresh installs apply one file; existing installs can use the SQL snippet in the *Upgrading* section above.
+- **Template folder tree** — Templates can be organised into a multi-level folder hierarchy. The Templates page gains a 240 px sticky folder panel with inline create/rename/delete controls. The template dropdown on the Use page groups options under `📁 Folder / Path` optgroups. Moving a template to a different folder is available from the template list without opening the editor.
+
+### v2.3
 - **Fixed multi-line SSH execution for network devices** — `execCommand` sent the entire template as a single string, causing Cisco IOS to error with `Line has invalid autocommand "..."`. Multi-line templates and network device types (`cisco_ios`, `cisco_nxos`, `junos`, `windows`) now use PTY shell mode, sending each line individually with a 150 ms inter-line delay. Sessions close automatically after 2 s of output silence or a 90 s hard cap.
 - **Added template editing** — Templates page now has an ✏️ Edit button per template that opens a full-screen modal pre-populated with the template name and body. Changes are saved via `PUT /api/templates/:id`. Variable chip preview and character count update live while editing.
 

@@ -9,7 +9,7 @@
 # What it does:
 #   1. Installs system deps (Node 20, PostgreSQL 17, Nginx, PM2)
 #   2. Creates DB + user
-#   3. Applies both schema files
+#   3. Applies schema.sql
 #   4. Generates SESSION_SECRET + VAULT_SECRET
 #   5. Writes .env
 #   6. Installs npm packages
@@ -83,7 +83,6 @@ ufw --force enable >/dev/null
 # ── 3. Database ───────────────────────────────────────────────
 info "Creating database and user…"
 
-# Verify DB_PASS was actually generated before continuing
 if [[ -z "${DB_PASS}" ]]; then
     DB_PASS="$(openssl rand -base64 24)"
 fi
@@ -108,7 +107,6 @@ info "Setting up application directory at ${APP_DIR}…"
 mkdir -p "${APP_DIR}"
 chown "${APP_USER}:${APP_USER}" "${APP_DIR}"
 
-# Copy files if running from repo directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [[ "${SCRIPT_DIR}" != "${APP_DIR}" ]]; then
     info "Copying application files…"
@@ -116,12 +114,10 @@ if [[ "${SCRIPT_DIR}" != "${APP_DIR}" ]]; then
     chown -R "${APP_USER}:${APP_USER}" "${APP_DIR}"
 fi
 
-# ── 5. Apply DB schemas ───────────────────────────────────────
-info "Applying database schemas…"
+# ── 5. Apply schema ───────────────────────────────────────────
+info "Applying database schema…"
 PGPASSWORD="${DB_PASS}" psql -h localhost -U "${DB_USER}" -d "${DB_NAME}" \
-    -f "${APP_DIR}/schema.sql" -q 2>/dev/null || true
-PGPASSWORD="${DB_PASS}" psql -h localhost -U "${DB_USER}" -d "${DB_NAME}" \
-    -f "${APP_DIR}/schema_v2.sql" -q
+    -f "${APP_DIR}/schema.sql" -q
 
 # ── 6. Generate secrets + .env ───────────────────────────────
 info "Generating secrets…"
@@ -162,7 +158,6 @@ sudo -u "${APP_USER}" pm2 start "${APP_DIR}/ecosystem.config.js" || \
 sudo -u "${APP_USER}" pm2 restart configify-app
 
 sudo -u "${APP_USER}" pm2 save
-# Enable startup script — capture output safely, avoiding pipefail exit
 PM2_STARTUP_CMD=""
 while IFS= read -r line; do
     PM2_STARTUP_CMD="${line}"
@@ -250,7 +245,6 @@ echo "Backup: ${DB_NAME}_$DATE.sql.gz"
 BACKUP
 chmod +x /usr/local/bin/backup-configify-db.sh
 
-# Add daily cron job for postgres user
 (crontab -l -u postgres 2>/dev/null || true; echo "0 2 * * * /usr/local/bin/backup-configify-db.sh") \
     | sort -u | crontab -u postgres -
 

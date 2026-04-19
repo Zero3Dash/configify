@@ -78,7 +78,7 @@
     border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
   }
 
-  /* ── Variable block — toggled by JS adding .visible ── */
+  /* ── Variable block ── */
   .vars-block  { display: none; margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #f1f5f9; }
   .vars-block.visible { display: block; }
   .vars-grid {
@@ -89,7 +89,7 @@
   .var-field input { width: 100%; }
   .no-vars-note { font-size: 0.83rem; color: #94a3b8; }
 
-  /* ── Output block — toggled by JS adding .visible ── */
+  /* ── Output block ── */
   .output-block { display: none; margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #f1f5f9; }
   .output-block.visible { display: block; }
   .output-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
@@ -205,7 +205,7 @@
         <option value="">— Choose a template —</option>
       </select>
 
-      <!-- 2 · Variables — hidden until a template is chosen, shown via .visible class -->
+      <!-- 2 · Variables -->
       <div class="vars-block" id="vars-block">
         <div class="step-label">
           <span class="num on">2</span>
@@ -214,7 +214,7 @@
         <div class="vars-grid" id="vars-grid"></div>
       </div>
 
-      <!-- 3 · Output — same approach -->
+      <!-- 3 · Output -->
       <div class="output-block" id="output-block">
         <div class="output-hdr">
           <div class="step-label" style="margin-bottom:0">
@@ -277,6 +277,7 @@
 'use strict';
 
 let templates  = [];
+let allGroups  = [];
 let currentTpl = null;
 let pollTimer  = null;
 
@@ -297,20 +298,87 @@ let pollTimer  = null;
   }
 })();
 
-// ── Load template list ─────────────────────────────────────────
+// ── Load template list (group-aware) ──────────────────────────
 async function loadTemplates() {
   try {
-    templates = await api('/api/templates');
+    [templates, allGroups] = await Promise.all([
+      api('/api/templates'),
+      api('/api/templates/groups'),
+    ]);
+
     const sel = document.getElementById('tpl-select');
     sel.innerHTML = '<option value="">— Choose a template —</option>';
-    [...templates]
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .forEach(t => {
+
+    // Build full path for a group id
+    const pathOf = (gid) => {
+      const parts = [];
+      let cur = gid, safety = 0;
+      while (cur && safety++ < 12) {
+        const g = allGroups.find(x => x.id === cur);
+        if (!g) break;
+        parts.unshift(g.name);
+        cur = g.parent_id;
+      }
+      return parts.join(' / ');
+    };
+
+    // Sort templates by name
+    const sorted = [...templates].sort((a, b) => a.name.localeCompare(b.name));
+
+    if (!allGroups.length) {
+      // No groups — plain flat list
+      sorted.forEach(t => {
         const o = document.createElement('option');
-        o.value       = t.template_id;
+        o.value = t.template_id;
         o.textContent = t.name;
         sel.appendChild(o);
       });
+      return;
+    }
+
+    // Bucket templates by their full group path
+    const buckets = {};   // path string → [template, ...]
+    sorted.forEach(t => {
+      const key = t.group_id ? pathOf(t.group_id) : '';
+      (buckets[key] = buckets[key] || []).push(t);
+    });
+
+    // Render grouped optgroups (sorted by path), then ungrouped at the end
+    const groupedPaths = Object.keys(buckets).filter(k => k).sort();
+    groupedPaths.forEach(path => {
+      const og = document.createElement('optgroup');
+      og.label = '📁 ' + path;
+      buckets[path].forEach(t => {
+        const o = document.createElement('option');
+        o.value = t.template_id;
+        o.textContent = t.name;
+        og.appendChild(o);
+      });
+      sel.appendChild(og);
+    });
+
+    // Ungrouped templates
+    if (buckets[''] && buckets[''].length) {
+      if (groupedPaths.length) {
+        const og = document.createElement('optgroup');
+        og.label = '📄 Ungrouped';
+        buckets[''].forEach(t => {
+          const o = document.createElement('option');
+          o.value = t.template_id;
+          o.textContent = t.name;
+          og.appendChild(o);
+        });
+        sel.appendChild(og);
+      } else {
+        // All ungrouped — no optgroup needed
+        buckets[''].forEach(t => {
+          const o = document.createElement('option');
+          o.value = t.template_id;
+          o.textContent = t.name;
+          sel.appendChild(o);
+        });
+      }
+    }
   } catch (_) { toast('Could not load templates', true); }
 }
 
@@ -318,7 +386,6 @@ async function loadTemplates() {
 async function onTplChange() {
   const id = document.getElementById('tpl-select').value;
 
-  // Collapse both sections
   document.getElementById('vars-block').classList.remove('visible');
   document.getElementById('output-block').classList.remove('visible');
   document.getElementById('output-area').innerHTML = '';
@@ -328,7 +395,6 @@ async function onTplChange() {
 
   if (!id) return;
 
-  // Fetch full record — the list endpoint omits template_text
   try {
     currentTpl = await api('/api/templates/' + id);
   } catch (_) {
@@ -336,7 +402,6 @@ async function onTplChange() {
     return;
   }
 
-  // Build variable input fields
   const vars = extractVars(currentTpl.template_text);
   const grid = document.getElementById('vars-grid');
 
@@ -350,14 +415,12 @@ async function onTplChange() {
       </div>`).join('');
   }
 
-  // Show both sections by adding .visible (CSS: .vars-block.visible { display:block })
   document.getElementById('vars-block').classList.add('visible');
   document.getElementById('output-block').classList.add('visible');
 
   liveRender();
   updateRunBtn();
 
-  // Auto-focus first variable
   const first = grid.querySelector('input');
   if (first) first.focus();
 }
@@ -380,7 +443,6 @@ function liveRender() {
   document.getElementById('output-area').innerHTML = html;
 }
 
-// Plain-text version (for SSH execution and clipboard)
 function renderedText() {
   if (!currentTpl) return '';
   const vars = extractVars(currentTpl.template_text);
@@ -491,11 +553,8 @@ async function runSsh() {
       if (p.newOutput) termWrite(p.newOutput);
       if (p.status === 'running') return;
       clearInterval(pollTimer); pollTimer = null;
-      if (p.status === 'done') {
-        setStatus('done', 'Done (exit 0)');
-      } else {
-        setStatus('error', `Failed (exit ${p.exitCode ?? '?'})`);
-      }
+      setStatus(p.status === 'done' ? 'done' : 'error',
+                p.status === 'done' ? 'Done (exit 0)' : `Failed (exit ${p.exitCode ?? '?'})`);
       setBusy(false);
     } catch (e) {
       clearInterval(pollTimer); pollTimer = null;
@@ -518,7 +577,7 @@ function clearTerm() {
 }
 function setStatus(type, text) {
   document.getElementById('status-row').classList.add('visible');
-  document.getElementById('status-dot').className  = 'dot ' + type;
+  document.getElementById('status-dot').className   = 'dot ' + type;
   document.getElementById('status-text').textContent = text;
 }
 function setBusy(busy) {
@@ -536,7 +595,6 @@ function extractVars(text) {
   }
   return out;
 }
-// Deterministic, collision-safe id from variable name
 function vid(name) {
   return 'v__' + name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
 }

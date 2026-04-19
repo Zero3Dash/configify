@@ -6,12 +6,13 @@
 <title>configify · Templates</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root { --sb: 76px; }
+  :root { --sb: 76px; --gp: 240px; }
 
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: #f8fafc; color: #0f172a;
     padding-left: var(--sb); min-height: 100vh;
+    display: flex;
   }
 
   /* ── Sidebar ── */
@@ -38,8 +39,95 @@
   .sb-user    { font-size: 0.6rem; color: #334155; text-align: center; padding: 4px 2px; word-break: break-all; }
   .hidden { display: none !important; }
 
-  /* ── Layout ── */
-  .main { max-width: 760px; margin: 0 auto; padding: 1.5rem; }
+  /* ── App layout: group panel + main ── */
+  .app-body {
+    flex: 1;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ── Group tree panel ── */
+  .group-panel {
+    width: var(--gp);
+    flex-shrink: 0;
+    background: white;
+    border-right: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .gp-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem 0.85rem 0.6rem;
+    border-bottom: 1px solid #f1f5f9;
+    flex-shrink: 0;
+  }
+  .gp-title {
+    font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: #94a3b8;
+  }
+  .gp-add-btn {
+    font-size: 0.9rem; color: #64748b; background: none; border: 1px solid #e2e8f0;
+    border-radius: 5px; padding: 1px 6px; cursor: pointer; line-height: 1.4;
+    transition: all 0.12s;
+  }
+  .gp-add-btn:hover { background: #f1f5f9; color: #374151; border-color: #cbd5e1; }
+
+  /* ── Tree items ── */
+  .tree-section { padding: 0.4rem 0; flex: 1; }
+  .tree-item {
+    display: flex; align-items: center; gap: 5px;
+    padding: 0.32rem 0.75rem; cursor: pointer;
+    border-radius: 0; user-select: none;
+    transition: background 0.1s;
+    position: relative;
+  }
+  .tree-item:hover { background: #f8fafc; }
+  .tree-item:hover .ti-actions { opacity: 1; }
+  .tree-item.active { background: #eff6ff; }
+  .tree-item.active .ti-name { color: #2563eb; font-weight: 600; }
+
+  .ti-toggle {
+    font-size: 0.5rem; color: #cbd5e1; background: none; border: none;
+    cursor: pointer; width: 12px; flex-shrink: 0; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: color 0.1s;
+  }
+  .ti-toggle:hover { color: #64748b; }
+  .ti-toggle.invisible { cursor: default; pointer-events: none; }
+  .ti-icon  { font-size: 0.85rem; flex-shrink: 0; }
+  .ti-name  { flex: 1; font-size: 0.82rem; color: #374151; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .ti-count { font-size: 0.67rem; color: #94a3b8; flex-shrink: 0; }
+  .ti-actions {
+    display: flex; gap: 1px; opacity: 0; flex-shrink: 0;
+    transition: opacity 0.12s;
+  }
+  .ti-btn {
+    font-size: 0.65rem; padding: 2px 4px; background: none; border: none;
+    border-radius: 4px; cursor: pointer; color: #94a3b8; line-height: 1;
+  }
+  .ti-btn:hover { background: #e2e8f0; color: #374151; }
+  .ti-btn.danger:hover { background: #fee2e2; color: #dc2626; }
+
+  .tree-children { display: block; }
+  .tree-children.collapsed { display: none; }
+  /* Indent children */
+  .tree-children .tree-item { padding-left: 1.55rem; }
+  .tree-children .tree-children .tree-item { padding-left: 2.35rem; }
+  .tree-children .tree-children .tree-children .tree-item { padding-left: 3.15rem; }
+
+  .gp-divider { height: 1px; background: #f1f5f9; margin: 0.3rem 0; }
+
+  /* ── Main area ── */
+  .main {
+    flex: 1;
+    max-width: 820px;
+    padding: 1.5rem;
+    overflow-y: auto;
+  }
   .page-header { padding-bottom: 1.25rem; }
   .page-header h1 { font-size: 1.4rem; font-weight: 700; }
   .page-header p  { font-size: 0.85rem; color: #64748b; margin-top: 3px; }
@@ -54,6 +142,8 @@
     font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
     letter-spacing: 0.08em; color: #94a3b8; margin-bottom: 1rem;
   }
+  .section-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+  .section-row .card-title { margin-bottom: 0; }
 
   /* ── Form ── */
   .field { margin-bottom: 1rem; }
@@ -62,44 +152,37 @@
     display: block; font-size: 0.8rem; font-weight: 600;
     color: #374151; margin-bottom: 0.3rem;
   }
-  .field label .hint {
-    font-weight: 400; color: #94a3b8; font-size: 0.75rem; margin-left: 0.4rem;
-  }
-  input[type="text"], textarea {
+  .field label .hint { font-weight: 400; color: #94a3b8; font-size: 0.75rem; margin-left: 0.4rem; }
+  input[type="text"], select, textarea {
     width: 100%; padding: 0.65rem 0.85rem; border: 1px solid #d1d5db; border-radius: 8px;
-    font-size: 0.9rem; outline: none; background: white; color: #0f172a;
+    font-size: 0.875rem; outline: none; background: white; color: #0f172a;
     transition: border-color 0.15s;
   }
-  input[type="text"]:focus, textarea:focus {
+  input[type="text"]:focus, select:focus, textarea:focus {
     border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
   }
   textarea {
     font-family: 'Fira Code', 'Cascadia Code', monospace;
-    font-size: 0.82rem; min-height: 220px; resize: vertical; line-height: 1.65;
+    font-size: 0.82rem; min-height: 200px; resize: vertical; line-height: 1.65;
   }
 
   /* ── Variable chips ── */
-  .var-preview {
-    display: flex; flex-wrap: wrap; gap: 5px; min-height: 28px;
-    margin-top: 0.5rem; align-items: center;
-  }
+  .var-row { display: flex; justify-content: space-between; align-items: center; margin-top: 0.45rem; }
+  .var-preview { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
   .var-chip {
     background: #dbeafe; color: #1d4ed8; padding: 0.18rem 0.55rem;
     border-radius: 5px; font-size: 0.72rem; font-weight: 600;
     font-family: 'Fira Code', monospace;
   }
   .var-none { font-size: 0.78rem; color: #94a3b8; }
-
-  /* ── Char count ── */
-  .meta-row { display: flex; justify-content: space-between; align-items: center; margin-top: 0.4rem; }
-  .char-count { font-size: 0.72rem; color: #94a3b8; }
+  .char-count { font-size: 0.72rem; color: #94a3b8; white-space: nowrap; flex-shrink: 0; padding-left: 0.5rem; }
 
   /* ── Action row ── */
-  .action-row { display: flex; gap: 0.6rem; justify-content: flex-end; margin-top: 1.25rem; }
+  .action-row { display: flex; gap: 0.6rem; justify-content: flex-end; margin-top: 1.1rem; }
 
   /* ── Buttons ── */
   button { border: none; cursor: pointer; font-weight: 500; border-radius: 7px; transition: all 0.15s; }
-  .btn   { padding: 0.55rem 1.1rem; font-size: 0.85rem; }
+  .btn   { padding: 0.55rem 1rem; font-size: 0.83rem; }
   .btn-primary   { background: #2563eb; color: white; }
   .btn-primary:hover   { background: #1d4ed8; }
   .btn-secondary { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
@@ -108,24 +191,31 @@
   .btn-danger { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
   .btn-danger:hover { background: #fecaca; }
 
-  /* ── Existing templates list ── */
-  .tpl-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  /* ── Template list ── */
+  .search-bar {
+    padding: 0.5rem 0.8rem; border: 1px solid #d1d5db; border-radius: 8px;
+    font-size: 0.83rem; outline: none; width: 200px;
+    transition: border-color 0.15s;
+  }
+  .search-bar:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
+
+  .tpl-list { display: flex; flex-direction: column; gap: 0.45rem; }
   .tpl-row {
     display: flex; align-items: center; gap: 0.75rem;
-    padding: 0.65rem 0.85rem; background: #f8fafc;
+    padding: 0.7rem 0.9rem; background: #f8fafc;
     border: 1px solid #e2e8f0; border-radius: 9px;
+    transition: background 0.1s;
   }
   .tpl-row:hover { background: #f1f5f9; }
-  .tpl-name { font-weight: 600; font-size: 0.875rem; flex: 1; min-width: 0; }
-  .tpl-preview-text {
-    font-family: 'Fira Code', monospace; font-size: 0.72rem; color: #94a3b8;
-    flex: 2; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; min-width: 0;
-  }
-  .tpl-vars { font-size: 0.72rem; color: #64748b; white-space: nowrap; }
-  .tpl-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
-  .empty-note { text-align: center; padding: 1.5rem; color: #94a3b8; font-size: 0.85rem; }
+  .tpl-info { flex: 1; min-width: 0; }
+  .tpl-name { font-weight: 600; font-size: 0.875rem; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tpl-group-path { display: block; font-size: 0.72rem; color: #94a3b8; margin-top: 1px; }
+  .tpl-preview { display: block; font-family: 'Fira Code', monospace; font-size: 0.72rem; color: #94a3b8; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; margin-top: 1px; }
+  .tpl-vars { font-size: 0.72rem; color: #64748b; white-space: nowrap; flex-shrink: 0; }
+  .tpl-actions { display: flex; gap: 0.35rem; flex-shrink: 0; }
+  .empty-note { text-align: center; padding: 2rem 1rem; color: #94a3b8; font-size: 0.85rem; }
 
-  /* ── Modal ── */
+  /* ── Modals ── */
   .modal-backdrop {
     position: fixed; inset: 0; background: rgba(0,0,0,0.45);
     display: none; align-items: center; justify-content: center; z-index: 200;
@@ -133,22 +223,25 @@
   .modal-backdrop.open { display: flex; }
   .modal {
     background: white; border-radius: 14px; padding: 1.5rem;
-    width: 100%; max-width: 620px; max-height: 90vh; overflow-y: auto;
+    width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto;
     box-shadow: 0 20px 50px rgba(0,0,0,0.25);
   }
+  .modal.modal-lg { max-width: 620px; }
   .modal h3 { font-size: 1rem; font-weight: 700; margin-bottom: 1.1rem; }
   .modal label {
     display: block; font-size: 0.8rem; font-weight: 600;
     color: #374151; margin-bottom: 0.3rem; margin-top: 0.85rem;
   }
   .modal label:first-of-type { margin-top: 0; }
-  .modal input[type="text"] { font-size: 0.875rem; }
+  .modal label .hint { font-weight: 400; color: #94a3b8; font-size: 0.75rem; margin-left: 0.4rem; }
   .modal textarea {
-    min-height: 260px; font-family: 'Fira Code', 'Cascadia Code', monospace;
+    min-height: 240px; font-family: 'Fira Code', 'Cascadia Code', monospace;
     font-size: 0.8rem; line-height: 1.65; resize: vertical;
   }
   .modal-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 0.4rem; }
   .modal-footer { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.2rem; }
+  .move-hint { font-size: 0.83rem; color: #64748b; margin-bottom: 1rem; }
+  .move-hint strong { color: #0f172a; }
 
   /* ── Toast ── */
   #toast {
@@ -190,72 +283,132 @@
   </div>
 </aside>
 
-<main class="main">
-  <div class="page-header">
-    <h1>Create Template</h1>
-    <p>Name your template, write the body, and use <code style="background:#f1f5f9;padding:1px 6px;border-radius:4px;font-size:0.82em">{{Variable Name}}</code> for placeholders.</p>
-  </div>
+<div class="app-body">
 
-  <!-- ── Create form ── -->
-  <div class="card">
-    <div class="card-title">New template</div>
+  <!-- ── Group tree panel ── -->
+  <nav class="group-panel">
+    <div class="gp-header">
+      <span class="gp-title">Folders</span>
+      <button class="gp-add-btn" title="New top-level folder" onclick="openGroupModal(null)">＋</button>
+    </div>
+    <div class="tree-section">
+      <!-- All / root -->
+      <div class="tree-item active" id="node-all" onclick="selectGroup('all')">
+        <span class="ti-toggle invisible"></span>
+        <span class="ti-icon">📋</span>
+        <span class="ti-name">All Templates</span>
+        <span class="ti-count" id="count-all"></span>
+      </div>
+      <!-- Dynamic group tree -->
+      <div id="group-tree-root"></div>
+      <div class="gp-divider"></div>
+      <!-- Ungrouped -->
+      <div class="tree-item" id="node-ungrouped" onclick="selectGroup('ungrouped')">
+        <span class="ti-toggle invisible"></span>
+        <span class="ti-icon">📄</span>
+        <span class="ti-name">Ungrouped</span>
+        <span class="ti-count" id="count-ungrouped"></span>
+      </div>
+    </div>
+  </nav>
 
-    <div class="field">
-      <label for="t-name">Template name</label>
-      <input type="text" id="t-name" placeholder="e.g. Router interface config" maxlength="120" />
+  <!-- ── Main content ── -->
+  <main class="main">
+    <div class="page-header">
+      <h1>Templates</h1>
+      <p>Use <code style="background:#f1f5f9;padding:1px 6px;border-radius:4px;font-size:0.82em">{{Variable Name}}</code> for placeholders. Organise templates into folders.</p>
     </div>
 
-    <div class="field">
-      <label for="t-body">
-        Template body
-        <span class="hint">— wrap placeholders in double curly braces</span>
-      </label>
-      <textarea id="t-body"
-        placeholder="interface {{Interface}}&#10; ip address {{IP Address}} {{Subnet Mask}}&#10; no shutdown&#10;ip route 0.0.0.0 0.0.0.0 {{Default Gateway}}"
-        oninput="onBodyInput()"></textarea>
-      <div class="meta-row">
-        <div class="var-preview" id="var-preview">
-          <span class="var-none">No variables detected yet</span>
+    <!-- Create form -->
+    <div class="card">
+      <div class="card-title">New template</div>
+
+      <div class="field">
+        <label for="t-group">Folder <span class="hint">— optional</span></label>
+        <select id="t-group"><option value="">— Ungrouped —</option></select>
+      </div>
+
+      <div class="field">
+        <label for="t-name">Template name</label>
+        <input type="text" id="t-name" placeholder="e.g. Router interface config" maxlength="120" />
+      </div>
+
+      <div class="field">
+        <label for="t-body">
+          Template body
+          <span class="hint">— wrap placeholders in double curly braces</span>
+        </label>
+        <textarea id="t-body"
+          placeholder="interface {{Interface}}&#10; ip address {{IP Address}} {{Subnet Mask}}&#10; no shutdown&#10;ip route 0.0.0.0 0.0.0.0 {{Default Gateway}}"
+          oninput="onBodyInput()"></textarea>
+        <div class="var-row">
+          <div class="var-preview" id="var-preview">
+            <span class="var-none">No variables detected</span>
+          </div>
+          <span class="char-count" id="char-count">0 chars</span>
         </div>
-        <span class="char-count" id="char-count">0 chars</span>
+      </div>
+
+      <div class="action-row">
+        <button class="btn btn-secondary" onclick="loadExample()">↺ Example</button>
+        <button class="btn btn-primary" onclick="saveTemplate()">💾 Save template</button>
       </div>
     </div>
 
-    <div class="action-row">
-      <button class="btn btn-secondary" onclick="loadExample()">↺ Load example</button>
-      <button class="btn btn-primary" onclick="saveTemplate()">💾 Save template</button>
+    <!-- Template list -->
+    <div class="card">
+      <div class="section-row">
+        <span class="card-title" id="list-heading">All Templates</span>
+        <div style="display:flex;gap:0.5rem;align-items:center">
+          <input type="text" class="search-bar" id="tpl-search" placeholder="🔍 Search…" oninput="renderList()" />
+          <button class="btn btn-secondary btn-sm" onclick="loadData()">🔄</button>
+        </div>
+      </div>
+      <div class="tpl-list" id="tpl-list">
+        <div class="empty-note">Loading…</div>
+      </div>
     </div>
-  </div>
+  </main>
+</div>
 
-  <!-- ── Existing templates ── -->
-  <div class="card">
-    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
-      <span>Saved templates</span>
-      <button class="btn btn-secondary btn-sm" onclick="loadList()">🔄 Refresh</button>
-    </div>
-    <div class="tpl-list" id="tpl-list">
-      <div class="empty-note">Loading…</div>
-    </div>
-  </div>
-</main>
-
-<!-- ── Edit modal ── -->
-<div class="modal-backdrop" id="edit-modal">
+<!-- ── Group modal (create / rename) ── -->
+<div class="modal-backdrop" id="group-modal">
   <div class="modal">
+    <h3 id="group-modal-title">New folder</h3>
+    <input type="hidden" id="gm-id" />
+    <label for="gm-name">Folder name</label>
+    <input type="text" id="gm-name" placeholder="e.g. Cisco IOS" maxlength="120" />
+    <label for="gm-parent-select">
+      Parent folder <span class="hint">— optional</span>
+    </label>
+    <select id="gm-parent-select"><option value="">— Top level —</option></select>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeGroupModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveGroup()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Edit template modal ── -->
+<div class="modal-backdrop" id="edit-modal">
+  <div class="modal modal-lg">
     <h3>Edit template</h3>
     <input type="hidden" id="e-id" />
+
+    <label for="e-group">Folder <span class="hint">— optional</span></label>
+    <select id="e-group"><option value="">— Ungrouped —</option></select>
 
     <label for="e-name">Template name</label>
     <input type="text" id="e-name" maxlength="120" />
 
     <label for="e-body">
       Template body
-      <span style="font-weight:400;color:#94a3b8;font-size:0.75rem;margin-left:0.4rem">— {{Variable Name}} for placeholders</span>
+      <span class="hint">— {{Variable Name}} for placeholders</span>
     </label>
     <textarea id="e-body" oninput="onEditBodyInput()"></textarea>
     <div class="modal-meta">
       <div class="var-preview" id="e-var-preview">
-        <span class="var-none">No variables detected yet</span>
+        <span class="var-none">No variables detected</span>
       </div>
       <span class="char-count" id="e-char-count">0 chars</span>
     </div>
@@ -267,221 +420,513 @@
   </div>
 </div>
 
+<!-- ── Move template modal ── -->
+<div class="modal-backdrop" id="move-modal">
+  <div class="modal">
+    <h3>Move to folder</h3>
+    <input type="hidden" id="mv-id" />
+    <p class="move-hint">Moving: <strong id="mv-name"></strong></p>
+    <label for="mv-group">Destination folder</label>
+    <select id="mv-group"><option value="">— Ungrouped (root) —</option></select>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeMoveModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmMove()">Move</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
 'use strict';
 
-// ── Module-level template store — populated by loadList() ─────
-// Storing templates here lets openEditModal look up data by ID instead of
-// embedding raw content in onclick attributes (which broke when template
-// bodies contained quotes, backticks, or other special characters).
-let allTemplates = [];
-
 const EXAMPLE_NAME = 'Router interface config';
 const EXAMPLE_BODY = `interface {{Interface}}\n ip address {{IP Address}} {{Subnet Mask}}\n no shutdown\nip route 0.0.0.0 0.0.0.0 {{Default Gateway}}`;
 
-// ── Boot ──────────────────────────────────────────────────────
+let allTemplates = [], allGroups = [];
+let selectedGroup = 'all';      // 'all' | 'ungrouped' | number (group id)
+let expandedGroups = new Set(); // group ids that are expanded
+
+// ── Boot ─────────────────────────────────────────────────────
 (async () => {
   try {
     const me = await api('/auth/me');
     document.getElementById('user-badge').textContent = me.username;
     if (me.role === 'admin') document.getElementById('admin-link').classList.remove('hidden');
   } catch (_) {}
-  await loadList();
+  await loadData();
+
+  // Close modals on backdrop click
+  ['group-modal','edit-modal','move-modal'].forEach(id => {
+    document.getElementById(id).addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeAll();
+    });
+  });
 })();
 
-// ── Live body input (create form) ─────────────────────────────
+// ── Data loading ──────────────────────────────────────────────
+async function loadData() {
+  try {
+    [allGroups, allTemplates] = await Promise.all([
+      api('/api/templates/groups'),
+      api('/api/templates'),
+    ]);
+  } catch (_) {
+    toast('Failed to load data', true);
+    return;
+  }
+  renderGroupTree();
+  populateGroupSelects();
+  renderList();
+}
+
+// ── Tree helpers ──────────────────────────────────────────────
+function buildTree(nodes, parentId = null) {
+  return nodes
+    .filter(g => g.parent_id === parentId)
+    .sort((a, b) => (a.sort_order - b.sort_order) || a.name.localeCompare(b.name))
+    .map(g => ({ ...g, children: buildTree(nodes, g.id) }));
+}
+
+function getAllDescendantIds(groupId) {
+  const result = [];
+  const queue  = [groupId];
+  while (queue.length) {
+    const id  = queue.shift();
+    const kids = allGroups.filter(g => g.parent_id === id);
+    kids.forEach(c => { result.push(c.id); queue.push(c.id); });
+  }
+  return result;
+}
+
+function countTemplatesInGroup(groupId) {
+  const descendants = getAllDescendantIds(groupId);
+  return allTemplates.filter(t => t.group_id === groupId || descendants.includes(t.group_id)).length;
+}
+
+function getGroupPath(groupId) {
+  const parts = [];
+  let cur = groupId, safety = 0;
+  while (cur && safety++ < 12) {
+    const g = allGroups.find(x => x.id === cur);
+    if (!g) break;
+    parts.unshift(g.name);
+    cur = g.parent_id;
+  }
+  return parts.join(' / ');
+}
+
+// ── Render group tree ─────────────────────────────────────────
+function renderGroupTree() {
+  const tree = buildTree(allGroups, null);
+  document.getElementById('group-tree-root').innerHTML = renderNodes(tree);
+
+  const total      = allTemplates.length;
+  const ungrouped  = allTemplates.filter(t => !t.group_id).length;
+  document.getElementById('count-all').textContent       = total     ? `(${total})`     : '';
+  document.getElementById('count-ungrouped').textContent = ungrouped ? `(${ungrouped})` : '';
+
+  updateActiveNode();
+}
+
+function renderNodes(nodes) {
+  return nodes.map(node => {
+    const hasKids   = node.children.length > 0;
+    const expanded  = expandedGroups.has(node.id);
+    const count     = countTemplatesInGroup(node.id);
+    const toggleCls = hasKids ? '' : ' invisible';
+    const toggleIcon = hasKids ? (expanded ? '▼' : '▶') : '';
+
+    return `
+    <div class="tree-node" data-gid="${node.id}">
+      <div class="tree-item" onclick="selectGroup(${node.id})">
+        <button class="ti-toggle${toggleCls}"
+          onclick="event.stopPropagation();toggleExpand(${node.id})">${toggleIcon}</button>
+        <span class="ti-icon">${expanded || !hasKids ? '📂' : '📁'}</span>
+        <span class="ti-name" title="${esc(node.name)}">${esc(node.name)}</span>
+        ${count ? `<span class="ti-count">(${count})</span>` : ''}
+        <div class="ti-actions">
+          <button class="ti-btn" title="New subfolder"
+            onclick="event.stopPropagation();openGroupModal(${node.id})">📁+</button>
+          <button class="ti-btn" title="Rename"
+            onclick="event.stopPropagation();openRenameGroup(${node.id})">✏</button>
+          <button class="ti-btn danger" title="Delete folder"
+            onclick="event.stopPropagation();deleteGroup(${node.id})">✕</button>
+        </div>
+      </div>
+      ${hasKids ? `
+        <div class="tree-children${expanded ? '' : ' collapsed'}">
+          ${renderNodes(node.children)}
+        </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function toggleExpand(id) {
+  expandedGroups.has(id) ? expandedGroups.delete(id) : expandedGroups.add(id);
+  renderGroupTree();
+}
+
+function updateActiveNode() {
+  document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active'));
+  if (selectedGroup === 'all') {
+    document.getElementById('node-all').classList.add('active');
+  } else if (selectedGroup === 'ungrouped') {
+    document.getElementById('node-ungrouped').classList.add('active');
+  } else {
+    const node = document.querySelector(`.tree-node[data-gid="${selectedGroup}"] > .tree-item`);
+    if (node) node.classList.add('active');
+  }
+}
+
+// ── Group selection ───────────────────────────────────────────
+function selectGroup(id) {
+  selectedGroup = id;
+
+  // Auto-expand ancestor groups so the selected node is visible
+  if (typeof id === 'number') {
+    let cur = id, safety = 0;
+    while (cur && safety++ < 12) {
+      const g = allGroups.find(x => x.id === cur);
+      if (!g) break;
+      if (g.parent_id) expandedGroups.add(g.parent_id);
+      cur = g.parent_id;
+    }
+  }
+
+  renderGroupTree();
+
+  // Update list heading
+  let heading = 'All Templates';
+  if (id === 'ungrouped') heading = 'Ungrouped';
+  else if (typeof id === 'number') {
+    const g = allGroups.find(x => x.id === id);
+    heading = g ? g.name : 'Templates';
+  }
+  document.getElementById('list-heading').textContent = heading;
+
+  // Pre-select the group in the create form
+  const tGroupSel = document.getElementById('t-group');
+  tGroupSel.value = (typeof id === 'number') ? id : '';
+
+  renderList();
+}
+
+// ── Group selects (create form, modals) ───────────────────────
+function buildFlatOptions(nodes, depth = 0) {
+  const opts = [];
+  nodes.forEach(n => {
+    opts.push({ id: n.id, label: '\u00a0\u00a0'.repeat(depth) + n.name });
+    opts.push(...buildFlatOptions(n.children, depth + 1));
+  });
+  return opts;
+}
+
+function populateGroupSelects() {
+  const tree = buildTree(allGroups, null);
+  const flat  = buildFlatOptions(tree);
+
+  const makeOpts = (selected = '', withNone = '— Ungrouped —') =>
+    `<option value="">${withNone}</option>` +
+    flat.map(o => `<option value="${o.id}"${o.id == selected ? ' selected' : ''}>${esc(o.label)}</option>`).join('');
+
+  document.getElementById('t-group').innerHTML       = makeOpts(
+    (typeof selectedGroup === 'number') ? selectedGroup : '', '— Ungrouped —'
+  );
+  document.getElementById('gm-parent-select').innerHTML = makeOpts('', '— Top level —');
+  document.getElementById('mv-group').innerHTML         = makeOpts('', '— Ungrouped (root) —');
+  document.getElementById('e-group').innerHTML          = makeOpts('', '— Ungrouped —');
+}
+
+// ── Render template list ──────────────────────────────────────
+function renderList() {
+  const q = (document.getElementById('tpl-search')?.value || '').toLowerCase();
+
+  let visible = allTemplates;
+  if (selectedGroup === 'ungrouped') {
+    visible = allTemplates.filter(t => !t.group_id);
+  } else if (typeof selectedGroup === 'number') {
+    const desc = getAllDescendantIds(selectedGroup);
+    visible = allTemplates.filter(t => t.group_id === selectedGroup || desc.includes(t.group_id));
+  }
+  if (q) {
+    visible = visible.filter(t =>
+      t.name.toLowerCase().includes(q) || (t.template_text || '').toLowerCase().includes(q)
+    );
+  }
+
+  const sorted = [...visible].sort((a, b) => a.name.localeCompare(b.name));
+  const container = document.getElementById('tpl-list');
+
+  if (!sorted.length) {
+    container.innerHTML = '<div class="empty-note">No templates here yet.</div>';
+    return;
+  }
+
+  const showPath = selectedGroup === 'all';
+  container.innerHTML = sorted.map(t => {
+    const vars      = extractVars(t.template_text || '');
+    const firstLine = (t.template_text || '').split('\n')[0];
+    const varLabel  = vars.length === 0 ? 'no vars' : `${vars.length} var${vars.length !== 1 ? 's' : ''}`;
+    const path      = t.group_id ? getGroupPath(t.group_id) : '';
+
+    return `
+    <div class="tpl-row">
+      <div class="tpl-info">
+        <span class="tpl-name">${esc(t.name)}</span>
+        ${showPath && path ? `<span class="tpl-group-path">📁 ${esc(path)}</span>` : ''}
+        <span class="tpl-preview">${esc(firstLine)}</span>
+      </div>
+      <span class="tpl-vars">${varLabel}</span>
+      <div class="tpl-actions">
+        <a href="/?template=${encodeURIComponent(t.template_id)}" style="text-decoration:none">
+          <button class="btn btn-secondary btn-sm">▶ Use</button>
+        </a>
+        <button class="btn btn-secondary btn-sm" onclick="openEditModal('${t.template_id}')">✏️ Edit</button>
+        <button class="btn btn-secondary btn-sm" title="Move to folder"
+          onclick="openMoveModal('${t.template_id}', ${JSON.stringify(t.name)})">📁</button>
+        <button class="btn btn-danger btn-sm"
+          onclick="deleteTemplate('${t.template_id}', ${JSON.stringify(t.name)})">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Create template ───────────────────────────────────────────
 function onBodyInput() {
   const text = document.getElementById('t-body').value;
   document.getElementById('char-count').textContent = `${text.length} chars`;
-  updateVarPreview(text, 'var-preview');
+  refreshVarChips(text, 'var-preview');
 }
 
-// ── Live body input (edit modal) ──────────────────────────────
-function onEditBodyInput() {
-  const text = document.getElementById('e-body').value;
-  document.getElementById('e-char-count').textContent = `${text.length} chars`;
-  updateVarPreview(text, 'e-var-preview');
+function refreshVarChips(text, previewId) {
+  const vars = extractVars(text);
+  document.getElementById(previewId).innerHTML = vars.length
+    ? vars.map(v => `<span class="var-chip">{{${esc(v)}}}</span>`).join('')
+    : '<span class="var-none">No variables detected</span>';
 }
 
-function updateVarPreview(text, previewId) {
-  const vars    = extractVars(text);
-  const preview = document.getElementById(previewId);
-  preview.innerHTML = vars.length === 0
-    ? '<span class="var-none">No variables detected yet</span>'
-    : vars.map(v => `<span class="var-chip">{{${esc(v)}}}</span>`).join('');
+function loadExample() {
+  const n = document.getElementById('t-name');
+  const b = document.getElementById('t-body');
+  if (!n.value.trim()) n.value = EXAMPLE_NAME;
+  b.value = EXAMPLE_BODY;
+  onBodyInput();
+  b.focus();
 }
 
-// ── Save (create) ─────────────────────────────────────────────
 async function saveTemplate() {
-  const name = document.getElementById('t-name').value.trim();
-  const body = document.getElementById('t-body').value.trim();
+  const name     = document.getElementById('t-name').value.trim();
+  const body     = document.getElementById('t-body').value.trim();
+  const group_id = document.getElementById('t-group').value || null;
   if (!name) return toast('Enter a template name', true);
   if (!body) return toast('Template body is empty', true);
-
   try {
     await api('/api/templates', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, template_text: body }),
+      body: JSON.stringify({ name, template_text: body, group_id: group_id ? parseInt(group_id) : null }),
     });
     document.getElementById('t-name').value = '';
     document.getElementById('t-body').value = '';
     document.getElementById('char-count').textContent = '0 chars';
-    document.getElementById('var-preview').innerHTML = '<span class="var-none">No variables detected yet</span>';
+    document.getElementById('var-preview').innerHTML = '<span class="var-none">No variables detected</span>';
     toast('Template saved');
-    await loadList();
-  } catch (e) {
-    toast(e.message || 'Save failed', true);
-  }
-}
-
-// ── Load example ──────────────────────────────────────────────
-function loadExample() {
-  const nameEl = document.getElementById('t-name');
-  const bodyEl = document.getElementById('t-body');
-  if (!nameEl.value.trim()) nameEl.value = EXAMPLE_NAME;
-  bodyEl.value = EXAMPLE_BODY;
-  onBodyInput();
-  bodyEl.focus();
-}
-
-// ── Existing templates list ────────────────────────────────────
-async function loadList() {
-  const container = document.getElementById('tpl-list');
-  try {
-    const templates = await api('/api/templates');
-
-    // Keep a module-level copy so openEditModal can look up by ID safely.
-    allTemplates = templates;
-
-    if (!templates.length) {
-      container.innerHTML = '<div class="empty-note">No templates yet — create your first one above.</div>';
-      return;
-    }
-    const sorted = [...templates].sort((a, b) => a.name.localeCompare(b.name));
-    container.innerHTML = sorted.map(t => {
-      const vars      = extractVars(t.template_text || '');
-      const firstLine = (t.template_text || '').split('\n')[0];
-      const varLabel  = vars.length === 0 ? 'no variables'
-                      : vars.length === 1 ? '1 variable'
-                      : `${vars.length} variables`;
-      // Pass only the template_id in the onclick — no raw content in attributes.
-      return `
-        <div class="tpl-row" id="row-${t.template_id}">
-          <span class="tpl-name">${esc(t.name)}</span>
-          <span class="tpl-preview-text">${esc(firstLine)}</span>
-          <span class="tpl-vars">${varLabel}</span>
-          <div class="tpl-actions">
-            <a href="/?template=${encodeURIComponent(t.template_id)}">
-              <button class="btn btn-secondary btn-sm">▶ Use</button>
-            </a>
-            <button class="btn btn-secondary btn-sm"
-              onclick="openEditModal('${esc(t.template_id)}')">
-              ✏️ Edit
-            </button>
-            <button class="btn btn-danger btn-sm"
-              onclick="deleteTemplate('${esc(t.template_id)}', '${esc(t.name).replace(/'/g, "\\'")}')">
-              Delete
-            </button>
-          </div>
-        </div>`;
-    }).join('');
-  } catch (_) {
-    container.innerHTML = '<div class="empty-note" style="color:#dc2626">Failed to load templates.</div>';
-  }
+    await loadData();
+  } catch (e) { toast(e.message || 'Save failed', true); }
 }
 
 // ── Edit modal ────────────────────────────────────────────────
-// Accepts only a template_id and retrieves the full record from allTemplates.
-// Previously the name and body were passed directly as onclick arguments, which
-// caused them to leak into the create form when template content contained
-// characters that broke the HTML attribute boundary.
+function onEditBodyInput() {
+  const text = document.getElementById('e-body').value;
+  document.getElementById('e-char-count').textContent = `${text.length} chars`;
+  refreshVarChips(text, 'e-var-preview');
+}
+
 function openEditModal(templateId) {
   const t = allTemplates.find(x => x.template_id === templateId);
-  if (!t) {
-    toast('Could not find template — try refreshing the list', true);
-    return;
-  }
+  if (!t) return toast('Template not found — try refreshing', true);
 
+  populateGroupSelects(); // ensure fresh options
   document.getElementById('e-id').value   = t.template_id;
-  document.getElementById('e-name').value = t.name;
-  document.getElementById('e-body').value = t.template_text || '';
-
-  const text = t.template_text || '';
-  document.getElementById('e-char-count').textContent = `${text.length} chars`;
-  updateVarPreview(text, 'e-var-preview');
+  document.getElementById('e-group').value = t.group_id || '';
+  document.getElementById('e-name').value  = t.name;
+  document.getElementById('e-body').value  = t.template_text || '';
+  document.getElementById('e-char-count').textContent = `${(t.template_text||'').length} chars`;
+  refreshVarChips(t.template_text || '', 'e-var-preview');
 
   document.getElementById('edit-modal').classList.add('open');
   setTimeout(() => document.getElementById('e-name').focus(), 50);
 }
 
-function closeEditModal() {
-  document.getElementById('edit-modal').classList.remove('open');
-}
+function closeEditModal() { document.getElementById('edit-modal').classList.remove('open'); }
 
-// Saves edits — shows a confirmation dialog describing what will change
-// before committing to the server.
 async function saveEdit() {
-  const id   = document.getElementById('e-id').value;
-  const name = document.getElementById('e-name').value.trim();
-  const body = document.getElementById('e-body').value.trim();
-  if (!name) return toast('Template name is required', true);
+  const id       = document.getElementById('e-id').value;
+  const name     = document.getElementById('e-name').value.trim();
+  const body     = document.getElementById('e-body').value.trim();
+  const group_id = document.getElementById('e-group').value || null;
+  if (!name) return toast('Template name required', true);
   if (!body) return toast('Template body is empty', true);
 
-  const original    = allTemplates.find(x => x.template_id === id);
-  const nameChanged = original && original.name          !== name;
-  const bodyChanged = original && original.template_text !== body;
+  const orig         = allTemplates.find(x => x.template_id === id);
+  const nameChanged  = orig && orig.name          !== name;
+  const bodyChanged  = orig && orig.template_text !== body;
+  const groupChanged = orig && (orig.group_id || null) !== (group_id ? parseInt(group_id) : null);
 
-  if (!nameChanged && !bodyChanged) {
+  if (!nameChanged && !bodyChanged && !groupChanged) {
     toast('No changes to save');
     closeEditModal();
     return;
   }
 
   const changes = [];
-  if (nameChanged) changes.push(`rename to "${name}"`);
-  if (bodyChanged) changes.push('update the template body');
-
-  const confirmed = confirm(
-    `Save changes to "${original ? original.name : name}"?\n\n` +
-    `This will ${changes.join(' and ')}.`
-  );
-  if (!confirmed) return;
+  if (nameChanged)  changes.push(`rename to "${name}"`);
+  if (bodyChanged)  changes.push('update template body');
+  if (groupChanged) changes.push('move to different folder');
+  if (!confirm(`Save changes to "${orig ? orig.name : name}"?\n\nThis will ${changes.join(' and ')}.`)) return;
 
   try {
     await api(`/api/templates/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, template_text: body }),
+      body: JSON.stringify({ name, template_text: body, group_id: group_id ? parseInt(group_id) : null }),
     });
     closeEditModal();
     toast('Template updated');
-    await loadList();
-  } catch (e) {
-    toast(e.message || 'Update failed', true);
-  }
+    await loadData();
+  } catch (e) { toast(e.message || 'Update failed', true); }
 }
 
-// Close modal on backdrop click
-document.getElementById('edit-modal').addEventListener('click', (e) => {
-  if (e.target === e.currentTarget) closeEditModal();
-});
+// ── Move modal ────────────────────────────────────────────────
+function openMoveModal(templateId, name) {
+  const t = allTemplates.find(x => x.template_id === templateId);
+  populateGroupSelects();
+  document.getElementById('mv-id').value              = templateId;
+  document.getElementById('mv-name').textContent      = name;
+  document.getElementById('mv-group').value           = t?.group_id || '';
+  document.getElementById('move-modal').classList.add('open');
+}
+function closeMoveModal() { document.getElementById('move-modal').classList.remove('open'); }
 
-// ── Delete ────────────────────────────────────────────────────
+async function confirmMove() {
+  const id       = document.getElementById('mv-id').value;
+  const group_id = document.getElementById('mv-group').value || null;
+  const t        = allTemplates.find(x => x.template_id === id);
+  if (!t) return toast('Template not found', true);
+  try {
+    await api(`/api/templates/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: t.name,
+        template_text: t.template_text,
+        group_id: group_id ? parseInt(group_id) : null,
+      }),
+    });
+    closeMoveModal();
+    toast('Template moved');
+    await loadData();
+  } catch (e) { toast(e.message || 'Move failed', true); }
+}
+
+// ── Group modal (create / rename) ────────────────────────────
+function openGroupModal(parentId) {
+  populateGroupSelects();
+  document.getElementById('group-modal-title').textContent = 'New folder';
+  document.getElementById('gm-id').value                   = '';
+  document.getElementById('gm-name').value                 = '';
+  document.getElementById('gm-parent-select').value        = parentId !== null ? parentId : '';
+  document.getElementById('group-modal').classList.add('open');
+  setTimeout(() => document.getElementById('gm-name').focus(), 50);
+}
+
+function openRenameGroup(id) {
+  const g = allGroups.find(x => x.id === id);
+  if (!g) return;
+  populateGroupSelects();
+  document.getElementById('group-modal-title').textContent = 'Rename folder';
+  document.getElementById('gm-id').value                   = id;
+  document.getElementById('gm-name').value                 = g.name;
+  document.getElementById('gm-parent-select').value        = g.parent_id || '';
+  document.getElementById('group-modal').classList.add('open');
+  setTimeout(() => document.getElementById('gm-name').focus(), 50);
+}
+
+function closeGroupModal() { document.getElementById('group-modal').classList.remove('open'); }
+
+async function saveGroup() {
+  const id       = document.getElementById('gm-id').value;
+  const name     = document.getElementById('gm-name').value.trim();
+  const parentId = document.getElementById('gm-parent-select').value || null;
+  if (!name) return toast('Folder name required', true);
+
+  // Guard: prevent reparenting a group to one of its own descendants
+  if (id && parentId) {
+    const descendants = getAllDescendantIds(parseInt(id));
+    if (descendants.includes(parseInt(parentId))) {
+      return toast('Cannot move a folder into one of its own subfolders', true);
+    }
+  }
+
+  try {
+    if (id) {
+      await api(`/api/templates/groups/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, parent_id: parentId ? parseInt(parentId) : null }),
+      });
+    } else {
+      const newGroup = await api('/api/templates/groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, parent_id: parentId ? parseInt(parentId) : null }),
+      });
+      // Auto-expand parent if set
+      if (parentId) expandedGroups.add(parseInt(parentId));
+      // Auto-select new group
+      selectedGroup = newGroup.id;
+    }
+    closeGroupModal();
+    toast(id ? 'Folder renamed' : 'Folder created');
+    await loadData();
+  } catch (e) { toast(e.message || 'Save failed', true); }
+}
+
+async function deleteGroup(id) {
+  const g = allGroups.find(x => x.id === id);
+  if (!g) return;
+  const childCount = getAllDescendantIds(id).length;
+  const tplCount   = countTemplatesInGroup(id);
+  let msg = `Delete folder "${g.name}"?`;
+  if (tplCount)   msg += `\n\n${tplCount} template${tplCount !== 1 ? 's' : ''} will become ungrouped.`;
+  if (childCount) msg += `\n${childCount} subfolder${childCount !== 1 ? 's' : ''} will be promoted one level up.`;
+  if (!confirm(msg)) return;
+  try {
+    await api(`/api/templates/groups/${id}`, { method: 'DELETE' });
+    if (selectedGroup === id) selectedGroup = 'all';
+    toast('Folder deleted');
+    await loadData();
+  } catch (e) { toast(e.message || 'Delete failed', true); }
+}
+
+// ── Template delete ───────────────────────────────────────────
 async function deleteTemplate(id, name) {
   if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
   try {
     await api(`/api/templates/${id}`, { method: 'DELETE' });
     toast('Template deleted');
-    await loadList();
-  } catch (_) {
-    toast('Delete failed', true);
-  }
+    await loadData();
+  } catch (_) { toast('Delete failed', true); }
 }
 
-// ── Helpers ───────────────────────────────────────────────────
+// ── Utilities ─────────────────────────────────────────────────
+function closeAll() {
+  ['group-modal','edit-modal','move-modal'].forEach(id =>
+    document.getElementById(id).classList.remove('open')
+  );
+}
+
 function extractVars(text) {
   const out = [], re = /{{\s*([^}]+?)\s*}}/g; let m;
   while ((m = re.exec(text)) !== null) {
@@ -490,15 +935,20 @@ function extractVars(text) {
   }
   return out;
 }
+
 function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
 async function api(url, opts) {
   const r = await fetch(url, opts);
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(d.error || r.statusText);
   return d;
 }
+
 function toast(msg, err = false) {
   const el = document.getElementById('toast');
   el.textContent = msg;
@@ -506,6 +956,7 @@ function toast(msg, err = false) {
   el.style.display = 'block';
   setTimeout(() => el.style.display = 'none', 3200);
 }
+
 async function doLogout() {
   await fetch('/auth/logout', { method: 'POST' });
   location.href = '/login.html';

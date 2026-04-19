@@ -81,9 +81,6 @@ ON CONFLICT DO NOTHING;
 
 
 -- ── Template groups (folder tree) ─────────────────────────────
--- Self-referential; parent_id NULL = top-level folder.
--- ON DELETE CASCADE: deleting a folder also deletes all sub-folders
--- (templates inside become ungrouped via the ON DELETE SET NULL on templates).
 CREATE TABLE IF NOT EXISTS template_groups (
     id         SERIAL PRIMARY KEY,
     name       VARCHAR(255) NOT NULL,
@@ -118,12 +115,11 @@ CREATE TABLE IF NOT EXISTS device_groups (
 
 
 -- ── Credential vault ──────────────────────────────────────────
--- Secret fields are AES-256-GCM encrypted: "iv:tag:ciphertext" (hex, colon-separated).
 CREATE TABLE IF NOT EXISTS credentials (
     id                   SERIAL PRIMARY KEY,
     name                 VARCHAR(255) NOT NULL,
     username             VARCHAR(255) NOT NULL,
-    auth_method          VARCHAR(20)  NOT NULL DEFAULT 'password',  -- 'password' | 'key' | 'key+passphrase'
+    auth_method          VARCHAR(20)  NOT NULL DEFAULT 'password',
     encrypted_password   TEXT,
     encrypted_key        TEXT,
     encrypted_passphrase TEXT,
@@ -139,7 +135,7 @@ CREATE TABLE IF NOT EXISTS devices (
     name                  VARCHAR(255) NOT NULL,
     hostname              VARCHAR(255) NOT NULL,
     port                  INTEGER      NOT NULL DEFAULT 22,
-    device_type           VARCHAR(50)  NOT NULL DEFAULT 'linux',  -- 'linux' | 'cisco_ios' | 'cisco_nxos' | 'junos' | 'windows'
+    device_type           VARCHAR(50)  NOT NULL DEFAULT 'linux',
     group_id              INTEGER REFERENCES device_groups(id) ON DELETE SET NULL,
     default_credential_id INTEGER REFERENCES credentials(id)    ON DELETE SET NULL,
     description           TEXT,
@@ -154,28 +150,93 @@ CREATE TABLE IF NOT EXISTS devices (
 CREATE TABLE IF NOT EXISTS execution_logs (
     id            SERIAL PRIMARY KEY,
     device_id     INTEGER REFERENCES devices(id)     ON DELETE SET NULL,
-    template_id   VARCHAR(50),                                        -- soft ref to templates.template_id
+    template_id   VARCHAR(50),
     executed_by   INTEGER REFERENCES users(id)       ON DELETE SET NULL,
     credential_id INTEGER REFERENCES credentials(id) ON DELETE SET NULL,
     command_text  TEXT    NOT NULL,
     output        TEXT,
     exit_code     INTEGER,
-    status        VARCHAR(20) NOT NULL DEFAULT 'running',  -- 'running' | 'success' | 'failed'
+    status        VARCHAR(20) NOT NULL DEFAULT 'running',
     started_at    TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     completed_at  TIMESTAMP WITH TIME ZONE
 );
 
 
+-- ════════════════════════════════════════════════════════════════
+-- COMPLIANCE CHECKING  (v2.5)
+-- ════════════════════════════════════════════════════════════════
+
+-- ── Golden configurations ──────────────────────────────────────
+-- Define expected configuration lines for Cisco IOS / NX-OS devices.
+-- Each non-blank, non-comment line must appear verbatim in the device's
+-- `show running-config` output to be considered compliant.
+CREATE TABLE IF NOT EXISTS golden_configs (
+    id           SERIAL PRIMARY KEY,
+    name         VARCHAR(255) NOT NULL,
+    description  TEXT,
+    config_text  TEXT NOT NULL,
+    device_types VARCHAR(50)[] NOT NULL DEFAULT ARRAY['cisco_ios','cisco_nxos']::VARCHAR[],
+    created_by   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at   TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at   TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ── Golden config assignments ──────────────────────────────────
+-- Link a golden config to a specific device OR an entire device group.
+-- Exactly one of device_id or device_group_id must be non-null.
+CREATE TABLE IF NOT EXISTS golden_config_assignments (
+    id               SERIAL PRIMARY KEY,
+    golden_config_id INTEGER NOT NULL REFERENCES golden_configs(id)  ON DELETE CASCADE,
+    device_id        INTEGER          REFERENCES devices(id)         ON DELETE CASCADE,
+    device_group_id  INTEGER          REFERENCES device_groups(id)   ON DELETE CASCADE,
+    created_by       INTEGER          REFERENCES users(id)           ON DELETE SET NULL,
+    created_at       TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_gca_one_target CHECK (
+        (device_id IS NOT NULL)::int + (device_group_id IS NOT NULL)::int = 1
+    ),
+    CONSTRAINT uq_gca_device UNIQUE (golden_config_id, device_id),
+    CONSTRAINT uq_gca_group  UNIQUE (golden_config_id, device_group_id)
+);
+
+-- ── Compliance check results ───────────────────────────────────
+-- One row per (device, golden_config) check run.
+-- status: 'running' | 'compliant' | 'non_compliant' | 'error'
+CREATE TABLE IF NOT EXISTS compliance_results (
+    id               SERIAL PRIMARY KEY,
+    golden_config_id INTEGER REFERENCES golden_configs(id) ON DELETE CASCADE,
+    device_id        INTEGER REFERENCES devices(id)        ON DELETE CASCADE,
+    credential_id    INTEGER REFERENCES credentials(id)    ON DELETE SET NULL,
+    status           VARCHAR(20) NOT NULL DEFAULT 'running',
+    config_snapshot  TEXT,
+    missing_lines    TEXT[]  NOT NULL DEFAULT '{}',
+    line_results     JSONB   NOT NULL DEFAULT '[]',
+    total_lines      INTEGER NOT NULL DEFAULT 0,
+    matched_lines    INTEGER NOT NULL DEFAULT 0,
+    error_message    TEXT,
+    checked_by       INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    checked_at       TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    completed_at     TIMESTAMP WITH TIME ZONE
+);
+
+
 -- ── Indexes ───────────────────────────────────────────────────
-CREATE INDEX IF NOT EXISTS idx_template_id          ON templates(template_id);
-CREATE INDEX IF NOT EXISTS idx_templates_group      ON templates(group_id);
-CREATE INDEX IF NOT EXISTS idx_tpl_groups_parent    ON template_groups(parent_id);
-CREATE INDEX IF NOT EXISTS idx_users_username       ON users(username);
-CREATE INDEX IF NOT EXISTS idx_users_provider       ON users(auth_provider);
-CREATE INDEX IF NOT EXISTS idx_devices_group        ON devices(group_id);
-CREATE INDEX IF NOT EXISTS idx_devices_cred         ON devices(default_credential_id);
-CREATE INDEX IF NOT EXISTS idx_exec_logs_device     ON execution_logs(device_id);
-CREATE INDEX IF NOT EXISTS idx_exec_logs_user       ON execution_logs(executed_by);
+CREATE INDEX IF NOT EXISTS idx_template_id            ON templates(template_id);
+CREATE INDEX IF NOT EXISTS idx_templates_group        ON templates(group_id);
+CREATE INDEX IF NOT EXISTS idx_tpl_groups_parent      ON template_groups(parent_id);
+CREATE INDEX IF NOT EXISTS idx_users_username         ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_provider         ON users(auth_provider);
+CREATE INDEX IF NOT EXISTS idx_devices_group          ON devices(group_id);
+CREATE INDEX IF NOT EXISTS idx_devices_cred           ON devices(default_credential_id);
+CREATE INDEX IF NOT EXISTS idx_exec_logs_device       ON execution_logs(device_id);
+CREATE INDEX IF NOT EXISTS idx_exec_logs_user         ON execution_logs(executed_by);
+CREATE INDEX IF NOT EXISTS idx_golden_configs_name    ON golden_configs(name);
+CREATE INDEX IF NOT EXISTS idx_gca_golden_config      ON golden_config_assignments(golden_config_id);
+CREATE INDEX IF NOT EXISTS idx_gca_device             ON golden_config_assignments(device_id);
+CREATE INDEX IF NOT EXISTS idx_gca_group              ON golden_config_assignments(device_group_id);
+CREATE INDEX IF NOT EXISTS idx_compliance_device      ON compliance_results(device_id);
+CREATE INDEX IF NOT EXISTS idx_compliance_gc          ON compliance_results(golden_config_id);
+CREATE INDEX IF NOT EXISTS idx_compliance_status      ON compliance_results(status);
+CREATE INDEX IF NOT EXISTS idx_compliance_checked_at  ON compliance_results(checked_at DESC);
 
 
 -- ── updated_at triggers ───────────────────────────────────────
@@ -198,6 +259,11 @@ DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_devices_updated_at') THEN
         CREATE TRIGGER trg_devices_updated_at
             BEFORE UPDATE ON devices
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_golden_configs_updated_at') THEN
+        CREATE TRIGGER trg_golden_configs_updated_at
+            BEFORE UPDATE ON golden_configs
             FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     END IF;
 END $$;

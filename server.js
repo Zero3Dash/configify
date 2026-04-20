@@ -17,6 +17,7 @@ const userRoutes             = require('./routes/users');
 const deviceRoutes           = require('./routes/devices');
 const sshRoutes              = require('./routes/ssh');
 const templateRoutes         = require('./routes/templates');
+const complianceRoutes       = require('./routes/compliance');
 const { requireAuth }        = require('./middleware/auth');
 
 const app  = express();
@@ -62,11 +63,12 @@ app.use((req, res, next) => {
 app.use(express.static('public'));
 
 // ── API Routes ─────────────────────────────────────────────────
-app.use('/auth',          authRoutes);
-app.use('/api/users',     userRoutes);
-app.use('/api/devices',   deviceRoutes);
-app.use('/api/ssh',       requireAuth, sshRoutes);
-app.use('/api/templates', requireAuth, templateRoutes);
+app.use('/auth',           authRoutes);
+app.use('/api/users',      userRoutes);
+app.use('/api/devices',    deviceRoutes);
+app.use('/api/ssh',        requireAuth, sshRoutes);
+app.use('/api/templates',  requireAuth, templateRoutes);
+app.use('/api/compliance', requireAuth, complianceRoutes);
 
 // ── SPA fallback ───────────────────────────────────────────────
 app.use((req, res) => {

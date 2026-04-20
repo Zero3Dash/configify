@@ -65,7 +65,6 @@
   .stat-card.noncompliant .stat-value { color: #dc2626; }
   .stat-card.error        .stat-value { color: #d97706; }
   .stat-card.total        .stat-value { color: #2563eb; }
-  .stat-card.rate         .stat-value { color: #0f172a; }
 
   /* ── Card ── */
   .card { background: white; border-radius: 14px; padding: 1.5rem;
@@ -128,8 +127,7 @@
   label { display: block; font-size: 0.78rem; font-weight: 600; color: #374151; margin: 0.65rem 0 0.25rem; }
   input[type="text"], select, textarea {
     width: 100%; padding: 0.6rem 0.8rem; border: 1px solid #d1d5db; border-radius: 8px;
-    font-size: 0.875rem; outline: none; background: white;
-    transition: border-color 0.15s;
+    font-size: 0.875rem; outline: none; background: white; transition: border-color 0.15s;
   }
   input:focus, select:focus, textarea:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
   textarea { font-family: 'Fira Code', monospace; font-size: 0.8rem; min-height: 200px; resize: vertical; line-height: 1.6; }
@@ -138,6 +136,21 @@
   .checkbox-group label { display: flex; align-items: center; gap: 6px; font-weight: 400; font-size: 0.83rem; margin: 0; cursor: pointer; }
   .checkbox-group input[type="checkbox"] { width: auto; }
 
+  /* ── Bulk assignment check lists ── */
+  .assign-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.75rem; }
+  .assign-col-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+                      letter-spacing: 0.06em; color: #64748b; margin-bottom: 0.4rem; }
+  .check-list { border: 1px solid #d1d5db; border-radius: 8px; max-height: 220px;
+                overflow-y: auto; background: white; }
+  .check-list-item { display: flex; align-items: flex-start; gap: 8px; padding: 0.5rem 0.75rem;
+                     border-bottom: 1px solid #f1f5f9; font-size: 0.82rem; cursor: pointer;
+                     transition: background 0.1s; }
+  .check-list-item:last-child { border-bottom: none; }
+  .check-list-item:hover { background: #f8fafc; }
+  .check-list-item input[type="checkbox"] { width: auto; margin-top: 2px; cursor: pointer; flex-shrink: 0; }
+  .check-list-item.already { color: #94a3b8; }
+  .check-list-empty { padding: 1.2rem; text-align: center; color: #94a3b8; font-size: 0.82rem; }
+
   /* ── Modal ── */
   .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none;
                     align-items: center; justify-content: center; z-index: 200; }
@@ -145,6 +158,7 @@
   .modal { background: white; border-radius: 14px; padding: 1.5rem; width: 100%; max-width: 520px;
            max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.25); }
   .modal.modal-lg { max-width: 720px; }
+  .modal.modal-xl { max-width: 860px; }
   .modal h3 { font-size: 1rem; font-weight: 700; margin-bottom: 1.1rem; }
   .modal-footer { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.2rem; }
 
@@ -157,7 +171,7 @@
   .line-prefix-ok   { color: #16a34a; margin-right: 6px; }
   .line-prefix-miss { color: #dc2626; margin-right: 6px; }
 
-  /* ── Audit log terminal ── */
+  /* ── Audit log ── */
   .audit-log { background: #0f172a; color: #94a3b8; padding: 1rem; border-radius: 10px;
                font-family: 'Fira Code', monospace; font-size: 0.76rem; line-height: 1.6;
                max-height: 280px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;
@@ -166,19 +180,13 @@
   .audit-log .log-err { color: #f87171; }
   .audit-log .log-hdr { color: #38bdf8; font-weight: 600; }
 
-  /* ── Note boxes ── */
+  /* ── Misc ── */
   .note-info { background: #eff6ff; border-left: 3px solid #2563eb; padding: 0.65rem 0.9rem;
                border-radius: 0 7px 7px 0; font-size: 0.8rem; color: #1e40af; margin: 0.75rem 0; }
-
-  /* ── Search ── */
   .search-bar { padding: 0.5rem 0.8rem; border: 1px solid #d1d5db; border-radius: 8px;
                 font-size: 0.83rem; outline: none; width: 220px; }
   .search-bar:focus { border-color: #2563eb; }
-
-  /* ── Empty state ── */
   .empty-note { text-align: center; padding: 2.5rem 1rem; color: #94a3b8; font-size: 0.85rem; }
-
-  /* ── Status row ── */
   .status-row { display: none; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: #64748b; margin-top: 0.75rem; }
   .status-row.visible { display: flex; }
 
@@ -196,6 +204,7 @@
     <a href="/templates.html" class="sb-item"><span class="sb-icon">📂</span><span class="sb-label">Templates</span></a>
     <a href="/devices.html" class="sb-item"><span class="sb-icon">🖥️</span><span class="sb-label">Devices</span></a>
     <a href="/compliance.html" class="sb-item active"><span class="sb-icon">🛡️</span><span class="sb-label">Compliance</span></a>
+    <a href="/settings.html" class="sb-item"><span class="sb-icon">🔧</span><span class="sb-label">Settings</span></a>
     <a href="/admin.html" class="sb-item hidden" id="admin-link"><span class="sb-icon">⚙️</span><span class="sb-label">Admin</span></a>
   </nav>
   <div class="sb-divider"></div>
@@ -219,11 +228,9 @@
     <button class="tab" data-tab="assignments">🔗 Assignments</button>
   </div>
 
-  <!-- ════════════════ DASHBOARD ════════════════ -->
+  <!-- ════ DASHBOARD ════ -->
   <div id="panel-dashboard" class="panel active">
-
-    <!-- Stats -->
-    <div class="stats-row" id="stats-row">
+    <div class="stats-row">
       <div class="stat-card total">
         <span class="stat-label">Total checks</span>
         <span class="stat-value" id="stat-total">—</span>
@@ -244,14 +251,13 @@
         <span class="stat-value" id="stat-error">—</span>
         <span class="stat-sub">SSH / credential failures</span>
       </div>
-      <div class="stat-card rate">
+      <div class="stat-card">
         <span class="stat-label">Compliance rate</span>
         <span class="stat-value" id="stat-rate">—</span>
         <span class="stat-sub">Across all checks</span>
       </div>
     </div>
 
-    <!-- Run all + search -->
     <div class="card">
       <div class="section-row">
         <span class="card-title">Device compliance status</span>
@@ -261,13 +267,7 @@
         </div>
       </div>
 
-      <!-- Job progress -->
-      <div class="status-row" id="dash-status-row">
-        <div class="dot blue" id="dash-dot"></div>
-        <span id="dash-status-text">Running…</span>
-      </div>
-      <div id="dash-audit-log" class="audit-log" style="display:none"></div>
-
+      <!-- Results table -->
       <table>
         <thead><tr>
           <th>Device</th><th>Group</th><th>Golden Config</th><th>Status</th>
@@ -275,12 +275,18 @@
         </tr></thead>
         <tbody id="dashboard-tbody"></tbody>
       </table>
+
+      <!-- Audit log sits BELOW the table -->
+      <div class="status-row" id="dash-status-row">
+        <div class="dot blue" id="dash-dot"></div>
+        <span id="dash-status-text">Running…</span>
+      </div>
+      <div id="dash-audit-log" class="audit-log" style="display:none"></div>
     </div>
   </div>
 
-  <!-- ════════════════ GOLDEN CONFIGS ════════════════ -->
+  <!-- ════ GOLDEN CONFIGS ════ -->
   <div id="panel-golden" class="panel">
-
     <div class="card">
       <div class="section-row">
         <span class="card-title">Golden configurations</span>
@@ -299,17 +305,16 @@
     </div>
   </div>
 
-  <!-- ════════════════ ASSIGNMENTS ════════════════ -->
+  <!-- ════ ASSIGNMENTS ════ -->
   <div id="panel-assignments" class="panel">
-
     <div class="card">
       <div class="section-row">
         <span class="card-title">Assignments</span>
-        <button class="btn btn-primary" onclick="openAssignModal()">＋ New assignment</button>
+        <button class="btn btn-primary" onclick="openAssignModal()">＋ New assignments</button>
       </div>
       <p style="font-size:0.8rem;color:#64748b;margin-bottom:1rem">
-        Link a golden config to a device or an entire device group. Group assignments
-        automatically apply to all current and future members of that group.
+        Link a golden config to one or more devices or device groups in a single operation.
+        Group assignments automatically apply to all current and future members of that group.
       </p>
       <table>
         <thead><tr>
@@ -329,22 +334,17 @@
     <div class="row2">
       <div><label>Name</label><input type="text" id="gc-name" placeholder="NTP &amp; Logging Baseline" /></div>
       <div><label>Description <span style="font-weight:400;color:#94a3b8">(optional)</span></label>
-        <input type="text" id="gc-desc" placeholder="Ensures NTP servers and syslog are configured" /></div>
+        <input type="text" id="gc-desc" /></div>
     </div>
     <label>Apply to device types</label>
     <div class="checkbox-group">
-      <label><input type="checkbox" id="gc-type-ios" value="cisco_ios" checked> Cisco IOS</label>
-      <label><input type="checkbox" id="gc-type-nxos" value="cisco_nxos" checked> Cisco NX-OS</label>
+      <label><input type="checkbox" id="gc-type-ios" checked> Cisco IOS</label>
+      <label><input type="checkbox" id="gc-type-nxos" checked> Cisco NX-OS</label>
     </div>
     <label>Expected configuration lines
       <span style="font-weight:400;color:#94a3b8">— blank lines and lines starting with ! are ignored</span>
     </label>
-    <textarea id="gc-body" placeholder="ntp server 10.0.0.1
-ntp server 10.0.0.2
-logging host 10.0.0.100
-logging trap informational
-service timestamps log datetime msec
-ip ssh version 2"></textarea>
+    <textarea id="gc-body" placeholder="ntp server 10.0.0.1&#10;logging host 10.0.0.100&#10;ip ssh version 2"></textarea>
     <div style="font-size:0.75rem;color:#94a3b8;margin-top:4px" id="gc-line-count">0 active lines</div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModals()">Cancel</button>
@@ -353,28 +353,33 @@ ip ssh version 2"></textarea>
   </div>
 </div>
 
-<!-- ── Assignment Modal ── -->
+<!-- ── Bulk Assignment Modal ── -->
 <div class="modal-backdrop" id="assign-modal">
-  <div class="modal">
-    <h3>New assignment</h3>
-    <label>Golden config</label>
-    <select id="am-gc"></select>
-    <label>Target type</label>
-    <select id="am-target-type" onchange="toggleAssignTarget()">
-      <option value="device">Specific device</option>
-      <option value="group">Device group (all members)</option>
-    </select>
-    <div id="am-device-wrap">
-      <label>Device</label>
-      <select id="am-device"></select>
+  <div class="modal modal-xl">
+    <h3>New assignments</h3>
+    <label>Golden config to assign</label>
+    <select id="am-gc" onchange="refreshAssignLists()"></select>
+
+    <div class="assign-cols">
+      <div>
+        <div class="assign-col-title">🖥️ Devices (IOS / NX-OS only)</div>
+        <div class="check-list" id="am-device-list">
+          <div class="check-list-empty">Select a golden config above</div>
+        </div>
+      </div>
+      <div>
+        <div class="assign-col-title">📁 Device groups</div>
+        <div class="check-list" id="am-group-list">
+          <div class="check-list-empty">Select a golden config above</div>
+        </div>
+      </div>
     </div>
-    <div id="am-group-wrap" style="display:none">
-      <label>Device group</label>
-      <select id="am-group"></select>
-    </div>
+    <p style="font-size:0.75rem;color:#94a3b8;margin-top:0.6rem">
+      Already-assigned targets are shown ticked and greyed out. Check new targets then click Save.
+    </p>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModals()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveAssignment()">Assign</button>
+      <button class="btn btn-primary" onclick="saveAssignments()">Save assignments</button>
     </div>
   </div>
 </div>
@@ -425,7 +430,6 @@ let pollTimer = null;
   });
 
   document.getElementById('gc-body').addEventListener('input', updateLineCount);
-
   await loadAll();
 })();
 
@@ -441,28 +445,23 @@ async function loadDashboard() {
   try {
     const { summary, devices } = await api('/api/compliance/dashboard');
     dashboardData = devices;
-
     const total     = parseInt(summary.total)         || 0;
     const compliant = parseInt(summary.compliant)     || 0;
     const nonComp   = parseInt(summary.non_compliant) || 0;
     const errors    = parseInt(summary.error_count)   || 0;
     const rate      = total ? Math.round(compliant / total * 100) : 0;
-
-    document.getElementById('stat-total').textContent       = total;
-    document.getElementById('stat-compliant').textContent   = compliant;
+    document.getElementById('stat-total').textContent        = total;
+    document.getElementById('stat-compliant').textContent    = compliant;
     document.getElementById('stat-noncompliant').textContent = nonComp;
-    document.getElementById('stat-error').textContent       = errors;
-    document.getElementById('stat-rate').textContent        = total ? rate + '%' : '—';
-
+    document.getElementById('stat-error').textContent        = errors;
+    document.getElementById('stat-rate').textContent         = total ? rate + '%' : '—';
     renderDashboard(devices);
-  } catch (err) {
-    toast('Could not load dashboard: ' + err.message, true);
-  }
+  } catch (err) { toast('Could not load dashboard: ' + err.message, true); }
 }
 
 function renderDashboard(rows) {
-  const q     = (document.getElementById('dash-search').value || '').toLowerCase();
-  const tbody = document.getElementById('dashboard-tbody');
+  const q      = (document.getElementById('dash-search').value || '').toLowerCase();
+  const tbody  = document.getElementById('dashboard-tbody');
   const filtered = rows.filter(r =>
     !q || r.device_name.toLowerCase().includes(q) ||
     r.golden_config_name.toLowerCase().includes(q) ||
@@ -476,20 +475,18 @@ function renderDashboard(rows) {
     return;
   }
 
-  // Sort: non-compliant first, then error, then compliant
   const order = { non_compliant: 0, error: 1, compliant: 2 };
-  const sorted = [...filtered].sort((a, b) => (order[a.status] ?? 3) - (order[b.status] ?? 3) || a.device_name.localeCompare(b.device_name));
+  const sorted = [...filtered].sort((a, b) =>
+    (order[a.status] ?? 3) - (order[b.status] ?? 3) || a.device_name.localeCompare(b.device_name));
 
   tbody.innerHTML = sorted.map(r => {
-    const total    = r.total_lines   || 0;
-    const matched  = r.matched_lines || 0;
-    const missing  = (r.missing_lines || []).length;
-    const pct      = total ? Math.round(matched / total * 100) : 100;
-    const fillCls  = r.status === 'compliant' ? 'ok' : r.status === 'error' ? 'err' : 'bad';
-    const dtBadge  = r.device_type === 'cisco_ios'
+    const total   = r.total_lines   || 0;
+    const matched = r.matched_lines || 0;
+    const pct     = total ? Math.round(matched / total * 100) : 100;
+    const fillCls = r.status === 'compliant' ? 'ok' : r.status === 'error' ? 'err' : 'bad';
+    const dtBadge = r.device_type === 'cisco_ios'
       ? `<span class="badge badge-ios">IOS</span>`
       : `<span class="badge badge-nxos">NX-OS</span>`;
-
     return `<tr>
       <td>
         <strong>${esc(r.device_name)}</strong><br>
@@ -499,8 +496,7 @@ function renderDashboard(rows) {
       <td>${r.group_name
         ? `<span style="display:inline-flex;align-items:center;gap:5px">
              <span style="width:10px;height:10px;border-radius:50%;background:${esc(r.group_color||'#94a3b8')};display:inline-block"></span>
-             ${esc(r.group_name)}
-           </span>`
+             ${esc(r.group_name)}</span>`
         : '<span style="color:#94a3b8">—</span>'}</td>
       <td>${esc(r.golden_config_name)}</td>
       <td>${statusBadge(r.status)}</td>
@@ -537,13 +533,13 @@ async function loadGoldenConfigs() {
   try {
     allGoldenConfigs = await api('/api/compliance/golden-configs');
     renderGoldenConfigs();
-  } catch (err) { toast('Could not load golden configs', true); }
+  } catch (_) { toast('Could not load golden configs', true); }
 }
 
 function renderGoldenConfigs() {
   const tbody = document.getElementById('golden-tbody');
   if (!allGoldenConfigs.length) {
-    tbody.innerHTML = `<tr><td colspan="5" class="empty-note">No golden configs yet. Click "+ New golden config" to get started.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-note">No golden configs yet.</td></tr>`;
     return;
   }
   tbody.innerHTML = allGoldenConfigs.map(gc => {
@@ -557,12 +553,12 @@ function renderGoldenConfigs() {
         ${gc.description ? `<br><span style="font-size:0.75rem;color:#94a3b8">${esc(gc.description)}</span>` : ''}
       </td>
       <td>${types}</td>
-      <td>${gc.assignment_count ? `<span style="font-weight:600">${gc.assignment_count}</span>` : '<span style="color:#94a3b8">0</span>'}</td>
+      <td>${gc.assignment_count ? `<strong>${gc.assignment_count}</strong>` : '<span style="color:#94a3b8">0</span>'}</td>
       <td style="font-size:0.78rem;color:#94a3b8">${new Date(gc.updated_at||gc.created_at).toLocaleDateString()}</td>
       <td style="display:flex;gap:4px">
         <button class="btn btn-secondary btn-sm" onclick="openGoldenModal(${gc.id})">Edit</button>
         <button class="btn btn-success btn-sm" onclick="runGoldenCheck(${gc.id})">▶ Check all</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteGolden(${gc.id},'${esc(gc.name).replace(/'/g,"\\'")}')">Delete</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteGolden(${gc.id})">Delete</button>
       </td>
     </tr>`;
   }).join('');
@@ -591,16 +587,15 @@ async function openGoldenModal(id) {
 }
 
 function updateLineCount() {
-  const text  = document.getElementById('gc-body').value;
-  const count = text.split('\n')
+  const count = document.getElementById('gc-body').value.split('\n')
     .filter(l => l.trim() && !l.trim().startsWith('!')).length;
   document.getElementById('gc-line-count').textContent = `${count} active line${count !== 1 ? 's' : ''}`;
 }
 
 async function saveGolden() {
-  const id   = document.getElementById('gc-id').value;
-  const name = document.getElementById('gc-name').value.trim();
-  const body = document.getElementById('gc-body').value.trim();
+  const id    = document.getElementById('gc-id').value;
+  const name  = document.getElementById('gc-name').value.trim();
+  const body  = document.getElementById('gc-body').value.trim();
   const types = [];
   if (document.getElementById('gc-type-ios').checked)  types.push('cisco_ios');
   if (document.getElementById('gc-type-nxos').checked) types.push('cisco_nxos');
@@ -617,8 +612,9 @@ async function saveGolden() {
   } catch (e) { toast(e.message, true); }
 }
 
-async function deleteGolden(id, name) {
-  if (!confirm(`Delete golden config "${name}"? All assignments and results will also be removed.`)) return;
+async function deleteGolden(id) {
+  const gc = allGoldenConfigs.find(g => g.id === id);
+  if (!confirm(`Delete golden config "${gc?.name}"? All assignments and results will also be removed.`)) return;
   try {
     await api('/api/compliance/golden-configs/' + id, { method: 'DELETE' });
     toast('Golden config deleted');
@@ -640,14 +636,14 @@ async function loadAssignments() {
 function renderAssignments() {
   const tbody = document.getElementById('assign-tbody');
   if (!allAssignments.length) {
-    tbody.innerHTML = `<tr><td colspan="6" class="empty-note">No assignments yet. Click "+ New assignment" to link golden configs to devices.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-note">No assignments yet. Click "+ New assignments" to get started.</td></tr>`;
     return;
   }
   tbody.innerHTML = allAssignments.map(a => {
     const isGroup  = !!a.device_group_id;
     const target   = isGroup ? a.device_group_name : a.device_name;
     const typeInfo = isGroup
-      ? `<span style="font-size:0.72rem;color:#64748b">Group — all member devices</span>`
+      ? `<span style="font-size:0.72rem;color:#64748b">All member devices</span>`
       : (a.device_type === 'cisco_ios'
           ? '<span class="badge badge-ios">IOS</span>'
           : '<span class="badge badge-nxos">NX-OS</span>');
@@ -660,58 +656,89 @@ function renderAssignments() {
       <td><span class="badge badge-${isGroup ? 'running' : 'ios'}" style="${isGroup?'background:#e0f2fe;color:#0c4a6e':''}">${isGroup ? 'Group' : 'Device'}</span></td>
       <td>${typeInfo}</td>
       <td style="font-size:0.78rem;color:#94a3b8">${new Date(a.created_at).toLocaleDateString()}</td>
-      <td>
-        <button class="btn btn-danger btn-sm" onclick="deleteAssignment(${a.id})">Remove</button>
-      </td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteAssignment(${a.id})">Remove</button></td>
     </tr>`;
   }).join('');
 }
 
 async function openAssignModal() {
-  // Populate selects
   const gcSel = document.getElementById('am-gc');
   gcSel.innerHTML = allGoldenConfigs.length
     ? allGoldenConfigs.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('')
     : '<option value="">— No golden configs —</option>';
-
-  const devSel = document.getElementById('am-device');
-  const eligibleDevices = allDevices.filter(d => d.device_type === 'cisco_ios' || d.device_type === 'cisco_nxos');
-  devSel.innerHTML = eligibleDevices.length
-    ? eligibleDevices.map(d => `<option value="${d.id}">${esc(d.name)} (${esc(d.hostname)}) — ${d.device_type}</option>`).join('')
-    : '<option value="">— No eligible devices (need cisco_ios or cisco_nxos) —</option>';
-
-  const grpSel = document.getElementById('am-group');
-  grpSel.innerHTML = allGroups.length
-    ? allGroups.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('')
-    : '<option value="">— No device groups —</option>';
-
-  document.getElementById('am-target-type').value = 'device';
-  toggleAssignTarget();
+  refreshAssignLists();
   document.getElementById('assign-modal').classList.add('open');
 }
 
-function toggleAssignTarget() {
-  const isGroup = document.getElementById('am-target-type').value === 'group';
-  document.getElementById('am-device-wrap').style.display = isGroup ? 'none' : '';
-  document.getElementById('am-group-wrap').style.display  = isGroup ? '' : 'none';
+function refreshAssignLists() {
+  const gcId = parseInt(document.getElementById('am-gc').value) || 0;
+
+  const assignedDevIds  = new Set(allAssignments.filter(a => a.golden_config_id === gcId && a.device_id).map(a => a.device_id));
+  const assignedGrpIds  = new Set(allAssignments.filter(a => a.golden_config_id === gcId && a.device_group_id).map(a => a.device_group_id));
+
+  const eligibleDevices = allDevices.filter(d => d.device_type === 'cisco_ios' || d.device_type === 'cisco_nxos');
+
+  // Devices column
+  const devList = document.getElementById('am-device-list');
+  if (!gcId) {
+    devList.innerHTML = '<div class="check-list-empty">Select a golden config above</div>';
+  } else if (!eligibleDevices.length) {
+    devList.innerHTML = '<div class="check-list-empty">No eligible devices (need cisco_ios or cisco_nxos)</div>';
+  } else {
+    devList.innerHTML = eligibleDevices.map(d => {
+      const already = assignedDevIds.has(d.id);
+      return `<label class="check-list-item${already ? ' already' : ''}">
+        <input type="checkbox" class="am-dev-cb" value="${d.id}" ${already ? 'checked disabled' : ''} />
+        <span>
+          <strong>${esc(d.name)}</strong>
+          <span style="font-size:0.72rem;color:#94a3b8"> ${esc(d.hostname)} — ${d.device_type}</span>
+          ${already ? ' <span style="font-size:0.7rem;color:#16a34a">✓ assigned</span>' : ''}
+        </span>
+      </label>`;
+    }).join('');
+  }
+
+  // Groups column
+  const grpList = document.getElementById('am-group-list');
+  if (!gcId) {
+    grpList.innerHTML = '<div class="check-list-empty">Select a golden config above</div>';
+  } else if (!allGroups.length) {
+    grpList.innerHTML = '<div class="check-list-empty">No device groups defined</div>';
+  } else {
+    grpList.innerHTML = allGroups.map(g => {
+      const already = assignedGrpIds.has(g.id);
+      return `<label class="check-list-item${already ? ' already' : ''}">
+        <input type="checkbox" class="am-grp-cb" value="${g.id}" ${already ? 'checked disabled' : ''} />
+        <span>
+          <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${esc(g.color||'#94a3b8')};margin-right:4px;vertical-align:middle"></span>
+          <strong>${esc(g.name)}</strong>
+          <span style="font-size:0.72rem;color:#94a3b8"> ${g.device_count || 0} devices</span>
+          ${already ? ' <span style="font-size:0.7rem;color:#16a34a">✓ assigned</span>' : ''}
+        </span>
+      </label>`;
+    }).join('');
+  }
 }
 
-async function saveAssignment() {
-  const gcId    = document.getElementById('am-gc').value;
-  const isGroup = document.getElementById('am-target-type').value === 'group';
-  const devId   = document.getElementById('am-device').value;
-  const grpId   = document.getElementById('am-group').value;
+async function saveAssignments() {
+  const gcId = parseInt(document.getElementById('am-gc').value);
   if (!gcId) return toast('Select a golden config', true);
-  if (isGroup && !grpId) return toast('Select a device group', true);
-  if (!isGroup && !devId) return toast('Select a device', true);
-  const body = { golden_config_id: parseInt(gcId) };
-  if (isGroup) body.device_group_id = parseInt(grpId);
-  else         body.device_id       = parseInt(devId);
+
+  const device_ids       = [...document.querySelectorAll('.am-dev-cb:not(:disabled):checked')].map(cb => parseInt(cb.value));
+  const device_group_ids = [...document.querySelectorAll('.am-grp-cb:not(:disabled):checked')].map(cb => parseInt(cb.value));
+
+  if (!device_ids.length && !device_group_ids.length)
+    return toast('Select at least one device or group', true);
+
   try {
-    await api('/api/compliance/assignments', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const r = await api('/api/compliance/assignments/bulk', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ golden_config_id: gcId, device_ids, device_group_ids })
+    });
     closeModals();
-    toast('Assignment created');
-    await loadAssignments();
+    toast(`${r.created} assignment${r.created !== 1 ? 's' : ''} created${r.skipped ? `, ${r.skipped} already existed` : ''}`);
+    await loadAll();
   } catch (e) { toast(e.message, true); }
 }
 
@@ -725,7 +752,7 @@ async function deleteAssignment(id) {
 }
 
 // ════════════════════════════════════════════════════════════════
-// DEVICES & GROUPS (for dropdowns)
+// DEVICES & GROUPS  (for assignment modal)
 // ════════════════════════════════════════════════════════════════
 
 async function loadDevicesAndGroups() {
@@ -741,20 +768,14 @@ async function loadDevicesAndGroups() {
 // CHECK EXECUTION
 // ════════════════════════════════════════════════════════════════
 
-async function runAllChecks() {
-  await startCheck({});
-}
+async function runAllChecks()        { await startCheck({}); }
+async function checkOne(devId, gcId) { await startCheck({ device_id: devId, golden_config_id: gcId }); }
 
 async function runGoldenCheck(gcId) {
-  // Switch to dashboard tab so user can see progress
   document.querySelectorAll('.tabs .tab, .panel').forEach(el => el.classList.remove('active'));
   document.querySelector('[data-tab="dashboard"]').classList.add('active');
   document.getElementById('panel-dashboard').classList.add('active');
   await startCheck({ golden_config_id: gcId });
-}
-
-async function checkOne(deviceId, gcId) {
-  await startCheck({ device_id: deviceId, golden_config_id: gcId });
 }
 
 async function startCheck(body) {
@@ -766,7 +787,7 @@ async function startCheck(body) {
 
   const logEl = document.getElementById('dash-audit-log');
   logEl.textContent = '';
-  logEl.style.display = 'block';
+  logEl.style.display = 'none';   // hidden until data arrives
 
   const statusRow = document.getElementById('dash-status-row');
   statusRow.classList.add('visible');
@@ -776,16 +797,13 @@ async function startCheck(body) {
   let jobId;
   try {
     const r = await api('/api/compliance/check', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)
     });
     jobId = r.jobId;
     document.getElementById('dash-status-text').textContent = `Checking ${r.total} device(s)…`;
   } catch (e) {
     toast(e.message || 'Failed to start check', true);
-    runBtn.disabled = false;
-    runBtn.textContent = '▶ Run all checks';
+    runBtn.disabled = false; runBtn.textContent = '▶ Run all checks';
     statusRow.classList.remove('visible');
     return;
   }
@@ -793,30 +811,27 @@ async function startCheck(body) {
   pollTimer = setInterval(async () => {
     try {
       const p = await api('/api/compliance/poll/' + jobId);
-      if (p.newLog) appendAuditLog(logEl, p.newLog);
-      document.getElementById('dash-status-text').textContent =
-        `Checking — ${p.completed}/${p.total} complete`;
-
+      if (p.newLog) {
+        logEl.style.display = 'block';
+        appendAuditLog(logEl, p.newLog);
+      }
+      document.getElementById('dash-status-text').textContent = `Checking — ${p.completed}/${p.total} complete`;
       if (p.status !== 'running') {
         clearInterval(pollTimer); pollTimer = null;
         document.getElementById('dash-dot').className = 'dot green';
-        document.getElementById('dash-status-text').textContent =
-          `Done — ${p.completed} device(s) checked`;
-        runBtn.disabled = false;
-        runBtn.textContent = '▶ Run all checks';
+        document.getElementById('dash-status-text').textContent = `Done — ${p.completed} device(s) checked`;
+        runBtn.disabled = false; runBtn.textContent = '▶ Run all checks';
         await loadDashboard();
       }
     } catch (e) {
       clearInterval(pollTimer); pollTimer = null;
       toast('Poll error: ' + e.message, true);
-      runBtn.disabled = false;
-      runBtn.textContent = '▶ Run all checks';
+      runBtn.disabled = false; runBtn.textContent = '▶ Run all checks';
     }
   }, 1200);
 }
 
 function appendAuditLog(el, text) {
-  // Colourise the log text
   const coloured = text
     .replace(/\[.*?\] ✓[^\n]*/g, m => `<span class="log-ok">${escHtml(m)}</span>`)
     .replace(/\[.*?\] ✗[^\n]*/g, m => `<span class="log-err">${escHtml(m)}</span>`)
@@ -833,14 +848,12 @@ function appendAuditLog(el, text) {
 async function showDetail(resultId) {
   try {
     const r = await api('/api/compliance/results/' + resultId);
-    document.getElementById('detail-title').textContent =
-      `${r.device_name} — ${r.golden_config_name}`;
+    document.getElementById('detail-title').textContent = `${r.device_name} — ${r.golden_config_name}`;
     document.getElementById('detail-meta').innerHTML =
       `<strong>${r.hostname}</strong> · ${r.device_type} · Checked ${r.checked_at ? new Date(r.checked_at).toLocaleString() : '—'}` +
       (r.checked_by_name ? ` by ${r.checked_by_name}` : '');
-
     const missing = r.missing_lines || [];
-    const total   = r.total_lines || 0;
+    const total   = r.total_lines   || 0;
     const matched = r.matched_lines || 0;
     document.getElementById('detail-summary').innerHTML = `
       <div style="display:flex;gap:1rem;align-items:center;padding:0.8rem;background:#f8fafc;border-radius:8px;margin-bottom:0.5rem">
@@ -848,32 +861,23 @@ async function showDetail(resultId) {
         <span style="font-size:0.85rem;color:#475569">${matched} of ${total} lines present</span>
         ${r.error_message ? `<span style="font-size:0.8rem;color:#d97706">Error: ${esc(r.error_message)}</span>` : ''}
       </div>`;
-
-    // Parse line results from DB or reconstruct from missing_lines
     let lineResults = [];
     try { lineResults = JSON.parse(r.line_results || '[]'); } catch (_) {}
-
     if (!lineResults.length && r.golden_config_text) {
-      // Reconstruct from the stored golden config text + missing lines
       const missingSet = new Set(missing);
-      lineResults = r.golden_config_text
-        .split('\n')
+      lineResults = r.golden_config_text.split('\n')
         .map(l => l.replace(/\r/g,'').trimEnd())
         .filter(l => l.trim() && !l.trim().startsWith('!'))
         .map(line => ({ line, found: !missingSet.has(line) }));
     }
-
     const linesEl = document.getElementById('detail-lines');
-    if (!lineResults.length) {
-      linesEl.innerHTML = '<span style="color:#94a3b8">No line data available</span>';
-    } else {
-      linesEl.innerHTML = lineResults.map(({ line, found }) =>
-        `<div class="${found ? 'line-ok' : 'line-miss'}">` +
-        `<span class="${found ? 'line-prefix-ok' : 'line-prefix-miss'}">${found ? '✓' : '✗'}</span>` +
-        `${escHtml(line)}</div>`
-      ).join('');
-    }
-
+    linesEl.innerHTML = lineResults.length
+      ? lineResults.map(({ line, found }) =>
+          `<div class="${found ? 'line-ok' : 'line-miss'}">` +
+          `<span class="${found ? 'line-prefix-ok' : 'line-prefix-miss'}">${found ? '✓' : '✗'}</span>` +
+          `${escHtml(line)}</div>`
+        ).join('')
+      : '<span style="color:#94a3b8">No line data available</span>';
     document.getElementById('detail-modal').classList.add('open');
   } catch (e) { toast('Could not load result: ' + e.message, true); }
 }
@@ -893,9 +897,7 @@ async function api(url, opts) {
   return d;
 }
 
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+function esc(s)     { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function escHtml(s) { return esc(s); }
 
 function toast(msg, isErr = false) {

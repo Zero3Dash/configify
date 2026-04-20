@@ -199,6 +199,10 @@
       <span class="sb-icon">🛡️</span>
       <span class="sb-label">Compliance</span>
     </a>
+    <a href="/settings.html" class="sb-item">
+      <span class="sb-icon">🔧</span>
+      <span class="sb-label">Settings</span>
+    </a>
     <a href="/admin.html" class="sb-item hidden" id="admin-link">
       <span class="sb-icon">⚙️</span>
       <span class="sb-label">Admin</span>
@@ -523,10 +527,10 @@ function populateGroupSelects() {
   const makeOpts = (selected = '', withNone = '— Ungrouped —') =>
     `<option value="">${withNone}</option>` +
     flat.map(o => `<option value="${o.id}"${o.id == selected ? ' selected' : ''}>${esc(o.label)}</option>`).join('');
-  document.getElementById('t-group').innerHTML       = makeOpts((typeof selectedGroup === 'number') ? selectedGroup : '', '— Ungrouped —');
+  document.getElementById('t-group').innerHTML        = makeOpts((typeof selectedGroup === 'number') ? selectedGroup : '', '— Ungrouped —');
   document.getElementById('gm-parent-select').innerHTML = makeOpts('', '— Top level —');
-  document.getElementById('mv-group').innerHTML         = makeOpts('', '— Ungrouped (root) —');
-  document.getElementById('e-group').innerHTML          = makeOpts('', '— Ungrouped —');
+  document.getElementById('mv-group').innerHTML          = makeOpts('', '— Ungrouped (root) —');
+  document.getElementById('e-group').innerHTML           = makeOpts('', '— Ungrouped —');
 }
 
 function renderList() {
@@ -552,6 +556,7 @@ function renderList() {
     const firstLine = (t.template_text || '').split('\n')[0];
     const varLabel  = vars.length === 0 ? 'no vars' : `${vars.length} var${vars.length !== 1 ? 's' : ''}`;
     const path      = t.group_id ? getGroupPath(t.group_id) : '';
+    // NOTE: we pass only template_id in onclick to avoid HTML injection from template names
     return `
     <div class="tpl-row">
       <div class="tpl-info">
@@ -566,9 +571,9 @@ function renderList() {
         </a>
         <button class="btn btn-secondary btn-sm" onclick="openEditModal('${t.template_id}')">✏️ Edit</button>
         <button class="btn btn-secondary btn-sm" title="Move to folder"
-          onclick="openMoveModal('${t.template_id}', ${JSON.stringify(t.name)})">📁</button>
+          onclick="openMoveModal('${t.template_id}')">📁 Move</button>
         <button class="btn btn-danger btn-sm"
-          onclick="deleteTemplate('${t.template_id}', ${JSON.stringify(t.name)})">Delete</button>
+          onclick="deleteTemplate('${t.template_id}')">Delete</button>
       </div>
     </div>`;
   }).join('');
@@ -627,7 +632,7 @@ function openEditModal(templateId) {
   if (!t) return toast('Template not found — try refreshing', true);
   populateGroupSelects();
   document.getElementById('e-id').value    = t.template_id;
-  document.getElementById('e-group').value = t.group_id || '';
+  document.getElementById('e-group').value = t.group_id ? String(t.group_id) : '';
   document.getElementById('e-name').value  = t.name;
   document.getElementById('e-body').value  = t.template_text || '';
   document.getElementById('e-char-count').textContent = `${(t.template_text||'').length} chars`;
@@ -666,14 +671,17 @@ async function saveEdit() {
   } catch (e) { toast(e.message || 'Update failed', true); }
 }
 
-function openMoveModal(templateId, name) {
+// openMoveModal now looks up name from allTemplates — no HTML injection risk
+function openMoveModal(templateId) {
   const t = allTemplates.find(x => x.template_id === templateId);
+  if (!t) return toast('Template not found — try refreshing', true);
   populateGroupSelects();
   document.getElementById('mv-id').value         = templateId;
-  document.getElementById('mv-name').textContent = name;
-  document.getElementById('mv-group').value      = t?.group_id || '';
+  document.getElementById('mv-name').textContent = t.name;
+  document.getElementById('mv-group').value      = t.group_id ? String(t.group_id) : '';
   document.getElementById('move-modal').classList.add('open');
 }
+
 function closeMoveModal() { document.getElementById('move-modal').classList.remove('open'); }
 
 async function confirmMove() {
@@ -764,10 +772,13 @@ async function deleteGroup(id) {
   } catch (e) { toast(e.message || 'Delete failed', true); }
 }
 
-async function deleteTemplate(id, name) {
+// deleteTemplate now looks up name safely — no HTML injection
+async function deleteTemplate(templateId) {
+  const t = allTemplates.find(x => x.template_id === templateId);
+  const name = t ? t.name : templateId;
   if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
   try {
-    await api(`/api/templates/${id}`, { method: 'DELETE' });
+    await api(`/api/templates/${templateId}`, { method: 'DELETE' });
     toast('Template deleted');
     await loadData();
   } catch (_) { toast('Delete failed', true); }

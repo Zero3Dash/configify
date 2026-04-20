@@ -10,15 +10,16 @@ const session    = require('express-session');
 const pgSession  = require('connect-pg-simple')(session);
 const cors       = require('cors');
 
-const db                     = require('./db');
-const { passport, initAuth } = require('./auth');
-const authRoutes             = require('./routes/auth');
-const userRoutes             = require('./routes/users');
-const deviceRoutes           = require('./routes/devices');
-const sshRoutes              = require('./routes/ssh');
-const templateRoutes         = require('./routes/templates');
-const complianceRoutes       = require('./routes/compliance');
-const { requireAuth }        = require('./middleware/auth');
+const db                              = require('./db');
+const { passport, initAuth }          = require('./auth');
+const authRoutes                      = require('./routes/auth');
+const userRoutes                      = require('./routes/users');
+const deviceRoutes                    = require('./routes/devices');
+const sshRoutes                       = require('./routes/ssh');
+const templateRoutes                  = require('./routes/templates');
+const { router: complianceRouter,
+        startScheduler }              = require('./routes/compliance');
+const { requireAuth }                 = require('./middleware/auth');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -63,12 +64,12 @@ app.use((req, res, next) => {
 app.use(express.static('public'));
 
 // ── API Routes ─────────────────────────────────────────────────
-app.use('/auth',           authRoutes);
-app.use('/api/users',      userRoutes);
-app.use('/api/devices',    deviceRoutes);
-app.use('/api/ssh',        requireAuth, sshRoutes);
-app.use('/api/templates',  requireAuth, templateRoutes);
-app.use('/api/compliance', requireAuth, complianceRoutes);
+app.use('/auth',             authRoutes);
+app.use('/api/users',        userRoutes);
+app.use('/api/devices',      deviceRoutes);
+app.use('/api/ssh',          requireAuth, sshRoutes);
+app.use('/api/templates',    requireAuth, templateRoutes);
+app.use('/api/compliance',   requireAuth, complianceRouter);
 
 // ── SPA fallback ───────────────────────────────────────────────
 app.use((req, res) => {
@@ -79,6 +80,7 @@ app.use((req, res) => {
 // ── Start ──────────────────────────────────────────────────────
 async function start() {
     await initAuth();
+    startScheduler();   // start the compliance schedule runner
     http.createServer(app).listen(PORT, () => {
         console.log(`[server] configify running on http://localhost:${PORT}`);
         console.log(`[server] NODE_ENV=${process.env.NODE_ENV}`);

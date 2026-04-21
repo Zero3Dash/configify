@@ -3,15 +3,11 @@
  *
  * Configuration compliance checking for Cisco IOS and NX-OS devices.
  *
- * Golden configs (a.k.a. "golden configurations") define expected configuration
- * lines that must be present in a device's running config.  Assignments link
- * a golden config to a specific device or an entire device group.
- *
- * Flow:
- *   POST /api/compliance/check         → starts async check job, returns { jobId }
- *   GET  /api/compliance/poll/:jobId   → streams progress { status, completed, total, newLog, results }
- *
- * Supported device types: cisco_ios, cisco_nxos
+ * Changes vs original:
+ *  - POST /assignments/bulk  — assign one golden config to multiple devices/groups at once
+ *  - GET/POST/PATCH/DELETE /schedules — manage periodic check schedules
+ *  - startScheduler() exported for server.js
+ *  - resolvePairs() factored out and shared between HTTP handler and scheduler
  */
 
 const express     = require('express');
@@ -22,7 +18,6 @@ const { requireAuth, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
-// ── In-memory check jobs ──────────────────────────────────────
 const jobs = new Map();
 let jobCounter = 0;
 
@@ -142,9 +137,10 @@ router.get('/assignments', async (req, res) => {
     } catch (err) { console.error(err); res.status(500).json({ error: 'Database error' }); }
 });
 
+// Single assignment (kept for backward compat)
 router.post('/assignments', async (req, res) => {
     const { golden_config_id, device_id, device_group_id } = req.body;
-    if (!golden_config_id)             return res.status(400).json({ error: 'golden_config_id required' });
+    if (!golden_config_id)              return res.status(400).json({ error: 'golden_config_id required' });
     if (!device_id && !device_group_id) return res.status(400).json({ error: 'device_id or device_group_id required' });
     if (device_id  && device_group_id)  return res.status(400).json({ error: 'Specify only one of device_id or device_group_id' });
     try {
@@ -157,12 +153,120 @@ router.post('/assignments', async (req, res) => {
     } catch (err) { console.error(err); res.status(500).json({ error: 'Database error' }); }
 });
 
+// Bulk assignment — create multiple device/group assignments for one golden config at once
+router.post('/assignments/bulk', async (req, res) => {
+    const { golden_config_id, device_ids, device_group_ids } = req.body;
+    if (!golden_config_id) return res.status(400).json({ error: 'golden_config_id required' });
+    const dIds = Array.isArray(device_ids)       ? device_ids.map(Number).filter(Boolean)       : [];
+    const gIds = Array.isArray(device_group_ids) ? device_group_ids.map(Number).filter(Boolean) : [];
+    if (!dIds.length && !gIds.length)
+        return res.status(400).json({ error: 'Specify at least one device_id or device_group_id' });
+    try {
+        let created = 0;
+        for (const device_id of dIds) {
+            const r = await db.query(
+                `INSERT INTO golden_config_assignments (golden_config_id, device_id, created_by)
+                 VALUES ($1,$2,$3) ON CONFLICT DO NOTHING RETURNING id`,
+                [golden_config_id, device_id, req.user.id]
+            );
+            if (r.rows.length) created++;
+        }
+        for (const device_group_id of gIds) {
+            const r = await db.query(
+                `INSERT INTO golden_config_assignments (golden_config_id, device_group_id, created_by)
+                 VALUES ($1,$2,$3) ON CONFLICT DO NOTHING RETURNING id`,
+                [golden_config_id, device_group_id, req.user.id]
+            );
+            if (r.rows.length) created++;
+        }
+        const total   = dIds.length + gIds.length;
+        const skipped = total - created;
+        res.status(201).json({ ok: true, created, skipped });
+    } catch (err) { console.error(err); res.status(500).json({ error: 'Database error' }); }
+});
+
 router.delete('/assignments/:id', async (req, res) => {
     try {
         const { rows } = await db.query(
             'DELETE FROM golden_config_assignments WHERE id=$1 RETURNING id', [req.params.id]
         );
         if (!rows.length) return res.status(404).json({ error: 'Assignment not found' });
+        res.status(204).send();
+    } catch (err) { res.status(500).json({ error: 'Database error' }); }
+});
+
+// ════════════════════════════════════════════════════════════════
+// SCHEDULES
+// ════════════════════════════════════════════════════════════════
+
+router.get('/schedules', requireAuth, async (req, res) => {
+    try {
+        const { rows } = await db.query(`
+            SELECT  cs.*, gc.name AS golden_config_name, u.username AS created_by_name
+            FROM    compliance_schedules cs
+            LEFT JOIN golden_configs gc ON gc.id = cs.golden_config_id
+            LEFT JOIN users         u  ON u.id  = cs.created_by
+            ORDER BY cs.name
+        `);
+        res.json(rows);
+    } catch (err) { res.status(500).json({ error: 'Database error' }); }
+});
+
+router.post('/schedules', requireAdmin, async (req, res) => {
+    const { name, description, golden_config_id, interval_hours, enabled } = req.body;
+    if (!name) return res.status(400).json({ error: 'name required' });
+    const hours = Math.max(1, parseInt(interval_hours) || 24);
+    const nextRun = new Date(Date.now() + hours * 3600 * 1000);
+    try {
+        const { rows } = await db.query(
+            `INSERT INTO compliance_schedules
+               (name, description, golden_config_id, interval_hours, enabled, next_run, created_by)
+             VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+            [name.trim(), description?.trim() || null,
+             golden_config_id || null, hours,
+             enabled !== false, nextRun, req.user.id]
+        );
+        res.status(201).json(rows[0]);
+    } catch (err) { console.error(err); res.status(500).json({ error: 'Database error' }); }
+});
+
+router.patch('/schedules/:id', requireAdmin, async (req, res) => {
+    const { name, description, golden_config_id, interval_hours, enabled } = req.body;
+    const fields = [], vals = [];
+    let idx = 1;
+    if (name             !== undefined) { fields.push(`name=$${idx++}`);             vals.push(name.trim()); }
+    if (description      !== undefined) { fields.push(`description=$${idx++}`);      vals.push(description?.trim() || null); }
+    if (golden_config_id !== undefined) { fields.push(`golden_config_id=$${idx++}`); vals.push(golden_config_id || null); }
+    if (interval_hours   !== undefined) { fields.push(`interval_hours=$${idx++}`);   vals.push(Math.max(1, parseInt(interval_hours) || 24)); }
+    if (enabled          !== undefined) {
+        fields.push(`enabled=$${idx++}`);
+        vals.push(!!enabled);
+        if (enabled) {
+            // Reset next_run when re-enabling
+            const hours = interval_hours ? Math.max(1, parseInt(interval_hours)) : null;
+            fields.push(`next_run=NOW() + (COALESCE($${idx++}::int, interval_hours) * INTERVAL '1 hour')`);
+            vals.push(hours);
+        }
+    }
+    if (!fields.length) return res.status(400).json({ error: 'No fields to update' });
+    vals.push(req.params.id);
+    try {
+        const { rows } = await db.query(
+            `UPDATE compliance_schedules SET ${fields.join(', ')}, updated_at=NOW()
+             WHERE id=$${idx} RETURNING *`,
+            vals
+        );
+        if (!rows.length) return res.status(404).json({ error: 'Schedule not found' });
+        res.json(rows[0]);
+    } catch (err) { console.error(err); res.status(500).json({ error: 'Database error' }); }
+});
+
+router.delete('/schedules/:id', requireAdmin, async (req, res) => {
+    try {
+        const { rows } = await db.query(
+            'DELETE FROM compliance_schedules WHERE id=$1 RETURNING id', [req.params.id]
+        );
+        if (!rows.length) return res.status(404).json({ error: 'Schedule not found' });
         res.status(204).send();
     } catch (err) { res.status(500).json({ error: 'Database error' }); }
 });
@@ -215,7 +319,6 @@ router.get('/dashboard', async (req, res) => {
     } catch (err) { console.error(err); res.status(500).json({ error: 'Database error' }); }
 });
 
-// Single result detail (for modal)
 router.get('/results/:id', async (req, res) => {
     try {
         const { rows } = await db.query(`
@@ -238,70 +341,10 @@ router.get('/results/:id', async (req, res) => {
 // CHECK EXECUTION
 // ════════════════════════════════════════════════════════════════
 
-/**
- * POST /api/compliance/check
- * Body options:
- *   { golden_config_id, device_id }  — check one device against one golden config
- *   { golden_config_id }             — check all assigned devices for a golden config
- *   {}                               — check all assignments (full audit)
- */
 router.post('/check', async (req, res) => {
     const { golden_config_id, device_id } = req.body;
-    let pairs = [];
-
     try {
-        if (golden_config_id && device_id) {
-            // Single explicit pair
-            const [dRow, gcRow] = await Promise.all([
-                db.query('SELECT * FROM devices WHERE id=$1', [device_id]),
-                db.query('SELECT * FROM golden_configs WHERE id=$1', [golden_config_id])
-            ]);
-            if (!dRow.rows.length)  return res.status(404).json({ error: 'Device not found' });
-            if (!gcRow.rows.length) return res.status(404).json({ error: 'Golden config not found' });
-            pairs = [{ device: dRow.rows[0], goldenConfig: gcRow.rows[0] }];
-        } else {
-            // Resolve from assignments ─────────────────────────────
-            const params = [];
-            let gcFilter = '';
-            if (golden_config_id) { params.push(golden_config_id); gcFilter = `AND gca.golden_config_id = $${params.length}`; }
-
-            // Direct device assignments
-            const { rows: direct } = await db.query(`
-                SELECT  d.*, gc.id AS gc_id, gc.name AS gc_name,
-                        gc.config_text, gc.device_types
-                FROM    golden_config_assignments gca
-                JOIN    golden_configs gc ON gc.id = gca.golden_config_id
-                JOIN    devices        d  ON d.id  = gca.device_id
-                WHERE   gca.device_id IS NOT NULL
-                ${gcFilter}
-            `, params);
-
-            // Group assignments (expand to member devices)
-            const { rows: grouped } = await db.query(`
-                SELECT  d.*, gc.id AS gc_id, gc.name AS gc_name,
-                        gc.config_text, gc.device_types
-                FROM    golden_config_assignments gca
-                JOIN    golden_configs gc ON gc.id = gca.golden_config_id
-                JOIN    device_groups  dg ON dg.id = gca.device_group_id
-                JOIN    devices        d  ON d.group_id = dg.id
-                WHERE   gca.device_group_id IS NOT NULL
-                ${gcFilter}
-            `, params);
-
-            // Deduplicate by device_id + gc_id
-            const seen = new Set();
-            for (const row of [...direct, ...grouped]) {
-                const key = `${row.id}:${row.gc_id}`;
-                if (seen.has(key)) continue;
-                seen.add(key);
-                pairs.push({
-                    device: row,
-                    goldenConfig: { id: row.gc_id, name: row.gc_name, config_text: row.config_text, device_types: row.device_types }
-                });
-            }
-        }
-
-        // Filter to supported device types only
+        let pairs = await resolvePairs(golden_config_id || null, device_id || null);
         pairs = pairs.filter(p => SUPPORTED_TYPES.has(p.device.device_type));
 
         if (!pairs.length) {
@@ -310,7 +353,6 @@ router.post('/check', async (req, res) => {
             });
         }
 
-        // Create job
         const jobId = ++jobCounter;
         jobs.set(jobId, {
             userId:    req.user.id,
@@ -323,7 +365,6 @@ router.post('/check', async (req, res) => {
             createdAt: Date.now()
         });
 
-        // Run asynchronously
         runChecks(jobId, pairs, req.user.id).catch(err => {
             console.error('[compliance] runChecks fatal:', err.message);
             const job = jobs.get(jobId);
@@ -332,6 +373,7 @@ router.post('/check', async (req, res) => {
 
         return res.json({ ok: true, jobId, total: pairs.length });
     } catch (err) {
+        if (err.status === 404) return res.status(404).json({ error: err.message });
         console.error('[compliance] check setup error:', err);
         res.status(500).json({ error: 'Database error' });
     }
@@ -340,23 +382,69 @@ router.post('/check', async (req, res) => {
 router.get('/poll/:jobId', requireAuth, (req, res) => {
     const jobId = parseInt(req.params.jobId);
     const job   = jobs.get(jobId);
-    if (!job)                        return res.status(404).json({ error: 'Job not found' });
-    if (job.userId !== req.user.id)  return res.status(403).json({ error: 'Forbidden' });
+    if (!job)                       return res.status(404).json({ error: 'Job not found' });
+    if (job.userId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
 
-    const newLog  = job.log.slice(job.sentUpTo);
-    job.sentUpTo  = job.log.length;
+    const newLog = job.log.slice(job.sentUpTo);
+    job.sentUpTo = job.log.length;
 
-    res.json({
-        status:    job.status,
-        total:     job.total,
-        completed: job.completed,
-        results:   job.results,
-        newLog
-    });
+    res.json({ status: job.status, total: job.total, completed: job.completed, results: job.results, newLog });
 });
 
 // ════════════════════════════════════════════════════════════════
-// ASYNC RUNNER
+// SHARED PAIR RESOLUTION
+// ════════════════════════════════════════════════════════════════
+
+async function resolvePairs(golden_config_id, device_id) {
+    if (golden_config_id && device_id) {
+        const [dRow, gcRow] = await Promise.all([
+            db.query('SELECT * FROM devices WHERE id=$1', [device_id]),
+            db.query('SELECT * FROM golden_configs WHERE id=$1', [golden_config_id])
+        ]);
+        if (!dRow.rows.length)  { const e = new Error('Device not found');       e.status = 404; throw e; }
+        if (!gcRow.rows.length) { const e = new Error('Golden config not found'); e.status = 404; throw e; }
+        return [{ device: dRow.rows[0], goldenConfig: gcRow.rows[0] }];
+    }
+
+    const params = [];
+    let gcFilter = '';
+    if (golden_config_id) { params.push(golden_config_id); gcFilter = `AND gca.golden_config_id = $${params.length}`; }
+
+    const { rows: direct } = await db.query(`
+        SELECT  d.*, gc.id AS gc_id, gc.name AS gc_name,
+                gc.config_text, gc.device_types
+        FROM    golden_config_assignments gca
+        JOIN    golden_configs gc ON gc.id = gca.golden_config_id
+        JOIN    devices        d  ON d.id  = gca.device_id
+        WHERE   gca.device_id IS NOT NULL ${gcFilter}
+    `, params);
+
+    const { rows: grouped } = await db.query(`
+        SELECT  d.*, gc.id AS gc_id, gc.name AS gc_name,
+                gc.config_text, gc.device_types
+        FROM    golden_config_assignments gca
+        JOIN    golden_configs gc ON gc.id = gca.golden_config_id
+        JOIN    device_groups  dg ON dg.id = gca.device_group_id
+        JOIN    devices        d  ON d.group_id = dg.id
+        WHERE   gca.device_group_id IS NOT NULL ${gcFilter}
+    `, params);
+
+    const seen = new Set();
+    const pairs = [];
+    for (const row of [...direct, ...grouped]) {
+        const key = `${row.id}:${row.gc_id}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        pairs.push({
+            device: row,
+            goldenConfig: { id: row.gc_id, name: row.gc_name, config_text: row.config_text, device_types: row.device_types }
+        });
+    }
+    return pairs;
+}
+
+// ════════════════════════════════════════════════════════════════
+// ASYNC CHECK RUNNER (shared by HTTP handler and scheduler)
 // ════════════════════════════════════════════════════════════════
 
 async function runChecks(jobId, pairs, userId) {
@@ -366,25 +454,23 @@ async function runChecks(jobId, pairs, userId) {
     log(`▶ Starting compliance audit — ${pairs.length} check${pairs.length !== 1 ? 's' : ''}...`);
 
     for (const { device, goldenConfig } of pairs) {
-        if (!jobs.has(jobId)) break;  // job was cleaned up
+        if (jobId && !jobs.has(jobId)) break;
 
         log(`\n[${device.name}] Checking "${goldenConfig.name}"...`);
 
-        // Resolve credential
         if (!device.default_credential_id) {
             log(`[${device.name}] ✗ No default credential — skipping`);
-            job.completed++;
+            if (job) job.completed++;
             continue;
         }
 
         let cred;
         try {
             const r = await db.query('SELECT * FROM credentials WHERE id=$1', [device.default_credential_id]);
-            if (!r.rows.length) { log(`[${device.name}] ✗ Credential not found — skipping`); job.completed++; continue; }
+            if (!r.rows.length) { log(`[${device.name}] ✗ Credential not found — skipping`); if (job) job.completed++; continue; }
             cred = r.rows[0];
-        } catch { log(`[${device.name}] ✗ DB error fetching credential`); job.completed++; continue; }
+        } catch { log(`[${device.name}] ✗ DB error fetching credential`); if (job) job.completed++; continue; }
 
-        // Create pending result row
         let resultId;
         try {
             const r = await db.query(
@@ -396,13 +482,11 @@ async function runChecks(jobId, pairs, userId) {
             resultId = r.rows[0].id;
         } catch (err) {
             log(`[${device.name}] ✗ Could not create result record: ${err.message}`);
-            job.completed++;
+            if (job) job.completed++;
             continue;
         }
 
-        // SSH + fetch running config
-        let runningConfig = null;
-        let sshError      = null;
+        let runningConfig = null, sshError = null;
         try {
             log(`[${device.name}] Connecting to ${device.hostname}:${device.port || 22}...`);
             runningConfig = await fetchRunningConfig(device, cred);
@@ -412,14 +496,9 @@ async function runChecks(jobId, pairs, userId) {
             log(`[${device.name}] ✗ SSH error: ${err.message}`);
         }
 
-        // Compare lines
         let status, missingLines, lineResults, totalLines, matchedLines;
         if (sshError || !runningConfig) {
-            status       = 'error';
-            missingLines = [];
-            lineResults  = [];
-            totalLines   = 0;
-            matchedLines = 0;
+            status = 'error'; missingLines = []; lineResults = []; totalLines = 0; matchedLines = 0;
         } else {
             const result = checkComplianceLines(goldenConfig.config_text, runningConfig);
             status       = result.compliant ? 'compliant' : 'non_compliant';
@@ -427,14 +506,10 @@ async function runChecks(jobId, pairs, userId) {
             lineResults  = result.lineResults;
             totalLines   = result.totalLines;
             matchedLines = result.matchedLines;
-            if (status === 'compliant') {
-                log(`[${device.name}] ✓ Compliant — all ${totalLines} lines present`);
-            } else {
-                log(`[${device.name}] ✗ Non-compliant — ${missingLines.length}/${totalLines} lines missing`);
-            }
+            if (status === 'compliant') log(`[${device.name}] ✓ Compliant — all ${totalLines} lines present`);
+            else log(`[${device.name}] ✗ Non-compliant — ${missingLines.length}/${totalLines} lines missing`);
         }
 
-        // Persist result
         try {
             await db.query(
                 `UPDATE compliance_results
@@ -444,23 +519,17 @@ async function runChecks(jobId, pairs, userId) {
                 [status, runningConfig || null, missingLines, JSON.stringify(lineResults),
                  totalLines, matchedLines, sshError || null, resultId]
             );
-        } catch (err) {
-            log(`[${device.name}] Warning: could not persist result: ${err.message}`);
-        }
+        } catch (err) { log(`[${device.name}] Warning: could not persist result: ${err.message}`); }
 
-        job.results.push({
-            result_id:          resultId,
-            device_id:          device.id,
-            device_name:        device.name,
-            device_type:        device.device_type,
-            golden_config_id:   goldenConfig.id,
-            golden_config_name: goldenConfig.name,
-            status,
-            missing_count: missingLines.length,
-            total_lines:   totalLines,
-            matched_lines: matchedLines
-        });
-        job.completed++;
+        if (job) {
+            job.results.push({
+                result_id: resultId, device_id: device.id, device_name: device.name,
+                device_type: device.device_type, golden_config_id: goldenConfig.id,
+                golden_config_name: goldenConfig.name, status,
+                missing_count: missingLines.length, total_lines: totalLines, matched_lines: matchedLines
+            });
+            job.completed++;
+        }
     }
 
     if (job) {
@@ -469,20 +538,82 @@ async function runChecks(jobId, pairs, userId) {
         const nonCompliant = job.results.filter(r => r.status === 'non_compliant').length;
         const errors       = job.results.filter(r => r.status === 'error').length;
         log(`\n✔ Audit complete — ${compliant} compliant, ${nonCompliant} non-compliant, ${errors} error(s)`);
+        return { compliant, non_compliant: nonCompliant, error: errors, total: job.results.length };
     }
 }
 
 // ════════════════════════════════════════════════════════════════
-// SSH HELPER  — fetch "show running-config" via PTY shell
+// SCHEDULER  (called once from server.js on startup)
+// ════════════════════════════════════════════════════════════════
+
+async function runScheduledCheck(schedule) {
+    console.log(`[scheduler] Running schedule #${schedule.id}: "${schedule.name}"`);
+    try {
+        let pairs = await resolvePairs(schedule.golden_config_id || null, null);
+        pairs = pairs.filter(p => SUPPORTED_TYPES.has(p.device.device_type));
+        if (!pairs.length) {
+            console.log(`[scheduler] Schedule #${schedule.id}: no eligible devices — skipping`);
+            return { compliant: 0, non_compliant: 0, error: 0, total: 0 };
+        }
+
+        const jobId = ++jobCounter;
+        jobs.set(jobId, {
+            userId:    null,
+            status:    'running',
+            total:     pairs.length,
+            completed: 0,
+            results:   [],
+            log:       '',
+            sentUpTo:  0,
+            createdAt: Date.now()
+        });
+
+        const summary = await runChecks(jobId, pairs, null);
+        jobs.delete(jobId);
+        return summary || { compliant: 0, non_compliant: 0, error: 0, total: pairs.length };
+    } catch (err) {
+        console.error(`[scheduler] Schedule #${schedule.id} error: ${err.message}`);
+        return null;
+    }
+}
+
+function startScheduler() {
+    async function tick() {
+        try {
+            const { rows } = await db.query(`
+                SELECT * FROM compliance_schedules
+                WHERE enabled = TRUE AND (next_run IS NULL OR next_run <= NOW())
+            `);
+
+            for (const schedule of rows) {
+                const summary = await runScheduledCheck(schedule);
+                const nextRun = new Date(Date.now() + schedule.interval_hours * 3600 * 1000);
+                await db.query(
+                    `UPDATE compliance_schedules
+                     SET last_run=NOW(), next_run=$1, run_count=run_count+1,
+                         last_result=$2, updated_at=NOW()
+                     WHERE id=$3`,
+                    [nextRun, summary ? JSON.stringify(summary) : null, schedule.id]
+                );
+            }
+        } catch (err) {
+            console.error('[scheduler] Tick error:', err.message);
+        }
+    }
+
+    setInterval(tick, 60 * 1000);      // check every 60 s
+    setTimeout(tick,  30 * 1000);      // initial check 30 s after startup
+    console.log('✅ Compliance scheduler started');
+}
+
+// ════════════════════════════════════════════════════════════════
+// SSH HELPER
 // ════════════════════════════════════════════════════════════════
 
 async function fetchRunningConfig(device, cred) {
     const sshCfg = {
-        host:         device.hostname,
-        port:         device.port || 22,
-        username:     cred.username,
-        readyTimeout: 20000,
-        hostVerifier: () => true,
+        host: device.hostname, port: device.port || 22,
+        username: cred.username, readyTimeout: 20000, hostVerifier: () => true,
     };
 
     if (cred.auth_method === 'password') {
@@ -501,18 +632,12 @@ async function fetchRunningConfig(device, cred) {
 
     const ssh = new NodeSSH();
     await ssh.connect(sshCfg);
-    if (ssh.connection) {
-        ssh.connection.on('error', () => {}); // suppress post-close errors
-    }
+    if (ssh.connection) ssh.connection.on('error', () => {});
 
     try {
         return await new Promise((resolve, reject) => {
-            let collected = '';
-            let settled   = false;
-            let quietTimer = null;
-            const QUIET_MS = 3000;
-            const HARD_MS  = 60000;
-
+            let collected = '', settled = false, quietTimer = null;
+            const QUIET_MS = 3000, HARD_MS = 60000;
             const finish = () => {
                 if (settled) return;
                 settled = true;
@@ -522,7 +647,6 @@ async function fetchRunningConfig(device, cred) {
 
             ssh.requestShell({ term: 'vt100', rows: 500, cols: 220 }).then(shell => {
                 const hardTimer = setTimeout(() => { if (!settled) finish(); }, HARD_MS);
-
                 shell.on('data', chunk => {
                     collected += chunk.toString();
                     clearTimeout(quietTimer);
@@ -530,13 +654,9 @@ async function fetchRunningConfig(device, cred) {
                 });
                 shell.on('close', () => { clearTimeout(hardTimer); finish(); });
                 shell.on('error', err => { clearTimeout(hardTimer); if (!settled) reject(err); });
-
-                // Sequence: wait for prompt → disable paging → fetch config
                 setTimeout(() => {
                     shell.write('terminal length 0\n');
-                    setTimeout(() => {
-                        shell.write('show running-config\n');
-                    }, 600);
+                    setTimeout(() => shell.write('show running-config\n'), 600);
                 }, 1000);
             }).catch(reject);
         });
@@ -549,33 +669,18 @@ async function fetchRunningConfig(device, cred) {
 // COMPLIANCE CHECK LOGIC
 // ════════════════════════════════════════════════════════════════
 
-/**
- * Compare the golden config against the running config line by line.
- *
- * Rules:
- *  - Blank lines in golden config are ignored
- *  - Lines starting with ! (IOS comments) are ignored
- *  - Each remaining golden line must appear verbatim (preserving indentation)
- *    somewhere in the running config output
- */
 function checkComplianceLines(goldenConfigText, runningConfigText) {
     const goldenLines = goldenConfigText
-        .split('\n')
-        .map(l => l.replace(/\r/g, '').trimEnd())
+        .split('\n').map(l => l.replace(/\r/g, '').trimEnd())
         .filter(l => l.trim().length > 0 && !l.trim().startsWith('!'));
 
     const runningLineSet = new Set(
-        runningConfigText
-            .split('\n')
+        runningConfigText.split('\n')
             .map(l => l.replace(/\r/g, '').trimEnd())
             .filter(l => l.trim().length > 0)
     );
 
-    const lineResults = goldenLines.map(line => ({
-        line,
-        found: runningLineSet.has(line)
-    }));
-
+    const lineResults  = goldenLines.map(line => ({ line, found: runningLineSet.has(line) }));
     const missingLines = lineResults.filter(r => !r.found).map(r => r.line);
 
     return {
@@ -587,4 +692,4 @@ function checkComplianceLines(goldenConfigText, runningConfigText) {
     };
 }
 
-module.exports = router;
+module.exports = { router, startScheduler };

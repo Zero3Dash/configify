@@ -481,39 +481,42 @@ pm2 restart configify-app                  # restart after update
 
 ```
 /var/www/configify/
-├── server.js                ← Express entry point
-├── db.js                    ← PostgreSQL pool
-├── package.json
-├── ecosystem.config.js      ← PM2 config
 ├── .env                     ← runtime secrets (chmod 600, not in git)
 ├── .env.example
+├── apply_compliance_patch.py← legacy sidebar patcher (no longer needed from v2.6)
+├── backup-configify-db.sh   ← DB backup + rotation
+├── check-status.sh          ← health check
+├── configify-letsencrypt    ← Nginx config (Let's Encrypt)
+├── configify-selfsigned     ← Nginx config (self-signed)
+├── db.js                    ← PostgreSQL pool
+├── ecosystem.config.js      ← PM2 config
+├── package.json
 ├── schema.sql               ← UNIFIED schema (all tables — use this for all installs)
 ├── schema_compliance.sql    ← DEPRECATED — see schema.sql
 ├── schema_schedules.sql     ← DEPRECATED — see schema.sql
-├── apply_compliance_patch.py← legacy sidebar patcher (no longer needed from v2.6)
+├── server.js                ← Express entry point
 ├── setup.sh                 ← one-shot install script
-├── check-status.sh          ← health check
-├── backup-configify-db.sh   ← DB backup + rotation
-├── configify-letsencrypt    ← Nginx config (Let's Encrypt)
-├── configify-selfsigned     ← Nginx config (self-signed)
-├── auth/index.js            ← Passport: local / LDAP / SAML
-├── crypto/vault.js          ← AES-256-GCM encrypt/decrypt
-├── middleware/auth.js       ← requireAuth / requireAdmin
+├── auth/
+│   └── index.js             ← Passport: local / LDAP / SAML
+├── crypto/
+│   └── vault.js             ← AES-256-GCM encrypt/decrypt
+├── middleware/
+│   └── auth.js              ← requireAuth / requireAdmin
+├── public/
+│   ├── admin.html           ← User + auth config
+│   ├── compliance.html      ← Configuration compliance dashboard
+│   ├── devices.html         ← Device inventory + credential vault (enable password UI)
+│   ├── index.html           ← Template use + SSH execution
+│   ├── login.html           ← Login page (local / LDAP / SAML)
+│   ├── settings.html        ← Automated compliance schedules
+│   └── templates.html       ← Template CRUD + folder tree panel
 ├── routes/
 │   ├── auth.js              ← /auth/*
-│   ├── users.js             ← /api/users/* + auth-config
+│   ├── compliance.js        ← /api/compliance/* (golden configs, assignments, checks, schedules)
 │   ├── devices.js           ← /api/devices/* (incl. enable_password vault)
 │   ├── ssh.js               ← /api/ssh/* (polling-based; auto shell/exec + enable mode)
 │   ├── templates.js         ← /api/templates/* + /api/templates/groups/*
-│   └── compliance.js        ← /api/compliance/* (golden configs, assignments, checks, schedules)
-└── public/
-    ├── index.html           ← Template use + SSH execution
-    ├── login.html           ← Login page (local / LDAP / SAML)
-    ├── templates.html       ← Template CRUD + folder tree panel
-    ├── devices.html         ← Device inventory + credential vault (enable password UI)
-    ├── compliance.html      ← Configuration compliance dashboard
-    ├── settings.html        ← Automated compliance schedules
-    └── admin.html           ← User + auth config
+│   └── users.js             ← /api/users/* + auth-config
 ```
 
 ---

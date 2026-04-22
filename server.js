@@ -10,15 +10,16 @@ const session    = require('express-session');
 const pgSession  = require('connect-pg-simple')(session);
 const cors       = require('cors');
 
-const db                     = require('./db');
-const { passport, initAuth } = require('./auth');
-const authRoutes             = require('./routes/auth');
-const userRoutes             = require('./routes/users');
-const deviceRoutes           = require('./routes/devices');
-const sshRoutes              = require('./routes/ssh');
-const templateRoutes         = require('./routes/templates');
-const complianceRoutes       = require('./routes/compliance');
-const { requireAuth }        = require('./middleware/auth');
+const db                                       = require('./db');
+const { passport, initAuth }                   = require('./auth');
+const authRoutes                               = require('./routes/auth');
+const userRoutes                               = require('./routes/users');
+const deviceRoutes                             = require('./routes/devices');
+const sshRoutes                                = require('./routes/ssh');
+const templateRoutes                           = require('./routes/templates');
+const { router: complianceRoutes,
+        startScheduler }                       = require('./routes/compliance');
+const { requireAuth }                          = require('./middleware/auth');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -79,6 +80,7 @@ app.use((req, res) => {
 // ── Start ──────────────────────────────────────────────────────
 async function start() {
     await initAuth();
+    startScheduler();          // ← start the compliance schedule ticker
     http.createServer(app).listen(PORT, () => {
         console.log(`[server] configify running on http://localhost:${PORT}`);
         console.log(`[server] NODE_ENV=${process.env.NODE_ENV}`);

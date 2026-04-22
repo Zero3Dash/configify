@@ -117,7 +117,7 @@ Configure recurring compliance checks via **Settings** (🔧):
 
 - Each schedule targets either a specific golden config or runs a full audit across all assignments
 - Interval options from 1 hour to weekly
-- Schedules run server-side; the server polls for due jobs every 60 seconds
+- Schedules run server-side; the server checks for due jobs every 60 seconds
 - Results appear automatically in the Compliance dashboard
 
 Admin role is required to create or modify schedules.
@@ -163,6 +163,7 @@ Per-device steps:
 | Config retrieved shows only user EXEC output | Device requires enable password but none is set | Add enable password to the credential |
 | Timeout / empty config | Paging still active (IOS prompt returned before full config) | Device may not support `terminal length 0`; try reducing config size or splitting into multiple golden configs |
 | Database error on schedule creation | `compliance_schedules` table missing | Run the migration snippet below or re-apply `schema.sql` |
+| Schedules never run | `startScheduler()` not called | Upgrade to v2.7.1 — this is fixed in `server.js` |
 
 ---
 
@@ -330,6 +331,16 @@ sudo bash setup.sh
 ---
 
 ## Upgrading from an earlier version
+
+### Upgrading to v2.7.1 (compliance scheduler bugfix)
+
+`server.js` was not calling `startScheduler()` after boot, meaning compliance schedules would never fire even when configured. Replace `server.js` with the updated version from this release and restart:
+
+```bash
+pm2 restart configify-app
+```
+
+No database changes are required for this update.
 
 ### Upgrading to v2.7 (enable password support)
 
@@ -523,7 +534,15 @@ pm2 restart configify-app                  # restart after update
 
 ## Changelog
 
-### v2.7 (current)
+### v2.7.1 (current)
+
+- **Fixed: compliance scheduler never ran** — `server.js` was importing `routes/compliance` as a plain
+  object (`require('./routes/compliance')`) but `compliance.js` exports `{ router, startScheduler }`.
+  This meant Express received a plain object instead of a router (causing all `/api/compliance` routes
+  to silently fail), and `startScheduler()` was never called (so scheduled checks never fired).
+  Fixed by properly destructuring the import and calling `startScheduler()` in the boot sequence.
+
+### v2.7
 
 - **Enable password / privilege escalation** — credential vault now stores an optional encrypted enable password for Cisco IOS, NX-OS, and JunOS devices.
   - New column `encrypted_enable_password` on the `credentials` table (AES-256-GCM encrypted; nullable). Existing installs are migrated automatically by an `ALTER TABLE … ADD COLUMN IF NOT EXISTS` guard in `schema.sql`.

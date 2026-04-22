@@ -2,7 +2,7 @@
 
 **configify** is a self-hosted template studio. Write any text with `{{variable}}` placeholders, save templates to a shared PostgreSQL database, fill them in via an auto-generated form, and execute the result over SSH against a managed device inventory — all from the browser.
 
-**Features:** local accounts · LDAP/AD · SAML 2.0 SSO · AES-256-GCM credential vault · SSH execution with live output · device groups · template folder tree · **Cisco IOS/NX-OS configuration compliance** · **automated compliance schedules**
+**Features:** local accounts · LDAP/AD · SAML 2.0 SSO · AES-256-GCM credential vault · SSH execution with live output · device groups · template folder tree · **Cisco IOS/NX-OS configuration compliance** · **automated compliance schedules** · **enable/privilege-escalation password support**
 
 ---
 
@@ -24,6 +24,48 @@ The active page is highlighted in blue. The Admin item is hidden for non-admin u
 
 ---
 
+## Credential Vault & Enable Password
+
+All credentials are stored AES-256-GCM encrypted at rest using `VAULT_SECRET`. Plaintext secrets are never returned by the API.
+
+### Enable / privilege-escalation password
+
+Many Cisco IOS and NX-OS devices start an SSH session at **user EXEC mode** (`>`). Before running configuration commands or compliance checks, the device must be elevated to **privileged EXEC mode** (`#`) using the `enable` command.
+
+configify handles this automatically when an **enable password** is stored on the credential:
+
+**Privilege escalation sequence:**
+
+```
+SSH connect  →  user EXEC (>)
+  → send: enable
+  → wait 600 ms
+  → send: <enable password>
+  → wait 600 ms
+  → now in privileged EXEC (#)
+  → send template commands / show running-config
+```
+
+**Configuring an enable password:**
+
+1. Go to **Devices → Credentials tab → Add or Edit a credential**
+2. Fill in the amber **Enable password** section at the bottom of the form
+3. Leave blank to keep an existing value; click **✕ Clear** to remove it
+4. Save — the password is encrypted immediately with AES-256-GCM
+
+**When enable is used:**
+
+| Device type | Enable sequence sent |
+|-------------|----------------------|
+| `cisco_ios` | Yes — if enable password is set on the credential |
+| `cisco_nxos` | Yes — if enable password is set on the credential |
+| `junos` | Yes — if enable password is set on the credential |
+| `linux`, `windows`, `other` | Never |
+
+The enable badge (⚡) appears on the credential list and the device's Default Credential cell when an enable password is stored.
+
+---
+
 ## Configuration Compliance
 
 The Compliance section lets you define **golden configurations** — sets of expected configuration lines — and validate them against the live `show running-config` output of your Cisco IOS and NX-OS devices.
@@ -32,10 +74,10 @@ The Compliance section lets you define **golden configurations** — sets of exp
 
 | Device type | SSH command |
 |-------------|-------------|
-| `cisco_ios` | `terminal length 0` → `show running-config` |
-| `cisco_nxos` | `terminal length 0` → `show running-config` |
+| `cisco_ios` | (`enable`) → `terminal length 0` → `show running-config` |
+| `cisco_nxos` | (`enable`) → `terminal length 0` → `show running-config` |
 
-> Other device types (linux, windows, junos) are not checked by the compliance engine and will be skipped even if assigned.
+> Other device types (linux, windows, junos) are not checked by the compliance engine and will be skipped even if assigned. The enable sequence is applied to compliance checks automatically when the device's default credential has an enable password.
 
 ### Golden configurations
 
@@ -45,7 +87,7 @@ A golden config contains the **expected lines** that must be present in the devi
 - Each non-blank, non-comment line (lines starting with `!`) must appear **verbatim** somewhere in the `show running-config` output
 - Line indentation is preserved — an indented line under an interface block must match with its indentation
 - The order of lines in the golden config does not matter
-- The `terminal length 0` command is sent first to disable IOS paging
+- `terminal length 0` is sent first to disable IOS paging
 
 **Example golden config** (NTP, logging, and SSH hardening baseline):
 ```
@@ -103,12 +145,13 @@ The check is asynchronous and uses the same SSH polling pattern as template exec
 Per-device steps:
 1. Connect via SSH (uses device's default credential)
 2. Open PTY shell
-3. Send `terminal length 0` (disable paging)
-4. Send `show running-config`
-5. Wait for output to settle (3 s of silence) or 60 s hard cap
-6. Disconnect
-7. Compare each golden config line against the collected output
-8. Persist result to `compliance_results` table
+3. If enable password is stored: send `enable` → wait → send password → wait
+4. Send `terminal length 0` (disable paging)
+5. Send `show running-config`
+6. Wait for output to settle (3 s of silence) or 60 s hard cap
+7. Disconnect
+8. Compare each golden config line against the collected output
+9. Persist result to `compliance_results` table
 
 ### Troubleshooting compliance
 
@@ -117,6 +160,7 @@ Per-device steps:
 | "No eligible devices found" | No assignments, or devices have unsupported types | Add assignments; check device type is cisco_ios or cisco_nxos |
 | Device shows "Error" | No default credential, SSH refused, or VAULT_SECRET mismatch | Assign a credential; test SSH manually |
 | Lines marked missing despite being present | Indentation mismatch or invisible characters | Paste lines directly from `show running-config` output into the golden config |
+| Config retrieved shows only user EXEC output | Device requires enable password but none is set | Add enable password to the credential |
 | Timeout / empty config | Paging still active (IOS prompt returned before full config) | Device may not support `terminal length 0`; try reducing config size or splitting into multiple golden configs |
 | Database error on schedule creation | `compliance_schedules` table missing | Run the migration snippet below or re-apply `schema.sql` |
 
@@ -178,7 +222,7 @@ PostgreSQL                ← templates, users, devices, credentials,
 | `/` | Template use page + SSH execution panel |
 | `/login.html` | Login (local / LDAP / SAML) |
 | `/templates.html` | Template creation, editing, folder tree |
-| `/devices.html` | Device inventory + credential vault |
+| `/devices.html` | Device inventory + credential vault (incl. enable password) |
 | `/compliance.html` | Configuration compliance dashboard |
 | `/settings.html` | Automated compliance schedules |
 | `/admin.html` | User admin + auth provider config |
@@ -210,9 +254,9 @@ PostgreSQL                ← templates, users, devices, credentials,
 | POST | `/api/devices/groups` | user | Add device group |
 | PATCH | `/api/devices/groups/:id` | user | Edit device group |
 | DELETE | `/api/devices/groups/:id` | **admin** | Delete device group |
-| GET | `/api/devices/credentials` | user | List credentials (no secrets) |
-| POST | `/api/devices/credentials` | user | Add credential |
-| PATCH | `/api/devices/credentials/:id` | user | Edit credential |
+| GET | `/api/devices/credentials` | user | List credentials (no secrets; `has_enable_password` boolean) |
+| POST | `/api/devices/credentials` | user | Add credential (accepts `enable_password`) |
+| PATCH | `/api/devices/credentials/:id` | user | Edit credential (pass `""` to clear enable password) |
 | DELETE | `/api/devices/credentials/:id` | **admin** | Delete credential |
 | POST | `/api/ssh/execute` | user | Start SSH job → `{ jobId }` |
 | GET | `/api/ssh/poll/:jobId` | user | Poll job output |
@@ -255,6 +299,19 @@ configify automatically selects the right execution mode based on the template a
 | Multi-line template (any device) | PTY shell | Commands must be sent one at a time |
 | `cisco_ios`, `cisco_nxos`, `junos`, `windows` (any line count) | PTY shell | These devices do not support `execCommand`-style execution |
 
+### Enable / privilege escalation (PTY shell mode only)
+
+When a credential has an enable password **and** the device type is `cisco_ios`, `cisco_nxos`, or `junos`, configify prepends the following to the command sequence before any template lines:
+
+```
+send: enable
+wait: 600 ms   ← device presents "Password:" prompt
+send: <enable password>
+wait: 600 ms   ← device presents "#" prompt
+```
+
+This is fully automatic — no changes are needed to template content.
+
 ---
 
 ## Prerequisites
@@ -274,12 +331,28 @@ sudo bash setup.sh
 
 ## Upgrading from an earlier version
 
+### Upgrading to v2.7 (enable password support)
+
+Add the new column to an existing install:
+
+```sql
+-- Run as configify_user against configify_db
+ALTER TABLE credentials ADD COLUMN IF NOT EXISTS encrypted_enable_password TEXT;
+```
+
+Then restart the app:
+
+```bash
+pm2 restart configify-app
+```
+
+> `schema.sql` already includes this `ALTER TABLE … ADD COLUMN IF NOT EXISTS` statement, so re-applying the schema is also safe.
+
 ### Upgrading to v2.6 (merges schema files; adds Settings nav to all pages)
 
 `schema.sql` is now the single source of truth for all tables. The separate `schema_compliance.sql` and `schema_schedules.sql` files are deprecated. For existing installs, add the `compliance_schedules` table if it doesn't already exist:
 
 ```sql
--- Run as configify_user against configify_db
 CREATE TABLE IF NOT EXISTS compliance_schedules (
     id               SERIAL PRIMARY KEY,
     name             VARCHAR(255) NOT NULL,
@@ -306,11 +379,7 @@ DO $$ BEGIN
 END $$;
 ```
 
-Then restart the app:
-
-```bash
-pm2 restart configify-app
-```
+Then restart: `pm2 restart configify-app`
 
 ### Upgrading to v2.5 (adds compliance checking)
 
@@ -323,7 +392,6 @@ pm2 restart configify-app
 ### Upgrading to v2.4 (template folder tree)
 
 ```sql
--- Run as configify_user against configify_db
 CREATE TABLE IF NOT EXISTS template_groups (
     id         SERIAL PRIMARY KEY,
     name       VARCHAR(255) NOT NULL,
@@ -371,7 +439,7 @@ Managed through **Admin → Users**. Passwords bcrypt-hashed at cost 12.
 
 ## Device & credential vault
 
-All passwords and private keys are AES-256-GCM encrypted at rest using `VAULT_SECRET`.
+All passwords, private keys, and enable passwords are AES-256-GCM encrypted at rest using `VAULT_SECRET`. The API never returns plaintext secrets; the credentials list returns a `has_enable_password` boolean instead.
 
 ---
 
@@ -400,7 +468,7 @@ pm2 restart configify-app                  # restart after update
 ## Security notes
 
 - All routes except `/auth/*` and `/login.html` require a valid session
-- Credential secrets never leave the server in plaintext
+- Credential secrets (password, private key, passphrase, enable password) never leave the server in plaintext
 - Session cookies are `httpOnly`, `secure` (production), 8-hour expiry
 - Only `admin` role can delete users, devices, credentials, groups, and golden configs
 - Only `admin` role can create or modify compliance schedules
@@ -434,15 +502,15 @@ pm2 restart configify-app                  # restart after update
 ├── routes/
 │   ├── auth.js              ← /auth/*
 │   ├── users.js             ← /api/users/* + auth-config
-│   ├── devices.js           ← /api/devices/*
-│   ├── ssh.js               ← /api/ssh/* (polling-based; auto shell/exec mode)
+│   ├── devices.js           ← /api/devices/* (incl. enable_password vault)
+│   ├── ssh.js               ← /api/ssh/* (polling-based; auto shell/exec + enable mode)
 │   ├── templates.js         ← /api/templates/* + /api/templates/groups/*
 │   └── compliance.js        ← /api/compliance/* (golden configs, assignments, checks, schedules)
 └── public/
     ├── index.html           ← Template use + SSH execution
     ├── login.html           ← Login page (local / LDAP / SAML)
     ├── templates.html       ← Template CRUD + folder tree panel
-    ├── devices.html         ← Device inventory + credential vault
+    ├── devices.html         ← Device inventory + credential vault (enable password UI)
     ├── compliance.html      ← Configuration compliance dashboard
     ├── settings.html        ← Automated compliance schedules
     └── admin.html           ← User + auth config
@@ -452,24 +520,30 @@ pm2 restart configify-app                  # restart after update
 
 ## Changelog
 
-### v2.6 (current)
+### v2.7 (current)
 
-- **Settings nav link on all pages** — 🔧 Settings sidebar item now appears consistently on every page (Use, Devices, Admin). Previously it was missing from three pages.
-- **Merged schema files** — `schema.sql` is now the single unified schema file covering all tables (core, compliance, schedules). `schema_compliance.sql` and `schema_schedules.sql` are deprecated and contain migration guidance only.
-- **Fixed compliance schedule database error** — `compliance_schedules` table is now part of the main `schema.sql`; existing installs missing the table will see the migration SQL in the Upgrading section above.
+- **Enable password / privilege escalation** — credential vault now stores an optional encrypted enable password for Cisco IOS, NX-OS, and JunOS devices.
+  - New column `encrypted_enable_password` on the `credentials` table (AES-256-GCM encrypted; nullable). Existing installs are migrated automatically by an `ALTER TABLE … ADD COLUMN IF NOT EXISTS` guard in `schema.sql`.
+  - When a credential has an enable password and is used with a `cisco_ios`, `cisco_nxos`, or `junos` device, configify automatically sends `enable\n<password>\n` before any template commands or compliance checks, bringing the device from user-EXEC (`>`) to privileged-EXEC (`#`). A 600 ms settle delay is applied after each step.
+  - **Credential modal** (Devices page) — amber "⚡ Enable password" section added with inline help text, keep-existing behaviour (blank field = unchanged), and a "✕ Clear saved enable password" button to remove a stored value.
+  - **Credential list** — new "Enable" column shows a ⚡ badge when an enable password is configured.
+  - **Device list** — the Default Credential cell shows an `enable` badge when the assigned credential has an enable password stored.
+  - The `GET /api/devices/credentials` response now includes `has_enable_password` (boolean) — the actual encrypted value is never returned.
+
+### v2.6
+
+- **Settings nav link on all pages** — 🔧 Settings sidebar item now appears consistently on every page.
+- **Merged schema files** — `schema.sql` is now the single unified schema file. `schema_compliance.sql` and `schema_schedules.sql` are deprecated.
+- **Fixed compliance schedule database error** — `compliance_schedules` table is now part of the main `schema.sql`.
 
 ### v2.5
 
 - **Configuration compliance** — new Compliance section (🛡️ sidebar) for Cisco IOS and NX-OS devices.
-  - **Golden configs** — define expected configuration lines; blank lines and IOS comments (`!`) are ignored automatically.
-  - **Assignments** — link a golden config to a specific device or an entire device group (group assignments expand to all member devices at check time). Bulk assignment modal allows selecting multiple targets at once.
-  - **Async check engine** — SSH-based, same polling pattern as template execution. Sends `terminal length 0` + `show running-config` via PTY shell. Results stored in `compliance_results`.
-  - **Automated schedules** — periodic compliance checks via Settings page; server-side scheduler polls every 60 s.
-  - **Dashboard** — live stats (total / compliant / non-compliant / error / compliance rate), per-device compliance table with progress bars, line-by-line detail modal, per-pair re-check.
+  - Golden configs, assignments (bulk), async check engine, automated schedules, dashboard.
 
 ### v2.4
 
-- **Unified schema** — `schema.sql`, `schema_v2.sql`, and `schema_v3.sql` merged.
+- **Unified schema** — merged schema files.
 - **Template folder tree** — multi-level folder hierarchy for templates.
 
 ### v2.3

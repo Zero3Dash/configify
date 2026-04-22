@@ -13,6 +13,12 @@
  *     Commands are sent line-by-line; output is streamed back in real time.
  *     The shell is closed after 2 s of output silence (or 90 s hard cap).
  *
+ * Enable / privilege escalation (Cisco IOS, NX-OS, JunOS):
+ *   If the selected credential has an encrypted_enable_password, the shell
+ *   runner automatically sends  "enable\n<password>\n"  before the template
+ *   lines, with a 600 ms settle delay after each step.  This brings the
+ *   device from user-EXEC (>) to privileged-EXEC (#) before commands run.
+ *
  * Jobs are kept in memory for 10 minutes then cleaned up.
  * All routes require a valid session (requireAuth).
  */
@@ -29,8 +35,10 @@ const router = express.Router();
 const jobs = new Map();
 let jobCounter = 0;
 
-// Device types that must use shell mode regardless of line count
-const SHELL_DEVICE_TYPES = new Set(['cisco_ios', 'cisco_nxos', 'junos', 'windows']);
+// Device types that must use shell mode regardless of line count.
+// These are also the types that support enable-mode escalation.
+const SHELL_DEVICE_TYPES  = new Set(['cisco_ios', 'cisco_nxos', 'junos', 'windows']);
+const ENABLE_DEVICE_TYPES = new Set(['cisco_ios', 'cisco_nxos', 'junos']);
 
 // Clean up jobs older than 10 minutes
 setInterval(() => {
@@ -105,10 +113,23 @@ router.post('/execute', requireAuth, async (req, res) => {
     }
 
     // 5. Determine execution strategy
-    const lines = command.split('\n').map(l => l.trimEnd()).filter(l => l.length > 0);
+    const lines    = command.split('\n').map(l => l.trimEnd()).filter(l => l.length > 0);
     const useShell = lines.length > 1 || SHELL_DEVICE_TYPES.has(device.device_type);
 
-    // 6. Create in-memory job
+    // 6. Decrypt enable password (null when not configured or not a relevant device type)
+    let enablePassword = null;
+    if (
+        ENABLE_DEVICE_TYPES.has(device.device_type) &&
+        cred.encrypted_enable_password
+    ) {
+        try {
+            enablePassword = vault.decrypt(cred.encrypted_enable_password);
+        } catch (e) {
+            console.warn('[SSH] Could not decrypt enable password — continuing without enable:', e.message);
+        }
+    }
+
+    // 7. Create in-memory job
     const jobId = ++jobCounter;
     jobs.set(jobId, {
         userId:    req.user.id,
@@ -123,11 +144,12 @@ router.post('/execute', requireAuth, async (req, res) => {
 
     console.log(
         `[SSH] job ${jobId} started — device=${device.hostname}:${device.port}` +
-        ` user=${req.user.id} logId=${logId} mode=${useShell ? 'shell' : 'exec'}`
+        ` user=${req.user.id} logId=${logId} mode=${useShell ? 'shell' : 'exec'}` +
+        (enablePassword ? ' enable=yes' : '')
     );
 
-    // 7. Run SSH asynchronously (do not await)
-    runSsh(jobId, logId, device, cred, lines, useShell);
+    // 8. Run SSH asynchronously (do not await)
+    runSsh(jobId, logId, device, cred, lines, useShell, enablePassword);
 
     return res.json({ ok: true, jobId });
 });
@@ -156,7 +178,7 @@ router.get('/poll/:jobId', requireAuth, (req, res) => {
 });
 
 // ── SSH runner ────────────────────────────────────────────────
-async function runSsh(jobId, logId, device, cred, lines, useShell) {
+async function runSsh(jobId, logId, device, cred, lines, useShell, enablePassword) {
     const job = jobs.get(jobId);
     let   ssh = null;
 
@@ -224,7 +246,7 @@ async function runSsh(jobId, logId, device, cred, lines, useShell) {
         let exitCode;
 
         if (useShell) {
-            exitCode = await runWithShell(ssh, jobId, lines, device.device_type, appendOutput);
+            exitCode = await runWithShell(ssh, jobId, lines, device.device_type, appendOutput, enablePassword);
         } else {
             // Single-line non-network command: use execCommand
             const result = await ssh.execCommand(lines[0], {
@@ -249,21 +271,29 @@ async function runSsh(jobId, logId, device, cred, lines, useShell) {
 
 // ── Shell-mode runner ─────────────────────────────────────────
 //
-// Opens a PTY shell, sends each line individually (with a small inter-line
-// delay so the device has time to process), then waits for the output to
-// go quiet before closing.
+// Opens a PTY shell, optionally escalates to privileged EXEC mode via
+// the "enable" command, then sends each template line individually
+// (with a small inter-line delay).  Waits for output silence before
+// closing the session.
+//
+// Enable sequence (only for ENABLE_DEVICE_TYPES when enablePassword set):
+//   1. send "enable\n"
+//   2. wait ENABLE_STEP_MS for the "Password:" prompt
+//   3. send the enable password + "\n"
+//   4. wait ENABLE_STEP_MS for the "#" prompt
+//   5. proceed with template lines
 //
 // Quiet detection:  2 000 ms of no new output after all lines are sent.
 // Hard cap:         90 seconds total, after which the shell is force-closed.
 //
-async function runWithShell(ssh, jobId, lines, deviceType, appendOutput) {
-    const INTER_LINE_DELAY_MS  =  150;   // delay between each sent line
-    const QUIET_SETTLE_MS      = 2000;   // idle time before we consider it done
+async function runWithShell(ssh, jobId, lines, deviceType, appendOutput, enablePassword = null) {
+    const INTER_LINE_DELAY_MS  =  150;   // delay between each template line
+    const ENABLE_STEP_MS       =  600;   // settle delay for each enable step
+    const QUIET_SETTLE_MS      = 2000;   // idle time before considering output done
     const HARD_TIMEOUT_MS      = 90000;  // absolute maximum
 
     return new Promise(async (resolve) => {
         let settled = false;
-        let lastOutputAt = Date.now();
         let quietTimer   = null;
         let hardTimer    = null;
 
@@ -286,7 +316,6 @@ async function runWithShell(ssh, jobId, lines, deviceType, appendOutput) {
 
         shell.on('data', (chunk) => {
             appendOutput(chunk.toString());
-            lastOutputAt = Date.now();
 
             // Restart the quiet timer every time new data arrives
             clearTimeout(quietTimer);
@@ -305,16 +334,30 @@ async function runWithShell(ssh, jobId, lines, deviceType, appendOutput) {
             closeShell();
         }, HARD_TIMEOUT_MS);
 
-        // Send all lines, then arm the initial quiet timer in case the device
-        // sends no output at all (e.g. it never echoes)
         const sendLines = async () => {
+            // ── Enable / privilege escalation ──────────────────────
+            if (enablePassword && ENABLE_DEVICE_TYPES.has(deviceType)) {
+                if (settled) return;
+                appendOutput('\n[configify] Entering privileged EXEC mode (enable)...\n');
+                console.log(`[SSH] job ${jobId} → enable`);
+                shell.write('enable\n');
+                await sleep(ENABLE_STEP_MS);   // wait for "Password:" prompt
+                if (settled) return;
+                console.log(`[SSH] job ${jobId} → <enable password>`);
+                shell.write(enablePassword + '\n');
+                await sleep(ENABLE_STEP_MS);   // wait for "#" prompt
+                if (settled) return;
+            }
+
+            // ── Template lines ─────────────────────────────────────
             for (const line of lines) {
                 if (settled) return;
                 console.log(`[SSH] job ${jobId} → ${line}`);
                 shell.write(line + '\n');
                 await sleep(INTER_LINE_DELAY_MS);
             }
-            // Arm quiet timer after last line (in case no data arrives at all)
+
+            // Arm quiet timer after last line in case device sends no output
             clearTimeout(quietTimer);
             quietTimer = setTimeout(closeShell, QUIET_SETTLE_MS);
         };
@@ -322,7 +365,6 @@ async function runWithShell(ssh, jobId, lines, deviceType, appendOutput) {
         const closeShell = () => {
             if (settled) return;
             try { shell.write('exit\n'); } catch (_) {}
-            // Give a final second for the shell to close gracefully
             setTimeout(() => finish(0), 1000);
         };
 

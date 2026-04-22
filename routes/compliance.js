@@ -3,11 +3,11 @@
  *
  * Configuration compliance checking for Cisco IOS and NX-OS devices.
  *
- * Changes vs original:
- *  - POST /assignments/bulk  — assign one golden config to multiple devices/groups at once
- *  - GET/POST/PATCH/DELETE /schedules — manage periodic check schedules
- *  - startScheduler() exported for server.js
- *  - resolvePairs() factored out and shared between HTTP handler and scheduler
+ * Changes vs v2.6:
+ *  - fetchRunningConfig now decrypts and uses encrypted_enable_password
+ *    from the device's default credential.  If set, the SSH shell sends
+ *    "enable\n<password>\n" before "terminal length 0" / "show running-config"
+ *    so privileged EXEC mode is reached on devices that require it.
  */
 
 const express     = require('express');
@@ -137,7 +137,6 @@ router.get('/assignments', async (req, res) => {
     } catch (err) { console.error(err); res.status(500).json({ error: 'Database error' }); }
 });
 
-// Single assignment (kept for backward compat)
 router.post('/assignments', async (req, res) => {
     const { golden_config_id, device_id, device_group_id } = req.body;
     if (!golden_config_id)              return res.status(400).json({ error: 'golden_config_id required' });
@@ -153,7 +152,6 @@ router.post('/assignments', async (req, res) => {
     } catch (err) { console.error(err); res.status(500).json({ error: 'Database error' }); }
 });
 
-// Bulk assignment — create multiple device/group assignments for one golden config at once
 router.post('/assignments/bulk', async (req, res) => {
     const { golden_config_id, device_ids, device_group_ids } = req.body;
     if (!golden_config_id) return res.status(400).json({ error: 'golden_config_id required' });
@@ -242,7 +240,6 @@ router.patch('/schedules/:id', requireAdmin, async (req, res) => {
         fields.push(`enabled=$${idx++}`);
         vals.push(!!enabled);
         if (enabled) {
-            // Reset next_run when re-enabling
             const hours = interval_hours ? Math.max(1, parseInt(interval_hours)) : null;
             fields.push(`next_run=NOW() + (COALESCE($${idx++}::int, interval_hours) * INTERVAL '1 hour')`);
             vals.push(hours);
@@ -486,9 +483,12 @@ async function runChecks(jobId, pairs, userId) {
             continue;
         }
 
+        // Indicate enable password usage in log
+        const hasEnable = !!cred.encrypted_enable_password;
+        log(`[${device.name}] Connecting to ${device.hostname}:${device.port || 22}${hasEnable ? ' (with enable)' : ''}...`);
+
         let runningConfig = null, sshError = null;
         try {
-            log(`[${device.name}] Connecting to ${device.hostname}:${device.port || 22}...`);
             runningConfig = await fetchRunningConfig(device, cred);
             log(`[${device.name}] Config fetched (${runningConfig.split('\n').length} lines)`);
         } catch (err) {
@@ -543,7 +543,7 @@ async function runChecks(jobId, pairs, userId) {
 }
 
 // ════════════════════════════════════════════════════════════════
-// SCHEDULER  (called once from server.js on startup)
+// SCHEDULER
 // ════════════════════════════════════════════════════════════════
 
 async function runScheduledCheck(schedule) {
@@ -601,15 +601,27 @@ function startScheduler() {
         }
     }
 
-    setInterval(tick, 60 * 1000);      // check every 60 s
-    setTimeout(tick,  30 * 1000);      // initial check 30 s after startup
+    setInterval(tick, 60 * 1000);
+    setTimeout(tick,  30 * 1000);
     console.log('✅ Compliance scheduler started');
 }
 
 // ════════════════════════════════════════════════════════════════
-// SSH HELPER
+// SSH HELPER — fetches running config from a Cisco IOS / NX-OS device
 // ════════════════════════════════════════════════════════════════
-
+//
+// Enable sequence (when encrypted_enable_password is present):
+//   1. Open PTY shell
+//   2. Wait 1 s for initial prompt
+//   3. Send "enable\n"
+//   4. Wait 600 ms for "Password:" prompt
+//   5. Send enable password + "\n"
+//   6. Wait 600 ms for "#" prompt  ← now in privileged EXEC
+//   7. Send "terminal length 0\n"
+//   8. Wait 600 ms
+//   9. Send "show running-config\n"
+//  10. Collect output until quiet (3 s) or hard timeout (60 s)
+//
 async function fetchRunningConfig(device, cred) {
     const sshCfg = {
         host: device.hostname, port: device.port || 22,
@@ -630,6 +642,16 @@ async function fetchRunningConfig(device, cred) {
         }
     }
 
+    // Decrypt enable password (null if not configured)
+    let enablePassword = null;
+    if (cred.encrypted_enable_password) {
+        try {
+            enablePassword = vault.decrypt(cred.encrypted_enable_password);
+        } catch (e) {
+            console.warn('[compliance] Could not decrypt enable password — continuing without enable:', e.message);
+        }
+    }
+
     const ssh = new NodeSSH();
     await ssh.connect(sshCfg);
     if (ssh.connection) ssh.connection.on('error', () => {});
@@ -638,6 +660,7 @@ async function fetchRunningConfig(device, cred) {
         return await new Promise((resolve, reject) => {
             let collected = '', settled = false, quietTimer = null;
             const QUIET_MS = 3000, HARD_MS = 60000;
+
             const finish = () => {
                 if (settled) return;
                 settled = true;
@@ -647,6 +670,7 @@ async function fetchRunningConfig(device, cred) {
 
             ssh.requestShell({ term: 'vt100', rows: 500, cols: 220 }).then(shell => {
                 const hardTimer = setTimeout(() => { if (!settled) finish(); }, HARD_MS);
+
                 shell.on('data', chunk => {
                     collected += chunk.toString();
                     clearTimeout(quietTimer);
@@ -654,10 +678,28 @@ async function fetchRunningConfig(device, cred) {
                 });
                 shell.on('close', () => { clearTimeout(hardTimer); finish(); });
                 shell.on('error', err => { clearTimeout(hardTimer); if (!settled) reject(err); });
+
+                // Command sequence with enable support
                 setTimeout(() => {
-                    shell.write('terminal length 0\n');
-                    setTimeout(() => shell.write('show running-config\n'), 600);
+                    if (enablePassword) {
+                        // Step 1: enter enable mode
+                        shell.write('enable\n');
+                        setTimeout(() => {
+                            // Step 2: provide enable password
+                            shell.write(enablePassword + '\n');
+                            setTimeout(() => {
+                                // Step 3: disable paging then fetch config
+                                shell.write('terminal length 0\n');
+                                setTimeout(() => shell.write('show running-config\n'), 600);
+                            }, 600);
+                        }, 600);
+                    } else {
+                        // No enable — go straight to commands
+                        shell.write('terminal length 0\n');
+                        setTimeout(() => shell.write('show running-config\n'), 600);
+                    }
                 }, 1000);
+
             }).catch(reject);
         });
     } finally {

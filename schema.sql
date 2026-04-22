@@ -1,5 +1,5 @@
 -- ============================================================
--- configify — unified database schema (v2.6)
+-- configify — unified database schema (v2.7)
 -- Single file; safe to apply to a fresh database.
 -- Includes: core tables, compliance, schedules.
 -- ============================================================
@@ -116,18 +116,26 @@ CREATE TABLE IF NOT EXISTS device_groups (
 
 
 -- ── Credential vault ──────────────────────────────────────────
+-- encrypted_enable_password: AES-256-GCM encrypted privilege-escalation
+-- password used for Cisco IOS/NX-OS "enable" mode (and similar).
+-- NULL means no enable password is configured for this credential.
 CREATE TABLE IF NOT EXISTS credentials (
-    id                   SERIAL PRIMARY KEY,
-    name                 VARCHAR(255) NOT NULL,
-    username             VARCHAR(255) NOT NULL,
-    auth_method          VARCHAR(20)  NOT NULL DEFAULT 'password',
-    encrypted_password   TEXT,
-    encrypted_key        TEXT,
-    encrypted_passphrase TEXT,
-    created_by           INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    created_at           TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at           TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    id                       SERIAL PRIMARY KEY,
+    name                     VARCHAR(255) NOT NULL,
+    username                 VARCHAR(255) NOT NULL,
+    auth_method              VARCHAR(20)  NOT NULL DEFAULT 'password',
+    encrypted_password       TEXT,
+    encrypted_key            TEXT,
+    encrypted_passphrase     TEXT,
+    encrypted_enable_password TEXT,   -- v2.7: privilege-escalation secret (nullable)
+    created_by               INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at               TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at               TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Migration guard for existing installs upgrading to v2.7
+ALTER TABLE credentials ADD COLUMN IF NOT EXISTS
+    encrypted_enable_password TEXT;
 
 
 -- ── Devices ───────────────────────────────────────────────────
@@ -168,9 +176,6 @@ CREATE TABLE IF NOT EXISTS execution_logs (
 -- ════════════════════════════════════════════════════════════════
 
 -- ── Golden configurations ──────────────────────────────────────
--- Define expected configuration lines for Cisco IOS / NX-OS devices.
--- Each non-blank, non-comment line must appear verbatim in the device's
--- `show running-config` output to be considered compliant.
 CREATE TABLE IF NOT EXISTS golden_configs (
     id           SERIAL PRIMARY KEY,
     name         VARCHAR(255) NOT NULL,
@@ -183,8 +188,6 @@ CREATE TABLE IF NOT EXISTS golden_configs (
 );
 
 -- ── Golden config assignments ──────────────────────────────────
--- Link a golden config to a specific device OR an entire device group.
--- Exactly one of device_id or device_group_id must be non-null.
 CREATE TABLE IF NOT EXISTS golden_config_assignments (
     id               SERIAL PRIMARY KEY,
     golden_config_id INTEGER NOT NULL REFERENCES golden_configs(id)  ON DELETE CASCADE,
@@ -200,8 +203,6 @@ CREATE TABLE IF NOT EXISTS golden_config_assignments (
 );
 
 -- ── Compliance check results ───────────────────────────────────
--- One row per (device, golden_config) check run.
--- status: 'running' | 'compliant' | 'non_compliant' | 'error'
 CREATE TABLE IF NOT EXISTS compliance_results (
     id               SERIAL PRIMARY KEY,
     golden_config_id INTEGER REFERENCES golden_configs(id) ON DELETE CASCADE,
@@ -220,8 +221,6 @@ CREATE TABLE IF NOT EXISTS compliance_results (
 );
 
 -- ── Compliance schedules ───────────────────────────────────────
--- Periodic automated compliance check schedules.
--- golden_config_id NULL = run ALL active assignments (full audit).
 CREATE TABLE IF NOT EXISTS compliance_schedules (
     id               SERIAL PRIMARY KEY,
     name             VARCHAR(255) NOT NULL,
@@ -232,7 +231,7 @@ CREATE TABLE IF NOT EXISTS compliance_schedules (
     last_run         TIMESTAMP WITH TIME ZONE,
     next_run         TIMESTAMP WITH TIME ZONE,
     run_count        INTEGER NOT NULL DEFAULT 0,
-    last_result      JSONB,   -- { compliant, non_compliant, error, total }
+    last_result      JSONB,
     created_by       INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at       TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at       TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

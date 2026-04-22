@@ -1,6 +1,12 @@
 /**
  * routes/devices.js
  * Device groups, devices, and credential vault CRUD.
+ *
+ * Credential vault now supports an optional encrypted_enable_password field
+ * used for Cisco IOS / NX-OS privilege escalation ("enable" mode).
+ * The enable password is stored AES-256-GCM encrypted like all other secrets.
+ * The API never returns plaintext secrets; the list endpoint exposes only a
+ * boolean `has_enable_password` so the UI can show whether one is configured.
  */
 const express = require('express');
 const db      = require('../db');
@@ -70,35 +76,62 @@ router.delete('/groups/:id', requireAdmin, async (req, res) => {
 // CREDENTIAL VAULT
 // ════════════════════════════════════════════════════════
 
+/**
+ * GET /api/devices/credentials
+ * Returns credential metadata. Secrets are never included.
+ * `has_enable_password` is a boolean indicating whether an enable
+ * password is stored for this credential (useful for UI display).
+ */
 router.get('/credentials', requireAuth, async (req, res) => {
     try {
         const { rows } = await db.query(
-            `SELECT c.id, c.name, c.username, c.auth_method, c.created_at, u.username AS created_by_name
+            `SELECT c.id, c.name, c.username, c.auth_method, c.created_at,
+                    u.username AS created_by_name,
+                    (c.encrypted_enable_password IS NOT NULL) AS has_enable_password
              FROM credentials c
              LEFT JOIN users u ON u.id = c.created_by
              ORDER BY c.name`
         );
-        // Never return encrypted values in list
         res.json(rows);
     } catch (err) { res.status(500).json({ error: 'Database error' }); }
 });
 
+/**
+ * POST /api/devices/credentials
+ * Body fields:
+ *   name, username, auth_method          — required
+ *   password                             — for auth_method 'password'
+ *   private_key                          — for auth_method 'key' / 'key+passphrase'
+ *   passphrase                           — for auth_method 'key+passphrase'
+ *   enable_password                      — optional; Cisco IOS/NX-OS privilege escalation
+ */
 router.post('/credentials', requireAuth, async (req, res) => {
-    const { name, username, auth_method, password, private_key, passphrase } = req.body;
+    const {
+        name, username, auth_method,
+        password, private_key, passphrase,
+        enable_password,
+    } = req.body;
+
     if (!name || !username) return res.status(400).json({ error: 'name and username required' });
+
     try {
         const { rows } = await db.query(
             `INSERT INTO credentials
-               (name, username, auth_method, encrypted_password, encrypted_key, encrypted_passphrase, created_by)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
-             RETURNING id, name, username, auth_method, created_at`,
+               (name, username, auth_method,
+                encrypted_password, encrypted_key, encrypted_passphrase,
+                encrypted_enable_password,
+                created_by)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+             RETURNING id, name, username, auth_method, created_at,
+                       (encrypted_enable_password IS NOT NULL) AS has_enable_password`,
             [
                 name, username,
                 auth_method || 'password',
-                vault.encrypt(password   || null),
-                vault.encrypt(private_key|| null),
-                vault.encrypt(passphrase || null),
-                req.user.id
+                vault.encrypt(password      || null),
+                vault.encrypt(private_key   || null),
+                vault.encrypt(passphrase    || null),
+                vault.encrypt(enable_password || null),
+                req.user.id,
             ]
         );
         res.status(201).json(rows[0]);
@@ -108,23 +141,43 @@ router.post('/credentials', requireAuth, async (req, res) => {
     }
 });
 
+/**
+ * PATCH /api/devices/credentials/:id
+ * All fields are optional. Omitting a secret field leaves it unchanged.
+ * Pass an empty string for enable_password to clear it.
+ */
 router.patch('/credentials/:id', requireAuth, async (req, res) => {
-    const { name, username, auth_method, password, private_key, passphrase } = req.body;
+    const {
+        name, username, auth_method,
+        password, private_key, passphrase,
+        enable_password,
+    } = req.body;
+
     try {
         const fields = [];
         const vals   = [];
         let   idx    = 1;
-        if (name        !== undefined) { fields.push(`name = $${idx++}`);               vals.push(name); }
-        if (username    !== undefined) { fields.push(`username = $${idx++}`);            vals.push(username); }
-        if (auth_method !== undefined) { fields.push(`auth_method = $${idx++}`);         vals.push(auth_method); }
-        if (password    !== undefined) { fields.push(`encrypted_password = $${idx++}`);  vals.push(vault.encrypt(password)); }
-        if (private_key !== undefined) { fields.push(`encrypted_key = $${idx++}`);       vals.push(vault.encrypt(private_key)); }
-        if (passphrase  !== undefined) { fields.push(`encrypted_passphrase = $${idx++}`);vals.push(vault.encrypt(passphrase)); }
+
+        if (name           !== undefined) { fields.push(`name = $${idx++}`);                    vals.push(name); }
+        if (username       !== undefined) { fields.push(`username = $${idx++}`);                 vals.push(username); }
+        if (auth_method    !== undefined) { fields.push(`auth_method = $${idx++}`);              vals.push(auth_method); }
+        if (password       !== undefined) { fields.push(`encrypted_password = $${idx++}`);       vals.push(vault.encrypt(password)); }
+        if (private_key    !== undefined) { fields.push(`encrypted_key = $${idx++}`);            vals.push(vault.encrypt(private_key)); }
+        if (passphrase     !== undefined) { fields.push(`encrypted_passphrase = $${idx++}`);     vals.push(vault.encrypt(passphrase)); }
+
+        // enable_password: empty string → clear (set NULL); non-empty → encrypt and store
+        if (enable_password !== undefined) {
+            fields.push(`encrypted_enable_password = $${idx++}`);
+            vals.push(enable_password ? vault.encrypt(enable_password) : null);
+        }
+
         if (!fields.length) return res.status(400).json({ error: 'No fields to update' });
+
         vals.push(req.params.id);
         const { rows } = await db.query(
             `UPDATE credentials SET ${fields.join(', ')} WHERE id = $${idx}
-             RETURNING id, name, username, auth_method`,
+             RETURNING id, name, username, auth_method,
+                       (encrypted_enable_password IS NOT NULL) AS has_enable_password`,
             vals
         );
         if (!rows.length) return res.status(404).json({ error: 'Credential not found' });
@@ -153,6 +206,7 @@ router.get('/', requireAuth, async (req, res) => {
                     g.color AS group_color,
                     c.name  AS credential_name,
                     c.username AS credential_username,
+                    (c.encrypted_enable_password IS NOT NULL) AS credential_has_enable,
                     u.username AS created_by_name
              FROM devices d
              LEFT JOIN device_groups g ON g.id = d.group_id

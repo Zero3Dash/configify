@@ -88,8 +88,29 @@
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
   .modal-footer { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.2rem; }
   .badge { display: inline-block; padding: 0.18rem 0.55rem; border-radius: 5px; font-size: 0.72rem; font-weight: 600; }
-  .badge-pw  { background: #f1f5f9; color: #475569; }
-  .badge-key { background: #ede9fe; color: #5b21b6; }
+  .badge-pw    { background: #f1f5f9; color: #475569; }
+  .badge-key   { background: #ede9fe; color: #5b21b6; }
+  .badge-enable { background: #fef3c7; color: #92400e; }
+
+  /* ── Enable password section ── */
+  .enable-section {
+    border: 1px solid #e2e8f0; border-radius: 10px;
+    padding: 0.85rem 1rem; margin-top: 0.9rem; background: #fffbeb;
+  }
+  .enable-section-title {
+    font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.07em; color: #92400e; margin-bottom: 0.5rem;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .enable-note {
+    font-size: 0.75rem; color: #78350f; margin-top: 0.35rem; line-height: 1.5;
+  }
+  .enable-clear-btn {
+    font-size: 0.72rem; color: #dc2626; background: none; border: none;
+    cursor: pointer; padding: 0; text-decoration: underline; margin-top: 0.3rem;
+  }
+  .enable-clear-btn:hover { color: #991b1b; }
+
   #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #166534; color: white;
            padding: 0.7rem 1.1rem; border-radius: 8px; font-size: 0.85rem;
            display: none; z-index: 300; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
@@ -179,10 +200,14 @@
         <span class="card-title">Credential vault</span>
         <button class="btn btn-primary" onclick="openCredModal()">＋ Add credential</button>
       </div>
-      <p style="font-size:0.8rem;color:#64748b;margin-bottom:1rem">All secrets are AES-256-GCM encrypted at rest. Plaintext is never returned by the API.</p>
+      <p style="font-size:0.8rem;color:#64748b;margin-bottom:1rem">
+        All secrets are AES-256-GCM encrypted at rest. Plaintext is never returned by the API.
+        The <strong>enable password</strong> field is used automatically for Cisco IOS and NX-OS
+        devices to enter privileged EXEC mode before running commands.
+      </p>
       <table>
         <thead><tr>
-          <th>Name</th><th>Username</th><th>Auth method</th><th>Created</th><th>Actions</th>
+          <th>Name</th><th>Username</th><th>Auth method</th><th>Enable</th><th>Created</th><th>Actions</th>
         </tr></thead>
         <tbody id="creds-tbody"></tbody>
       </table>
@@ -190,6 +215,7 @@
   </div>
 </main>
 
+<!-- ── Device modal ── -->
 <div class="modal-backdrop" id="device-modal">
   <div class="modal">
     <h3 id="device-modal-title">Add device</h3>
@@ -222,6 +248,7 @@
   </div>
 </div>
 
+<!-- ── Group modal ── -->
 <div class="modal-backdrop" id="group-modal">
   <div class="modal">
     <h3 id="group-modal-title">New group</h3>
@@ -239,30 +266,61 @@
   </div>
 </div>
 
+<!-- ── Credential modal ── -->
 <div class="modal-backdrop" id="cred-modal">
   <div class="modal">
     <h3 id="cred-modal-title">Add credential</h3>
     <input type="hidden" id="c-id">
-    <label>Friendly name</label><input type="text" id="c-name" placeholder="DC Admin" />
-    <label>Username</label><input type="text" id="c-user" placeholder="admin" />
+
+    <label>Friendly name</label>
+    <input type="text" id="c-name" placeholder="DC Admin" />
+
+    <label>Username</label>
+    <input type="text" id="c-user" placeholder="admin" />
+
     <label>Auth method</label>
     <select id="c-method" onchange="toggleCredFields()">
       <option value="password">Password</option>
       <option value="key">SSH Private Key</option>
       <option value="key+passphrase">SSH Private Key + Passphrase</option>
     </select>
+
+    <!-- Password auth -->
     <div id="c-password-section">
-      <label>Password</label>
-      <input type="password" id="c-password" placeholder="leave blank to keep existing" />
+      <label>Password <span style="font-weight:400;color:#94a3b8">— leave blank to keep existing</span></label>
+      <input type="password" id="c-password" placeholder="••••••••" />
     </div>
+
+    <!-- Key auth -->
     <div id="c-key-section" style="display:none">
-      <label>Private key (PEM) — leave blank to keep</label>
+      <label>Private key (PEM) <span style="font-weight:400;color:#94a3b8">— leave blank to keep</span></label>
       <textarea id="c-key" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;..."></textarea>
     </div>
+
+    <!-- Key passphrase -->
     <div id="c-passphrase-section" style="display:none">
-      <label>Key passphrase — leave blank to keep</label>
+      <label>Key passphrase <span style="font-weight:400;color:#94a3b8">— leave blank to keep</span></label>
       <input type="password" id="c-passphrase" placeholder="••••••••" />
     </div>
+
+    <!-- ── Enable / privilege escalation ── -->
+    <div class="enable-section">
+      <div class="enable-section-title">⚡ Enable password <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#a16207">(Cisco IOS / NX-OS / JunOS)</span></div>
+      <p class="enable-note">
+        Used to enter privileged EXEC mode on network devices that require it.
+        configify sends <code style="background:#fef08a;padding:0 3px;border-radius:3px">enable</code>
+        followed by this password before running any commands or compliance checks.
+        Leave blank if not needed or to keep the existing value.
+      </p>
+      <label style="margin-top:0.6rem">Enable password
+        <span style="font-weight:400;color:#94a3b8" id="c-enable-has-label"></span>
+      </label>
+      <input type="password" id="c-enable-pw" placeholder="••••••••" autocomplete="new-password" />
+      <button class="enable-clear-btn" id="c-enable-clear-btn" onclick="clearEnablePw()" style="display:none">
+        ✕ Clear saved enable password
+      </button>
+    </div>
+
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModals()">Cancel</button>
       <button class="btn btn-primary" onclick="saveCredential()">Save</button>
@@ -275,6 +333,7 @@
 <script>
 'use strict';
 let allDevices=[], allGroups=[], allCreds=[];
+let clearEnableOnSave = false;   // tracks whether the "Clear" button was clicked
 const TYPE_ICONS = { linux:'🐧', cisco_ios:'🔌', cisco_nxos:'🔌', junos:'🛡️', windows:'🪟', other:'🖥️' };
 
 (async function init() {
@@ -295,10 +354,13 @@ const TYPE_ICONS = { linux:'🐧', cisco_ios:'🔌', cisco_nxos:'🔌', junos:'�
   await Promise.all([loadGroups(), loadCreds(), loadDevices()]);
 })();
 
+// ── Devices ───────────────────────────────────────────────────
+
 async function loadDevices() {
   allDevices = await api('/api/devices');
   renderDevices(allDevices);
 }
+
 function renderDevices(devices) {
   const tbody = document.getElementById('devices-tbody');
   if (!devices.length) {
@@ -307,86 +369,111 @@ function renderDevices(devices) {
   }
   tbody.innerHTML = devices.map(d => `
     <tr>
-      <td><strong>${esc(d.name)}</strong>${d.description?`<br><span style="font-size:0.74rem;color:#94a3b8">${esc(d.description)}</span>`:''}</td>
-      <td class="mono">${esc(d.hostname)}${d.port!==22?':'+d.port:''}</td>
+      <td>
+        <strong>${esc(d.name)}</strong>
+        ${d.description ? `<br><span style="font-size:0.74rem;color:#94a3b8">${esc(d.description)}</span>` : ''}
+      </td>
+      <td class="mono">${esc(d.hostname)}${d.port!==22 ? ':'+d.port : ''}</td>
       <td>${TYPE_ICONS[d.device_type]||'🖥️'} <span style="font-size:0.82rem">${esc(d.device_type.replace('_',' '))}</span></td>
-      <td>${d.group_name?`<span class="dot" style="background:${d.group_color||'#94a3b8'}"></span>${esc(d.group_name)}`:'<span style="color:#94a3b8">—</span>'}</td>
-      <td>${d.credential_name?`🔑 ${esc(d.credential_name)}`:'<span style="color:#94a3b8">—</span>'}</td>
+      <td>${d.group_name
+        ? `<span class="dot" style="background:${d.group_color||'#94a3b8'}"></span>${esc(d.group_name)}`
+        : '<span style="color:#94a3b8">—</span>'}</td>
+      <td>
+        ${d.credential_name
+          ? `🔑 ${esc(d.credential_name)}${d.credential_has_enable
+              ? ' <span class="badge badge-enable" title="Enable password configured">enable</span>'
+              : ''}`
+          : '<span style="color:#94a3b8">—</span>'}
+      </td>
       <td style="display:flex;gap:4px">
         <button class="btn btn-secondary btn-sm" onclick="openDeviceModal(${d.id})">Edit</button>
         <button class="btn btn-danger btn-sm" onclick="deleteDevice(${d.id},'${esc(d.name).replace(/'/g,"\\'")}')">Delete</button>
       </td>
     </tr>`).join('');
 }
+
 function filterDevices() {
   const q = document.getElementById('device-search').value.toLowerCase();
   renderDevices(allDevices.filter(d =>
     d.name.toLowerCase().includes(q) || d.hostname.toLowerCase().includes(q) || (d.group_name||'').toLowerCase().includes(q)
   ));
 }
+
 async function openDeviceModal(id) {
   document.getElementById('d-group').innerHTML = '<option value="">— No group —</option>' +
-    allGroups.map(g=>`<option value="${g.id}">${esc(g.name)}</option>`).join('');
+    allGroups.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('');
   document.getElementById('d-cred').innerHTML  = '<option value="">— None —</option>' +
-    allCreds.map(c=>`<option value="${c.id}">${esc(c.name)} (${esc(c.username)})</option>`).join('');
+    allCreds.map(c => `<option value="${c.id}">${esc(c.name)} (${esc(c.username)})</option>`).join('');
   if (id) {
-    const d = allDevices.find(x=>x.id===id);
-    document.getElementById('device-modal-title').textContent='Edit device';
-    document.getElementById('d-id').value=d.id;
-    document.getElementById('d-name').value=d.name;
-    document.getElementById('d-host').value=d.hostname;
-    document.getElementById('d-port').value=d.port;
-    document.getElementById('d-type').value=d.device_type;
-    document.getElementById('d-group').value=d.group_id||'';
-    document.getElementById('d-cred').value=d.default_credential_id||'';
-    document.getElementById('d-desc').value=d.description||'';
+    const d = allDevices.find(x => x.id === id);
+    document.getElementById('device-modal-title').textContent = 'Edit device';
+    document.getElementById('d-id').value    = d.id;
+    document.getElementById('d-name').value  = d.name;
+    document.getElementById('d-host').value  = d.hostname;
+    document.getElementById('d-port').value  = d.port;
+    document.getElementById('d-type').value  = d.device_type;
+    document.getElementById('d-group').value = d.group_id || '';
+    document.getElementById('d-cred').value  = d.default_credential_id || '';
+    document.getElementById('d-desc').value  = d.description || '';
   } else {
-    document.getElementById('device-modal-title').textContent='Add device';
-    ['d-id','d-name','d-host','d-desc'].forEach(i=>document.getElementById(i).value='');
-    document.getElementById('d-port').value=22;
-    document.getElementById('d-type').value='linux';
-    document.getElementById('d-group').value='';
-    document.getElementById('d-cred').value='';
+    document.getElementById('device-modal-title').textContent = 'Add device';
+    ['d-id','d-name','d-host','d-desc'].forEach(i => document.getElementById(i).value = '');
+    document.getElementById('d-port').value  = 22;
+    document.getElementById('d-type').value  = 'linux';
+    document.getElementById('d-group').value = '';
+    document.getElementById('d-cred').value  = '';
   }
   document.getElementById('device-modal').classList.add('open');
 }
+
 async function saveDevice() {
   const id = document.getElementById('d-id').value;
   const body = {
-    name:document.getElementById('d-name').value.trim(),
-    hostname:document.getElementById('d-host').value.trim(),
-    port:parseInt(document.getElementById('d-port').value)||22,
-    device_type:document.getElementById('d-type').value,
-    group_id:document.getElementById('d-group').value||null,
-    default_credential_id:document.getElementById('d-cred').value||null,
-    description:document.getElementById('d-desc').value.trim()||null
+    name:                 document.getElementById('d-name').value.trim(),
+    hostname:             document.getElementById('d-host').value.trim(),
+    port:                 parseInt(document.getElementById('d-port').value) || 22,
+    device_type:          document.getElementById('d-type').value,
+    group_id:             document.getElementById('d-group').value || null,
+    default_credential_id:document.getElementById('d-cred').value  || null,
+    description:          document.getElementById('d-desc').value.trim() || null,
   };
-  if (!body.name||!body.hostname) return toast('Name and hostname required', true);
-  const res = await fetch(id?`/api/devices/${id}`:'/api/devices',{method:id?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  if (!res.ok) { const d=await res.json(); return toast(d.error,true); }
-  closeModals(); toast('Device saved'); await loadDevices();
+  if (!body.name || !body.hostname) return toast('Name and hostname required', true);
+  const res = await fetch(id ? `/api/devices/${id}` : '/api/devices', {
+    method: id ? 'PATCH' : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) { const d = await res.json(); return toast(d.error, true); }
+  closeModals();
+  toast('Device saved');
+  await loadDevices();
 }
-async function deleteDevice(id,name) {
+
+async function deleteDevice(id, name) {
   if (!confirm(`Delete device "${name}"?`)) return;
-  const res=await fetch(`/api/devices/${id}`,{method:'DELETE'});
-  if (!res.ok) return toast('Delete failed',true);
-  toast('Device deleted'); await loadDevices();
+  const res = await fetch(`/api/devices/${id}`, { method: 'DELETE' });
+  if (!res.ok) return toast('Delete failed', true);
+  toast('Device deleted');
+  await loadDevices();
 }
+
+// ── Groups ────────────────────────────────────────────────────
 
 async function loadGroups() {
   allGroups = await api('/api/devices/groups');
   renderGroups();
 }
+
 function renderGroups() {
   const grid = document.getElementById('group-grid');
-  if (!allGroups.length) { grid.innerHTML='<p style="color:#94a3b8">No groups yet.</p>'; return; }
-  grid.innerHTML = allGroups.map(g=>`
+  if (!allGroups.length) { grid.innerHTML = '<p style="color:#94a3b8">No groups yet.</p>'; return; }
+  grid.innerHTML = allGroups.map(g => `
     <div class="group-card">
       <div class="group-card-header">
         <span class="dot" style="background:${g.color||'#94a3b8'};width:14px;height:14px;border-radius:50%"></span>
         ${esc(g.name)}
       </div>
-      ${g.description?`<div class="group-card-desc">${esc(g.description)}</div>`:''}
+      ${g.description ? `<div class="group-card-desc">${esc(g.description)}</div>` : ''}
       <div class="group-card-count">${g.device_count} device${g.device_count!==1?'s':''}</div>
       <div class="group-card-actions">
         <button class="btn btn-secondary btn-sm" onclick="openGroupModal(${g.id})">Edit</button>
@@ -394,48 +481,73 @@ function renderGroups() {
       </div>
     </div>`).join('');
 }
+
 async function openGroupModal(id) {
   if (id) {
-    const g=allGroups.find(x=>x.id===id);
-    document.getElementById('group-modal-title').textContent='Edit group';
-    document.getElementById('g-id').value=g.id;
-    document.getElementById('g-name').value=g.name;
-    document.getElementById('g-desc').value=g.description||'';
-    document.getElementById('g-color').value=g.color||'#475569';
+    const g = allGroups.find(x => x.id === id);
+    document.getElementById('group-modal-title').textContent = 'Edit group';
+    document.getElementById('g-id').value    = g.id;
+    document.getElementById('g-name').value  = g.name;
+    document.getElementById('g-desc').value  = g.description || '';
+    document.getElementById('g-color').value = g.color || '#475569';
   } else {
-    document.getElementById('group-modal-title').textContent='New group';
-    ['g-id','g-name','g-desc'].forEach(i=>document.getElementById(i).value='');
-    document.getElementById('g-color').value='#475569';
+    document.getElementById('group-modal-title').textContent = 'New group';
+    ['g-id','g-name','g-desc'].forEach(i => document.getElementById(i).value = '');
+    document.getElementById('g-color').value = '#475569';
   }
   document.getElementById('group-modal').classList.add('open');
 }
+
 async function saveGroup() {
-  const id=document.getElementById('g-id').value;
-  const body={name:document.getElementById('g-name').value.trim(),description:document.getElementById('g-desc').value.trim()||null,color:document.getElementById('g-color').value};
-  if (!body.name) return toast('Name required',true);
-  const res=await fetch(id?`/api/devices/groups/${id}`:'/api/devices/groups',{method:id?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  if (!res.ok) return toast('Save failed',true);
-  closeModals(); toast('Group saved'); await loadGroups();
+  const id   = document.getElementById('g-id').value;
+  const body = {
+    name:        document.getElementById('g-name').value.trim(),
+    description: document.getElementById('g-desc').value.trim() || null,
+    color:       document.getElementById('g-color').value,
+  };
+  if (!body.name) return toast('Name required', true);
+  const res = await fetch(id ? `/api/devices/groups/${id}` : '/api/devices/groups', {
+    method: id ? 'PATCH' : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) return toast('Save failed', true);
+  closeModals();
+  toast('Group saved');
+  await loadGroups();
 }
-async function deleteGroup(id,name) {
+
+async function deleteGroup(id, name) {
   if (!confirm(`Delete group "${name}"? Devices will be ungrouped.`)) return;
-  const res=await fetch(`/api/devices/groups/${id}`,{method:'DELETE'});
-  if (!res.ok) return toast('Delete failed',true);
-  toast('Group deleted'); await Promise.all([loadGroups(),loadDevices()]);
+  const res = await fetch(`/api/devices/groups/${id}`, { method: 'DELETE' });
+  if (!res.ok) return toast('Delete failed', true);
+  toast('Group deleted');
+  await Promise.all([loadGroups(), loadDevices()]);
 }
+
+// ── Credentials ───────────────────────────────────────────────
 
 async function loadCreds() {
   allCreds = await api('/api/devices/credentials');
   renderCreds();
 }
+
 function renderCreds() {
-  const tbody=document.getElementById('creds-tbody');
-  if (!allCreds.length) { tbody.innerHTML='<tr><td colspan="5" style="color:#94a3b8;text-align:center;padding:2rem">No credentials stored.</td></tr>'; return; }
-  tbody.innerHTML=allCreds.map(c=>`
+  const tbody = document.getElementById('creds-tbody');
+  if (!allCreds.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="color:#94a3b8;text-align:center;padding:2rem">No credentials stored.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = allCreds.map(c => `
     <tr>
       <td><strong>${esc(c.name)}</strong></td>
       <td class="mono">${esc(c.username)}</td>
-      <td><span class="badge badge-${c.auth_method==='password'?'pw':'key'}">${esc(c.auth_method)}</span></td>
+      <td><span class="badge badge-${c.auth_method === 'password' ? 'pw' : 'key'}">${esc(c.auth_method)}</span></td>
+      <td>
+        ${c.has_enable_password
+          ? '<span class="badge badge-enable" title="Enable password stored">⚡ set</span>'
+          : '<span style="color:#94a3b8;font-size:0.78rem">—</span>'}
+      </td>
       <td style="font-size:0.78rem;color:#94a3b8">${new Date(c.created_at).toLocaleDateString()}</td>
       <td style="display:flex;gap:4px">
         <button class="btn btn-secondary btn-sm" onclick="openCredModal(${c.id})">Edit</button>
@@ -443,63 +555,142 @@ function renderCreds() {
       </td>
     </tr>`).join('');
 }
+
 function toggleCredFields() {
-  const m=document.getElementById('c-method').value;
-  document.getElementById('c-password-section').style.display=m==='password'?'':'none';
-  document.getElementById('c-key-section').style.display=m!=='password'?'':'none';
-  document.getElementById('c-passphrase-section').style.display=m==='key+passphrase'?'':'none';
+  const m = document.getElementById('c-method').value;
+  document.getElementById('c-password-section').style.display  = m === 'password' ? '' : 'none';
+  document.getElementById('c-key-section').style.display       = m !== 'password' ? '' : 'none';
+  document.getElementById('c-passphrase-section').style.display = m === 'key+passphrase' ? '' : 'none';
 }
+
+function clearEnablePw() {
+  clearEnableOnSave = true;
+  document.getElementById('c-enable-pw').value = '';
+  document.getElementById('c-enable-has-label').textContent = '';
+  document.getElementById('c-enable-clear-btn').style.display = 'none';
+  toast('Enable password will be cleared on save');
+}
+
 async function openCredModal(id) {
+  clearEnableOnSave = false;
+
   if (id) {
-    const c=allCreds.find(x=>x.id===id);
-    document.getElementById('cred-modal-title').textContent='Edit credential';
-    document.getElementById('c-id').value=c.id;
-    document.getElementById('c-name').value=c.name;
-    document.getElementById('c-user').value=c.username;
-    document.getElementById('c-method').value=c.auth_method;
-    ['c-password','c-key','c-passphrase'].forEach(i=>document.getElementById(i).value='');
+    const c = allCreds.find(x => x.id === id);
+    document.getElementById('cred-modal-title').textContent = 'Edit credential';
+    document.getElementById('c-id').value     = c.id;
+    document.getElementById('c-name').value   = c.name;
+    document.getElementById('c-user').value   = c.username;
+    document.getElementById('c-method').value = c.auth_method;
+    ['c-password','c-key','c-passphrase','c-enable-pw'].forEach(i =>
+      document.getElementById(i).value = ''
+    );
+
+    // Show enable password status
+    const hasEl   = document.getElementById('c-enable-has-label');
+    const clearEl = document.getElementById('c-enable-clear-btn');
+    if (c.has_enable_password) {
+      hasEl.textContent = '— ⚡ currently set (leave blank to keep)';
+      clearEl.style.display = 'inline';
+    } else {
+      hasEl.textContent = '';
+      clearEl.style.display = 'none';
+    }
   } else {
-    document.getElementById('cred-modal-title').textContent='Add credential';
-    ['c-id','c-name','c-user','c-password','c-key','c-passphrase'].forEach(i=>document.getElementById(i).value='');
-    document.getElementById('c-method').value='password';
+    document.getElementById('cred-modal-title').textContent = 'Add credential';
+    ['c-id','c-name','c-user','c-password','c-key','c-passphrase','c-enable-pw'].forEach(i =>
+      document.getElementById(i).value = ''
+    );
+    document.getElementById('c-method').value = 'password';
+    document.getElementById('c-enable-has-label').textContent = '';
+    document.getElementById('c-enable-clear-btn').style.display = 'none';
   }
+
   toggleCredFields();
   document.getElementById('cred-modal').classList.add('open');
 }
+
 async function saveCredential() {
-  const id=document.getElementById('c-id').value;
-  const method=document.getElementById('c-method').value;
-  const body={name:document.getElementById('c-name').value.trim(),username:document.getElementById('c-user').value.trim(),auth_method:method};
-  const pw=document.getElementById('c-password').value;
-  const key=document.getElementById('c-key').value;
-  const pp=document.getElementById('c-passphrase').value;
-  if(pw)body.password=pw; if(key)body.private_key=key; if(pp)body.passphrase=pp;
-  if(!body.name||!body.username) return toast('Name and username required',true);
-  const res=await fetch(id?`/api/devices/credentials/${id}`:'/api/devices/credentials',{method:id?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  if(!res.ok){const d=await res.json();return toast(d.error,true);}
-  closeModals(); toast('Credential saved'); await loadCreds();
-}
-async function deleteCred(id,name) {
-  if (!confirm(`Delete credential "${name}"?`)) return;
-  const res=await fetch(`/api/devices/credentials/${id}`,{method:'DELETE'});
-  if(!res.ok) return toast('Delete failed',true);
-  toast('Credential deleted'); await Promise.all([loadCreds(),loadDevices()]);
+  const id     = document.getElementById('c-id').value;
+  const method = document.getElementById('c-method').value;
+
+  const body = {
+    name:        document.getElementById('c-name').value.trim(),
+    username:    document.getElementById('c-user').value.trim(),
+    auth_method: method,
+  };
+
+  if (!body.name || !body.username) return toast('Name and username required', true);
+
+  // Auth secrets — only include if non-empty (blank = keep existing)
+  const pw  = document.getElementById('c-password').value;
+  const key = document.getElementById('c-key').value;
+  const pp  = document.getElementById('c-passphrase').value;
+  if (pw)  body.password    = pw;
+  if (key) body.private_key = key;
+  if (pp)  body.passphrase  = pp;
+
+  // Enable password handling:
+  //   - clearEnableOnSave=true → send empty string (backend sets NULL)
+  //   - field has a value       → send new password
+  //   - field is blank and not clearing → omit (backend leaves existing unchanged)
+  const enableVal = document.getElementById('c-enable-pw').value;
+  if (clearEnableOnSave) {
+    body.enable_password = '';     // explicit clear
+  } else if (enableVal) {
+    body.enable_password = enableVal;
+  }
+  // Otherwise: field omitted → existing value preserved
+
+  const res = await fetch(id ? `/api/devices/credentials/${id}` : '/api/devices/credentials', {
+    method: id ? 'PATCH' : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) { const d = await res.json(); return toast(d.error, true); }
+
+  closeModals();
+  toast('Credential saved');
+  await loadCreds();
+  await loadDevices();  // refresh enable badge on devices tab
 }
 
+async function deleteCred(id, name) {
+  if (!confirm(`Delete credential "${name}"?`)) return;
+  const res = await fetch(`/api/devices/credentials/${id}`, { method: 'DELETE' });
+  if (!res.ok) return toast('Delete failed', true);
+  toast('Credential deleted');
+  await Promise.all([loadCreds(), loadDevices()]);
+}
+
+// ── Utilities ─────────────────────────────────────────────────
+
 function closeModals() {
-  document.querySelectorAll('.modal-backdrop').forEach(m=>m.classList.remove('open'));
+  document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
 }
+
 async function api(url, opts) {
-  const r=await fetch(url,opts); const d=await r.json().catch(()=>({}));
-  if(!r.ok) throw new Error(d.error||r.statusText); return d;
+  const r = await fetch(url, opts);
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || r.statusText);
+  return d;
 }
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function toast(msg,isErr=false) {
-  const el=document.getElementById('toast');
-  el.textContent=msg; el.style.background=isErr?'#7f1d1d':'#166534';
-  el.style.display='block'; setTimeout(()=>el.style.display='none',3200);
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-async function logout() { await fetch('/auth/logout',{method:'POST'}); location.href='/login.html'; }
+
+function toast(msg, isErr = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = isErr ? '#7f1d1d' : '#166534';
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3200);
+}
+
+async function logout() {
+  await fetch('/auth/logout', { method: 'POST' });
+  location.href = '/login.html';
+}
 </script>
 </body>
 </html>

@@ -1,6 +1,7 @@
 -- ============================================================
--- configify — unified database schema
+-- configify — unified database schema (v2.6)
 -- Single file; safe to apply to a fresh database.
+-- Includes: core tables, compliance, schedules.
 -- ============================================================
 
 -- ── Shared trigger function (created first; referenced by all triggers) ──
@@ -163,7 +164,7 @@ CREATE TABLE IF NOT EXISTS execution_logs (
 
 
 -- ════════════════════════════════════════════════════════════════
--- COMPLIANCE CHECKING  (v2.5)
+-- COMPLIANCE CHECKING  (v2.5+)
 -- ════════════════════════════════════════════════════════════════
 
 -- ── Golden configurations ──────────────────────────────────────
@@ -218,8 +219,30 @@ CREATE TABLE IF NOT EXISTS compliance_results (
     completed_at     TIMESTAMP WITH TIME ZONE
 );
 
+-- ── Compliance schedules ───────────────────────────────────────
+-- Periodic automated compliance check schedules.
+-- golden_config_id NULL = run ALL active assignments (full audit).
+CREATE TABLE IF NOT EXISTS compliance_schedules (
+    id               SERIAL PRIMARY KEY,
+    name             VARCHAR(255) NOT NULL,
+    description      TEXT,
+    golden_config_id INTEGER REFERENCES golden_configs(id) ON DELETE SET NULL,
+    enabled          BOOLEAN NOT NULL DEFAULT TRUE,
+    interval_hours   INTEGER NOT NULL DEFAULT 24 CHECK (interval_hours > 0),
+    last_run         TIMESTAMP WITH TIME ZONE,
+    next_run         TIMESTAMP WITH TIME ZONE,
+    run_count        INTEGER NOT NULL DEFAULT 0,
+    last_result      JSONB,   -- { compliant, non_compliant, error, total }
+    created_by       INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at       TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
 
--- ── Indexes ───────────────────────────────────────────────────
+
+-- ════════════════════════════════════════════════════════════════
+-- INDEXES
+-- ════════════════════════════════════════════════════════════════
+
 CREATE INDEX IF NOT EXISTS idx_template_id            ON templates(template_id);
 CREATE INDEX IF NOT EXISTS idx_templates_group        ON templates(group_id);
 CREATE INDEX IF NOT EXISTS idx_tpl_groups_parent      ON template_groups(parent_id);
@@ -237,9 +260,14 @@ CREATE INDEX IF NOT EXISTS idx_compliance_device      ON compliance_results(devi
 CREATE INDEX IF NOT EXISTS idx_compliance_gc          ON compliance_results(golden_config_id);
 CREATE INDEX IF NOT EXISTS idx_compliance_status      ON compliance_results(status);
 CREATE INDEX IF NOT EXISTS idx_compliance_checked_at  ON compliance_results(checked_at DESC);
+CREATE INDEX IF NOT EXISTS idx_comp_sched_next_run
+    ON compliance_schedules(enabled, next_run) WHERE enabled = TRUE;
 
 
--- ── updated_at triggers ───────────────────────────────────────
+-- ════════════════════════════════════════════════════════════════
+-- TRIGGERS  (updated_at)
+-- ════════════════════════════════════════════════════════════════
+
 DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_templates_updated_at') THEN
         CREATE TRIGGER update_templates_updated_at
@@ -264,6 +292,11 @@ DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_golden_configs_updated_at') THEN
         CREATE TRIGGER trg_golden_configs_updated_at
             BEFORE UPDATE ON golden_configs
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_comp_schedules_updated_at') THEN
+        CREATE TRIGGER trg_comp_schedules_updated_at
+            BEFORE UPDATE ON compliance_schedules
             FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
     END IF;
 END $$;

@@ -9,8 +9,6 @@
   :root { --sb: 76px; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
          background: #f8fafc; color: #0f172a; padding-left: var(--sb); min-height: 100vh; }
-
-  /* ── Sidebar ── */
   .sidebar {
     position: fixed; left: 0; top: 0; bottom: 0; width: var(--sb);
     background: #0f172a; display: flex; flex-direction: column;
@@ -32,14 +30,10 @@
   .sb-footer  { width: 100%; padding: 0 7px; display: flex; flex-direction: column; gap: 3px; }
   .sb-user    { font-size: 0.6rem; color: #334155; text-align: center; padding: 4px 2px; word-break: break-all; }
   .hidden { display: none !important; }
-
-  /* ── Layout ── */
   .main { max-width: 1280px; margin: 0 auto; padding: 1.5rem; }
   .page-header { padding-bottom: 1rem; }
   .page-header h1 { font-size: 1.4rem; font-weight: 700; }
   .page-header p  { font-size: 0.85rem; color: #64748b; margin-top: 3px; }
-
-  /* ── Tabs ── */
   .tabs { display: flex; gap: 3px; margin-bottom: 1.25rem; background: white;
           border-radius: 10px; padding: 5px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
           border: 1px solid #e2e8f0; width: fit-content; }
@@ -49,15 +43,11 @@
   .tab:not(.active):hover { background: #f1f5f9; color: #374151; }
   .panel { display: none; }
   .panel.active { display: block; }
-
-  /* ── Card ── */
   .card { background: white; border-radius: 14px; padding: 1.5rem;
           box-shadow: 0 1px 6px rgba(0,0,0,0.07); border: 1px solid #e2e8f0; margin-bottom: 1.25rem; }
   .card-title { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; }
   .section-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
   .section-row .card-title { margin-bottom: 0; }
-
-  /* ── Table ── */
   table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
   th { text-align: left; padding: 0.6rem 0.9rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0;
        color: #64748b; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; }
@@ -65,16 +55,12 @@
   tr:hover td { background: #f8fafc; }
   .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
   .mono { font-family: 'Fira Code', monospace; font-size: 0.82rem; }
-
-  /* ── Group cards ── */
   .group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 1rem; }
   .group-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.1rem 1.2rem; }
   .group-card-header { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.9rem; margin-bottom: 5px; }
   .group-card-count  { font-size: 0.8rem; color: #64748b; }
   .group-card-desc   { font-size: 0.78rem; color: #64748b; margin-bottom: 8px; }
   .group-card-actions { display: flex; gap: 5px; margin-top: 10px; }
-
-  /* ── Buttons ── */
   button { border: none; cursor: pointer; font-weight: 500; transition: background 0.15s; border-radius: 7px; }
   .btn  { padding: 0.5rem 0.9rem; font-size: 0.83rem; }
   .btn-primary  { background: #2563eb; color: white; }
@@ -84,12 +70,8 @@
   .btn-danger  { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
   .btn-danger:hover  { background: #fecaca; }
   .btn-sm { padding: 0.28rem 0.65rem; font-size: 0.76rem; }
-
-  /* ── Search ── */
   .search-bar { padding: 0.55rem 0.85rem; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.875rem; outline: none; width: 220px; }
   .search-bar:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
-
-  /* ── Modal ── */
   .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none;
                     align-items: center; justify-content: center; z-index: 200; }
   .modal-backdrop.open { display: flex; }
@@ -99,19 +81,15 @@
   label { display: block; font-size: 0.78rem; font-weight: 600; color: #374151; margin: 0.65rem 0 0.25rem; }
   input[type="text"], input[type="password"], input[type="number"], select, textarea {
     width: 100%; padding: 0.6rem 0.8rem; border: 1px solid #d1d5db; border-radius: 8px;
-    font-size: 0.875rem; outline: none; background: white;
-    transition: border-color 0.15s;
+    font-size: 0.875rem; outline: none; background: white; transition: border-color 0.15s;
   }
   input:focus, select:focus, textarea:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
   textarea { font-family: 'Fira Code', monospace; font-size: 0.78rem; min-height: 110px; resize: vertical; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
   .modal-footer { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.2rem; }
-
-  /* ── Badge ── */
   .badge { display: inline-block; padding: 0.18rem 0.55rem; border-radius: 5px; font-size: 0.72rem; font-weight: 600; }
   .badge-pw  { background: #f1f5f9; color: #475569; }
   .badge-key { background: #ede9fe; color: #5b21b6; }
-
   #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #166534; color: white;
            padding: 0.7rem 1.1rem; border-radius: 8px; font-size: 0.85rem;
            display: none; z-index: 300; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
@@ -119,7 +97,6 @@
 </head>
 <body>
 
-<!-- ── Sidebar ── -->
 <aside class="sidebar">
   <div class="sb-brand">cf</div>
   <nav class="sb-nav">
@@ -139,6 +116,10 @@
       <span class="sb-icon">🛡️</span>
       <span class="sb-label">Compliance</span>
     </a>
+    <a href="/settings.html" class="sb-item">
+      <span class="sb-icon">🔧</span>
+      <span class="sb-label">Settings</span>
+    </a>
     <a href="/admin.html" class="sb-item hidden" id="admin-link">
       <span class="sb-icon">⚙️</span>
       <span class="sb-label">Admin</span>
@@ -154,7 +135,6 @@
   </div>
 </aside>
 
-<!-- ── Main ── -->
 <main class="main">
   <div class="page-header">
     <h1>Devices &amp; Credentials</h1>
@@ -167,7 +147,6 @@
     <button class="tab" data-tab="creds">🔑 Credentials</button>
   </div>
 
-  <!-- ── Devices ── -->
   <div id="panel-devices" class="panel active">
     <div class="card">
       <div class="section-row">
@@ -186,7 +165,6 @@
     </div>
   </div>
 
-  <!-- ── Groups ── -->
   <div id="panel-groups" class="panel">
     <div class="section-row" style="margin-bottom:1rem">
       <span style="font-weight:600;font-size:0.9rem">Device groups</span>
@@ -195,7 +173,6 @@
     <div class="group-grid" id="group-grid"></div>
   </div>
 
-  <!-- ── Credentials ── -->
   <div id="panel-creds" class="panel">
     <div class="card">
       <div class="section-row">
@@ -213,7 +190,6 @@
   </div>
 </main>
 
-<!-- Device modal -->
 <div class="modal-backdrop" id="device-modal">
   <div class="modal">
     <h3 id="device-modal-title">Add device</h3>
@@ -246,7 +222,6 @@
   </div>
 </div>
 
-<!-- Group modal -->
 <div class="modal-backdrop" id="group-modal">
   <div class="modal">
     <h3 id="group-modal-title">New group</h3>
@@ -264,7 +239,6 @@
   </div>
 </div>
 
-<!-- Credential modal -->
 <div class="modal-backdrop" id="cred-modal">
   <div class="modal">
     <h3 id="cred-modal-title">Add credential</h3>
@@ -321,7 +295,6 @@ const TYPE_ICONS = { linux:'🐧', cisco_ios:'🔌', cisco_nxos:'🔌', junos:'�
   await Promise.all([loadGroups(), loadCreds(), loadDevices()]);
 })();
 
-// ── Devices ───────────────────────────────────────────────────
 async function loadDevices() {
   allDevices = await api('/api/devices');
   renderDevices(allDevices);
@@ -400,7 +373,6 @@ async function deleteDevice(id,name) {
   toast('Device deleted'); await loadDevices();
 }
 
-// ── Groups ────────────────────────────────────────────────────
 async function loadGroups() {
   allGroups = await api('/api/devices/groups');
   renderGroups();
@@ -452,7 +424,6 @@ async function deleteGroup(id,name) {
   toast('Group deleted'); await Promise.all([loadGroups(),loadDevices()]);
 }
 
-// ── Credentials ───────────────────────────────────────────────
 async function loadCreds() {
   allCreds = await api('/api/devices/credentials');
   renderCreds();
@@ -518,7 +489,6 @@ async function deleteCred(id,name) {
 function closeModals() {
   document.querySelectorAll('.modal-backdrop').forEach(m=>m.classList.remove('open'));
 }
-
 async function api(url, opts) {
   const r=await fetch(url,opts); const d=await r.json().catch(()=>({}));
   if(!r.ok) throw new Error(d.error||r.statusText); return d;

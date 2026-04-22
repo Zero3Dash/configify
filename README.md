@@ -2,7 +2,7 @@
 
 **configify** is a self-hosted template studio. Write any text with `{{variable}}` placeholders, save templates to a shared PostgreSQL database, fill them in via an auto-generated form, and execute the result over SSH against a managed device inventory — all from the browser.
 
-**Features:** local accounts · LDAP/AD · SAML 2.0 SSO · AES-256-GCM credential vault · SSH execution with live output · device groups · template folder tree · **Cisco IOS/NX-OS configuration compliance**
+**Features:** local accounts · LDAP/AD · SAML 2.0 SSO · AES-256-GCM credential vault · SSH execution with live output · device groups · template folder tree · **Cisco IOS/NX-OS configuration compliance** · **automated compliance schedules**
 
 ---
 
@@ -16,6 +16,7 @@ configify uses a **left sidebar** for navigation. Each item is a square tile wit
 | 📂 | Templates | `/templates.html` | Create, edit, and delete templates; organise into folders |
 | 🖥️ | Devices | `/devices.html` | Manage devices, groups, and credential vault |
 | 🛡️ | Compliance | `/compliance.html` | Golden config checking for Cisco IOS & NX-OS |
+| 🔧 | Settings | `/settings.html` | Automated compliance schedules |
 | ⚙️ | Admin | `/admin.html` | User accounts and auth providers (admin only) |
 | ↩️ | Sign out | — | End the current session |
 
@@ -68,6 +69,17 @@ no service telnet
    - Or re-check a single device/policy pair from the dashboard table
 4. **View results** — The dashboard updates with compliance status per device per golden config
 
+### Automated schedules
+
+Configure recurring compliance checks via **Settings** (🔧):
+
+- Each schedule targets either a specific golden config or runs a full audit across all assignments
+- Interval options from 1 hour to weekly
+- Schedules run server-side; the server polls for due jobs every 60 seconds
+- Results appear automatically in the Compliance dashboard
+
+Admin role is required to create or modify schedules.
+
 ### Dashboard
 
 The dashboard shows:
@@ -106,6 +118,7 @@ Per-device steps:
 | Device shows "Error" | No default credential, SSH refused, or VAULT_SECRET mismatch | Assign a credential; test SSH manually |
 | Lines marked missing despite being present | Indentation mismatch or invisible characters | Paste lines directly from `show running-config` output into the golden config |
 | Timeout / empty config | Paging still active (IOS prompt returned before full config) | Device may not support `terminal length 0`; try reducing config size or splitting into multiple golden configs |
+| Database error on schedule creation | `compliance_schedules` table missing | Run the migration snippet below or re-apply `schema.sql` |
 
 ---
 
@@ -153,7 +166,9 @@ Nginx (443 TLS)           ← reverse proxy
 Node.js / Express (3000)  ← API + static files
   │
   ▼
-PostgreSQL                ← templates, users, devices, credentials, golden_configs, compliance_results, logs
+PostgreSQL                ← templates, users, devices, credentials,
+                             golden_configs, compliance_results,
+                             compliance_schedules, logs
 ```
 
 ### Pages
@@ -165,6 +180,7 @@ PostgreSQL                ← templates, users, devices, credentials, golden_con
 | `/templates.html` | Template creation, editing, folder tree |
 | `/devices.html` | Device inventory + credential vault |
 | `/compliance.html` | Configuration compliance dashboard |
+| `/settings.html` | Automated compliance schedules |
 | `/admin.html` | User admin + auth provider config |
 
 ### API routes
@@ -201,18 +217,23 @@ PostgreSQL                ← templates, users, devices, credentials, golden_con
 | POST | `/api/ssh/execute` | user | Start SSH job → `{ jobId }` |
 | GET | `/api/ssh/poll/:jobId` | user | Poll job output |
 | GET | `/api/devices/:id/logs` | user | Execution history for device |
-| **GET** | **`/api/compliance/golden-configs`** | user | List golden configs |
-| **POST** | **`/api/compliance/golden-configs`** | user | Create golden config |
-| **GET** | **`/api/compliance/golden-configs/:id`** | user | Get golden config (with config_text) |
-| **PUT** | **`/api/compliance/golden-configs/:id`** | user | Update golden config |
-| **DELETE** | **`/api/compliance/golden-configs/:id`** | **admin** | Delete golden config |
-| **GET** | **`/api/compliance/assignments`** | user | List assignments |
-| **POST** | **`/api/compliance/assignments`** | user | Create assignment |
-| **DELETE** | **`/api/compliance/assignments/:id`** | user | Remove assignment |
-| **GET** | **`/api/compliance/dashboard`** | user | Summary stats + latest results |
-| **GET** | **`/api/compliance/results/:id`** | user | Full detail for a single result |
-| **POST** | **`/api/compliance/check`** | user | Start compliance check job |
-| **GET** | **`/api/compliance/poll/:jobId`** | user | Poll check progress |
+| GET | `/api/compliance/golden-configs` | user | List golden configs |
+| POST | `/api/compliance/golden-configs` | user | Create golden config |
+| GET | `/api/compliance/golden-configs/:id` | user | Get golden config (with config_text) |
+| PUT | `/api/compliance/golden-configs/:id` | user | Update golden config |
+| DELETE | `/api/compliance/golden-configs/:id` | **admin** | Delete golden config |
+| GET | `/api/compliance/assignments` | user | List assignments |
+| POST | `/api/compliance/assignments` | user | Create assignment |
+| POST | `/api/compliance/assignments/bulk` | user | Bulk create assignments |
+| DELETE | `/api/compliance/assignments/:id` | user | Remove assignment |
+| GET | `/api/compliance/dashboard` | user | Summary stats + latest results |
+| GET | `/api/compliance/results/:id` | user | Full detail for a single result |
+| POST | `/api/compliance/check` | user | Start compliance check job |
+| GET | `/api/compliance/poll/:jobId` | user | Poll check progress |
+| GET | `/api/compliance/schedules` | user | List schedules |
+| POST | `/api/compliance/schedules` | **admin** | Create schedule |
+| PATCH | `/api/compliance/schedules/:id` | **admin** | Update schedule |
+| DELETE | `/api/compliance/schedules/:id` | **admin** | Delete schedule |
 | GET | `/api/users` | **admin** | List users |
 | POST | `/api/users` | **admin** | Create local user |
 | PATCH | `/api/users/:id` | **admin** | Edit user |
@@ -253,20 +274,49 @@ sudo bash setup.sh
 
 ## Upgrading from an earlier version
 
-### Upgrading to v2.5 (adds compliance checking)
+### Upgrading to v2.6 (merges schema files; adds Settings nav to all pages)
 
-If you have an existing install, run the compliance schema migration:
+`schema.sql` is now the single source of truth for all tables. The separate `schema_compliance.sql` and `schema_schedules.sql` files are deprecated. For existing installs, add the `compliance_schedules` table if it doesn't already exist:
+
+```sql
+-- Run as configify_user against configify_db
+CREATE TABLE IF NOT EXISTS compliance_schedules (
+    id               SERIAL PRIMARY KEY,
+    name             VARCHAR(255) NOT NULL,
+    description      TEXT,
+    golden_config_id INTEGER REFERENCES golden_configs(id) ON DELETE SET NULL,
+    enabled          BOOLEAN NOT NULL DEFAULT TRUE,
+    interval_hours   INTEGER NOT NULL DEFAULT 24 CHECK (interval_hours > 0),
+    last_run         TIMESTAMP WITH TIME ZONE,
+    next_run         TIMESTAMP WITH TIME ZONE,
+    run_count        INTEGER NOT NULL DEFAULT 0,
+    last_result      JSONB,
+    created_by       INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at       TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_comp_sched_next_run
+    ON compliance_schedules(enabled, next_run) WHERE enabled = TRUE;
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_comp_schedules_updated_at') THEN
+        CREATE TRIGGER trg_comp_schedules_updated_at
+            BEFORE UPDATE ON compliance_schedules
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
+```
+
+Then restart the app:
+
+```bash
+pm2 restart configify-app
+```
+
+### Upgrading to v2.5 (adds compliance checking)
 
 ```bash
 PGPASSWORD=your_db_password psql -h localhost -U configify_user -d configify_db \
-    -f /var/www/configify/schema_compliance.sql
-```
-
-Then apply the sidebar patch to add the Compliance nav item:
-
-```bash
-cd /var/www/configify
-python3 apply_compliance_patch.py
+    -f /var/www/configify/schema.sql
 pm2 restart configify-app
 ```
 
@@ -353,6 +403,7 @@ pm2 restart configify-app                  # restart after update
 - Credential secrets never leave the server in plaintext
 - Session cookies are `httpOnly`, `secure` (production), 8-hour expiry
 - Only `admin` role can delete users, devices, credentials, groups, and golden configs
+- Only `admin` role can create or modify compliance schedules
 - PostgreSQL bound to `localhost` only
 - Compliance checks use only the device's assigned default credential
 
@@ -368,9 +419,10 @@ pm2 restart configify-app                  # restart after update
 ├── ecosystem.config.js      ← PM2 config
 ├── .env                     ← runtime secrets (chmod 600, not in git)
 ├── .env.example
-├── schema.sql               ← unified database schema (all tables, fresh installs)
-├── schema_compliance.sql    ← compliance tables only (for upgrading existing installs)
-├── apply_compliance_patch.py← adds 🛡️ Compliance sidebar link to all HTML pages
+├── schema.sql               ← UNIFIED schema (all tables — use this for all installs)
+├── schema_compliance.sql    ← DEPRECATED — see schema.sql
+├── schema_schedules.sql     ← DEPRECATED — see schema.sql
+├── apply_compliance_patch.py← legacy sidebar patcher (no longer needed from v2.6)
 ├── setup.sh                 ← one-shot install script
 ├── check-status.sh          ← health check
 ├── backup-configify-db.sh   ← DB backup + rotation
@@ -385,13 +437,14 @@ pm2 restart configify-app                  # restart after update
 │   ├── devices.js           ← /api/devices/*
 │   ├── ssh.js               ← /api/ssh/* (polling-based; auto shell/exec mode)
 │   ├── templates.js         ← /api/templates/* + /api/templates/groups/*
-│   └── compliance.js        ← /api/compliance/* (golden configs, assignments, checks)
+│   └── compliance.js        ← /api/compliance/* (golden configs, assignments, checks, schedules)
 └── public/
     ├── index.html           ← Template use + SSH execution
     ├── login.html           ← Login page (local / LDAP / SAML)
     ├── templates.html       ← Template CRUD + folder tree panel
     ├── devices.html         ← Device inventory + credential vault
     ├── compliance.html      ← Configuration compliance dashboard
+    ├── settings.html        ← Automated compliance schedules
     └── admin.html           ← User + auth config
 ```
 
@@ -399,15 +452,20 @@ pm2 restart configify-app                  # restart after update
 
 ## Changelog
 
-### v2.5 (current)
+### v2.6 (current)
+
+- **Settings nav link on all pages** — 🔧 Settings sidebar item now appears consistently on every page (Use, Devices, Admin). Previously it was missing from three pages.
+- **Merged schema files** — `schema.sql` is now the single unified schema file covering all tables (core, compliance, schedules). `schema_compliance.sql` and `schema_schedules.sql` are deprecated and contain migration guidance only.
+- **Fixed compliance schedule database error** — `compliance_schedules` table is now part of the main `schema.sql`; existing installs missing the table will see the migration SQL in the Upgrading section above.
+
+### v2.5
 
 - **Configuration compliance** — new Compliance section (🛡️ sidebar) for Cisco IOS and NX-OS devices.
   - **Golden configs** — define expected configuration lines; blank lines and IOS comments (`!`) are ignored automatically.
-  - **Assignments** — link a golden config to a specific device or an entire device group (group assignments expand to all member devices at check time).
+  - **Assignments** — link a golden config to a specific device or an entire device group (group assignments expand to all member devices at check time). Bulk assignment modal allows selecting multiple targets at once.
   - **Async check engine** — SSH-based, same polling pattern as template execution. Sends `terminal length 0` + `show running-config` via PTY shell. Results stored in `compliance_results`.
+  - **Automated schedules** — periodic compliance checks via Settings page; server-side scheduler polls every 60 s.
   - **Dashboard** — live stats (total / compliant / non-compliant / error / compliance rate), per-device compliance table with progress bars, line-by-line detail modal, per-pair re-check.
-  - New files: `routes/compliance.js`, `public/compliance.html`, `schema_compliance.sql`, `apply_compliance_patch.py`.
-  - Updated: `server.js`, `schema.sql`, `README.md`.
 
 ### v2.4
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>configify · Use Template</title>
+<title>configify · Dashboard</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root { --sb: 76px; }
@@ -39,111 +39,96 @@
   .hidden { display: none !important; }
 
   /* ── Layout ── */
-  .main {
-    max-width: 1280px; margin: 0 auto; padding: 1.5rem;
-    display: grid; grid-template-columns: 1fr 360px; gap: 1.5rem; align-items: start;
-  }
-  @media (max-width: 960px) { .main { grid-template-columns: 1fr; } }
-  .page-title { grid-column: 1 / -1; padding: 0.25rem 0 0.5rem; }
-  .page-title h1 { font-size: 1.4rem; font-weight: 700; }
-  .page-title p  { font-size: 0.85rem; color: #64748b; margin-top: 3px; }
+  .main { max-width: 1100px; margin: 0 auto; padding: 1.75rem 1.5rem; }
 
-  /* ── Cards ── */
-  .card {
-    background: white; border-radius: 14px; padding: 1.5rem;
-    box-shadow: 0 1px 6px rgba(0,0,0,0.07); border: 1px solid #e2e8f0;
-  }
-  .card + .card { margin-top: 1.25rem; }
+  /* ── Page header ── */
+  .page-header { margin-bottom: 1.75rem; }
+  .page-header h1 { font-size: 1.5rem; font-weight: 800; color: #0f172a; }
+  .page-header p  { font-size: 0.875rem; color: #64748b; margin-top: 4px; }
 
-  /* ── Step labels ── */
-  .step-label {
-    display: flex; align-items: center; gap: 0.5rem;
+  /* ── Stat cards row ── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .stat-card {
+    background: white; border: 1px solid #e2e8f0; border-radius: 14px;
+    padding: 1.4rem 1.5rem;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+    display: flex; flex-direction: column; gap: 6px;
+    text-decoration: none; color: inherit;
+    transition: box-shadow 0.15s, border-color 0.15s;
+  }
+  .stat-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); border-color: #cbd5e1; }
+
+  .stat-icon  { font-size: 1.6rem; line-height: 1; margin-bottom: 2px; }
+  .stat-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; }
+  .stat-value { font-size: 2.4rem; font-weight: 800; line-height: 1; color: #0f172a; }
+  .stat-sub   { font-size: 0.75rem; color: #64748b; margin-top: 2px; }
+
+  .stat-card.devices     .stat-value { color: #0369a1; }
+  .stat-card.creds       .stat-value { color: #7c3aed; }
+  .stat-card.compliant   .stat-value { color: #16a34a; }
+  .stat-card.noncompliant .stat-value { color: #dc2626; }
+  .stat-card.errors      .stat-value { color: #d97706; }
+
+  /* ── Section label ── */
+  .section-label {
     font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.08em; color: #94a3b8; margin-bottom: 0.9rem;
-  }
-  .step-label .num {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 20px; height: 20px; border-radius: 50%;
-    background: #e2e8f0; color: #64748b; font-size: 0.7rem; font-weight: 800; flex-shrink: 0;
-  }
-  .step-label .num.on { background: #2563eb; color: white; }
-
-  /* ── Selects / inputs ── */
-  select, input[type="text"] {
-    width: 100%; padding: 0.6rem 0.8rem; border: 1px solid #d1d5db; border-radius: 8px;
-    font-size: 0.875rem; outline: none; background: white; color: #0f172a;
-    transition: border-color 0.15s;
-  }
-  select:focus, input[type="text"]:focus {
-    border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    letter-spacing: 0.08em; color: #94a3b8; margin-bottom: 0.75rem;
   }
 
-  /* ── Variable block ── */
-  .vars-block  { display: none; margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #f1f5f9; }
-  .vars-block.visible { display: block; }
-  .vars-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 0.75rem; margin-top: 0.6rem;
+  /* ── Compliance breakdown card ── */
+  .card {
+    background: white; border: 1px solid #e2e8f0; border-radius: 14px;
+    padding: 1.5rem; box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+    margin-bottom: 1.25rem;
   }
-  .var-field label { display: block; font-size: 0.78rem; font-weight: 600; color: #374151; margin-bottom: 0.3rem; }
-  .var-field input { width: 100%; }
-  .no-vars-note { font-size: 0.83rem; color: #94a3b8; }
+  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.1rem; }
+  .card-title  { font-size: 0.85rem; font-weight: 700; color: #1e293b; }
 
-  /* ── Output block ── */
-  .output-block { display: none; margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #f1f5f9; }
-  .output-block.visible { display: block; }
-  .output-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
-  .output-area {
-    background: #0f172a; color: #e2e8f0; padding: 1rem 1.1rem; border-radius: 10px;
-    font-family: 'Fira Code', monospace; white-space: pre-wrap; word-break: break-all;
-    font-size: 0.8rem; line-height: 1.7; min-height: 80px; border: 1px solid #1e293b;
-  }
-  .unfilled { background: #fef08a; color: #854d0e; border-radius: 3px; padding: 0 3px; }
-  .filled   { color: #86efac; }
+  /* Progress bar */
+  .progress-wrap { display: flex; align-items: center; gap: 10px; }
+  .progress-track { flex: 1; height: 8px; background: #f1f5f9; border-radius: 4px; overflow: hidden; }
+  .progress-fill  { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+  .progress-fill.green  { background: #16a34a; }
+  .progress-fill.red    { background: #dc2626; }
+  .progress-fill.yellow { background: #d97706; }
+  .progress-pct { font-size: 0.75rem; font-weight: 700; color: #64748b; width: 36px; text-align: right; }
 
-  /* ── Buttons ── */
-  button { border: none; cursor: pointer; font-weight: 500; border-radius: 7px; transition: all 0.15s; }
-  .btn-sm  { padding: 0.3rem 0.7rem; font-size: 0.78rem; }
-  .btn-ghost { background: #1e293b; color: #94a3b8; }
-  .btn-ghost:hover { background: #334155; color: #e2e8f0; }
-  .btn-muted { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
-  .btn-muted:hover { background: #e2e8f0; }
+  /* ── Compliance row list ── */
+  .comp-rows { display: flex; flex-direction: column; gap: 0.65rem; }
+  .comp-row  {
+    display: flex; align-items: center; gap: 0.9rem;
+    padding: 0.8rem 1rem; background: #f8fafc;
+    border: 1px solid #e2e8f0; border-radius: 9px;
+  }
+  .comp-dot   { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .comp-label { flex: 1; font-size: 0.83rem; font-weight: 600; }
+  .comp-count { font-size: 1.1rem; font-weight: 800; }
+  .comp-sub   { font-size: 0.72rem; color: #94a3b8; white-space: nowrap; }
 
-  /* ── SSH panel ── */
-  .ssh-sticky { position: sticky; top: 1.5rem; }
-  .ssh-row { margin-bottom: 1rem; }
-  .ssh-row label {
-    display: block; font-size: 0.72rem; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8; margin-bottom: 0.35rem;
+  /* ── Quick-nav tiles ── */
+  .quick-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
   }
-  .run-btn {
-    width: 100%; padding: 0.8rem; font-size: 0.9rem; font-weight: 700;
-    background: #16a34a; color: white; border-radius: 9px;
+  .quick-tile {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.9rem 1.1rem;
+    background: white; border: 1px solid #e2e8f0; border-radius: 12px;
+    text-decoration: none; color: #1e293b;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    transition: box-shadow 0.15s, border-color 0.15s, background 0.12s;
+    font-size: 0.875rem; font-weight: 600;
   }
-  .run-btn:hover:not(:disabled) { background: #15803d; }
-  .run-btn:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
-
-  /* ── Status ── */
-  .status-row { display: none; align-items: center; gap: 0.5rem; margin-top: 0.75rem; font-size: 0.8rem; color: #64748b; }
-  .status-row.visible { display: flex; }
-  .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-  .dot.running { background: #2563eb; animation: pulse 1s ease-in-out infinite; }
-  .dot.done    { background: #16a34a; }
-  .dot.error   { background: #dc2626; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
-
-  /* ── Terminal ── */
-  .terminal {
-    margin-top: 0.75rem; background: #0f172a; color: #e2e8f0;
-    padding: 0.9rem 1rem; border-radius: 9px; font-family: 'Fira Code', monospace;
-    font-size: 0.74rem; min-height: 200px; max-height: 420px; overflow-y: auto;
-    white-space: pre-wrap; word-break: break-all; border: 1px solid #1e293b; line-height: 1.55;
-  }
-  .term-clear {
-    width: 100%; margin-top: 0.4rem; padding: 0.3rem; background: #1e293b;
-    color: #475569; font-size: 0.72rem; border: 1px solid #334155; border-radius: 6px;
-  }
-  .term-clear:hover { background: #334155; color: #94a3b8; }
+  .quick-tile:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-color: #cbd5e1; background: #f8fafc; }
+  .quick-tile-icon  { font-size: 1.4rem; flex-shrink: 0; }
 
   /* ── Toast ── */
   #toast {
@@ -151,6 +136,15 @@
     color: white; padding: 0.65rem 1rem; border-radius: 8px; font-size: 0.83rem;
     display: none; z-index: 300; box-shadow: 0 4px 14px rgba(0,0,0,0.2);
   }
+
+  /* ── Skeleton shimmer ── */
+  .skeleton {
+    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 6px; display: inline-block;
+  }
+  @keyframes shimmer { to { background-position: -200% 0; } }
 </style>
 </head>
 <body>
@@ -159,8 +153,12 @@
   <div class="sb-brand">cf</div>
   <nav class="sb-nav">
     <a href="/" class="sb-item active">
-      <span class="sb-icon">📋</span>
-      <span class="sb-label">Use</span>
+      <span class="sb-icon">🏠</span>
+      <span class="sb-label">Home</span>
+    </a>
+    <a href="/deploy.html" class="sb-item">
+      <span class="sb-icon">🚀</span>
+      <span class="sb-label">Deploy</span>
     </a>
     <a href="/templates.html" class="sb-item">
       <span class="sb-icon">📂</span>
@@ -194,88 +192,100 @@
 </aside>
 
 <main class="main">
-  <div class="page-title">
-    <h1>Use a Template</h1>
-    <p>Select a template, fill in the variables, then push it to a device.</p>
+  <div class="page-header">
+    <h1>Dashboard</h1>
+    <p>Overview of your configify environment.</p>
   </div>
 
-  <!-- Left column -->
-  <div>
-    <div class="card">
-
-      <!-- 1 · Select template -->
-      <div class="step-label">
-        <span class="num on">1</span>
-        Select template
-        <a href="/templates.html" style="margin-left:auto;font-size:0.75rem;color:#2563eb;text-decoration:none;font-weight:500;text-transform:none;letter-spacing:0">＋ New template</a>
-      </div>
-      <select id="tpl-select" onchange="onTplChange()">
-        <option value="">— Choose a template —</option>
-      </select>
-
-      <!-- 2 · Variables -->
-      <div class="vars-block" id="vars-block">
-        <div class="step-label">
-          <span class="num on">2</span>
-          Fill in variables
-        </div>
-        <div class="vars-grid" id="vars-grid"></div>
-      </div>
-
-      <!-- 3 · Output -->
-      <div class="output-block" id="output-block">
-        <div class="output-hdr">
-          <div class="step-label" style="margin-bottom:0">
-            <span class="num on">3</span>
-            Generated output
-          </div>
-          <div style="display:flex;gap:0.4rem">
-            <button class="btn-sm btn-muted" onclick="clearVars()">Clear</button>
-            <button class="btn-sm btn-ghost" onclick="copyOut()">⎘ Copy</button>
-          </div>
-        </div>
-        <div class="output-area" id="output-area"></div>
-      </div>
-
+  <!-- ── Stat cards ── -->
+  <div class="section-label">Inventory</div>
+  <div class="stat-grid" id="stat-grid">
+    <!-- devices -->
+    <div class="stat-card devices">
+      <span class="stat-icon">🖥️</span>
+      <span class="stat-label">Devices</span>
+      <span class="stat-value" id="stat-devices"><span class="skeleton" style="width:40px;height:2rem">&nbsp;</span></span>
+      <span class="stat-sub" id="stat-devices-sub">Loading…</span>
+    </div>
+    <!-- credentials -->
+    <div class="stat-card creds">
+      <span class="stat-icon">🔑</span>
+      <span class="stat-label">Credentials</span>
+      <span class="stat-value" id="stat-creds"><span class="skeleton" style="width:40px;height:2rem">&nbsp;</span></span>
+      <span class="stat-sub" id="stat-creds-sub">Loading…</span>
+    </div>
+    <!-- templates -->
+    <div class="stat-card" style="">
+      <span class="stat-icon">📂</span>
+      <span class="stat-label">Templates</span>
+      <span class="stat-value" id="stat-templates" style="color:#0284c7"><span class="skeleton" style="width:40px;height:2rem">&nbsp;</span></span>
+      <span class="stat-sub" id="stat-templates-sub">Loading…</span>
     </div>
   </div>
 
-  <!-- Right column: SSH -->
-  <div class="ssh-sticky">
-    <div class="card">
-
-      <div class="step-label">
-        <span class="num" id="step4num">4</span>
-        Execute on device
-      </div>
-
-      <div class="ssh-row">
-        <label>Target device</label>
-        <select id="dev-select" onchange="onDevChange()">
-          <option value="">— Select device —</option>
-        </select>
-      </div>
-
-      <div class="ssh-row">
-        <label>Credential override <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
-        <select id="cred-select">
-          <option value="">— Use device default —</option>
-        </select>
-      </div>
-
-      <button class="run-btn" id="run-btn" onclick="runSsh()" disabled>
-        ▶ Run on device
-      </button>
-
-      <div class="status-row" id="status-row">
-        <div class="dot" id="status-dot"></div>
-        <span id="status-text"></span>
-      </div>
-
-      <div class="terminal" id="terminal">Select a template and device, then click Run.</div>
-      <button class="term-clear" onclick="clearTerm()">🗑 Clear terminal</button>
-
+  <!-- ── Compliance ── -->
+  <div class="section-label">Compliance</div>
+  <div class="stat-grid">
+    <div class="stat-card compliant">
+      <span class="stat-icon">✅</span>
+      <span class="stat-label">Compliant</span>
+      <span class="stat-value" id="stat-compliant"><span class="skeleton" style="width:40px;height:2rem">&nbsp;</span></span>
+      <span class="stat-sub">All lines present</span>
     </div>
+    <div class="stat-card noncompliant">
+      <span class="stat-icon">❌</span>
+      <span class="stat-label">Non-compliant</span>
+      <span class="stat-value" id="stat-noncompliant"><span class="skeleton" style="width:40px;height:2rem">&nbsp;</span></span>
+      <span class="stat-sub">Lines missing</span>
+    </div>
+    <div class="stat-card errors">
+      <span class="stat-icon">⚠️</span>
+      <span class="stat-label">Errors</span>
+      <span class="stat-value" id="stat-errors"><span class="skeleton" style="width:40px;height:2rem">&nbsp;</span></span>
+      <span class="stat-sub">SSH / credential failures</span>
+    </div>
+    <div class="stat-card" style="">
+      <span class="stat-icon">📊</span>
+      <span class="stat-label">Compliance rate</span>
+      <span class="stat-value" id="stat-rate" style="color:#2563eb"><span class="skeleton" style="width:60px;height:2rem">&nbsp;</span></span>
+      <span class="stat-sub" id="stat-rate-sub">Across all checks</span>
+    </div>
+  </div>
+
+  <!-- ── Compliance breakdown ── -->
+  <div class="card" id="compliance-card">
+    <div class="card-header">
+      <span class="card-title">Compliance breakdown</span>
+      <a href="/compliance.html" style="font-size:0.78rem;color:#2563eb;text-decoration:none;font-weight:600">View dashboard →</a>
+    </div>
+    <div class="comp-rows" id="comp-breakdown">
+      <div style="color:#94a3b8;font-size:0.83rem;text-align:center;padding:1.5rem">Loading…</div>
+    </div>
+  </div>
+
+  <!-- ── Quick navigation ── -->
+  <div class="section-label">Quick access</div>
+  <div class="quick-grid">
+    <a href="/deploy.html" class="quick-tile">
+      <span class="quick-tile-icon">🚀</span>
+      Deploy a template
+    </a>
+    <a href="/templates.html" class="quick-tile">
+      <span class="quick-tile-icon">📂</span>
+      Manage templates
+    </a>
+    <a href="/devices.html" class="quick-tile">
+      <span class="quick-tile-icon">🖥️</span>
+      Manage devices
+    </a>
+    <a href="/compliance.html" class="quick-tile">
+      <span class="quick-tile-icon">🛡️</span>
+      Run compliance checks
+    </a>
+    <a href="/settings.html" class="quick-tile">
+      <span class="quick-tile-icon">🔧</span>
+      Compliance schedules
+    </a>
   </div>
 </main>
 
@@ -284,318 +294,117 @@
 <script>
 'use strict';
 
-let templates  = [];
-let allGroups  = [];
-let currentTpl = null;
-let pollTimer  = null;
-
-// ── Boot ──────────────────────────────────────────────────────
 (async () => {
+  // Auth
   try {
     const me = await api('/auth/me');
     document.getElementById('user-badge').textContent = me.username;
     if (me.role === 'admin') document.getElementById('admin-link').classList.remove('hidden');
   } catch (_) {}
 
-  await Promise.all([loadTemplates(), loadDevsCreds()]);
+  // Parallel data fetch
+  const [devices, creds, templates, compliance] = await Promise.allSettled([
+    api('/api/devices'),
+    api('/api/devices/credentials'),
+    api('/api/templates'),
+    api('/api/compliance/dashboard'),
+  ]);
 
-  const tid = new URLSearchParams(location.search).get('template');
-  if (tid) {
-    document.getElementById('tpl-select').value = tid;
-    await onTplChange();
+  // ── Devices ──────────────────────────────────────────────
+  if (devices.status === 'fulfilled') {
+    const devs = devices.value;
+    const groups = new Set(devs.map(d => d.group_id).filter(Boolean));
+    document.getElementById('stat-devices').textContent = devs.length;
+    document.getElementById('stat-devices-sub').textContent =
+      `${groups.size} group${groups.size !== 1 ? 's' : ''}`;
+  } else {
+    document.getElementById('stat-devices').textContent = '—';
+    document.getElementById('stat-devices-sub').textContent = 'Could not load';
+  }
+
+  // ── Credentials ──────────────────────────────────────────
+  if (creds.status === 'fulfilled') {
+    const cs = creds.value;
+    const withEnable = cs.filter(c => c.has_enable_password).length;
+    document.getElementById('stat-creds').textContent = cs.length;
+    document.getElementById('stat-creds-sub').textContent =
+      withEnable ? `${withEnable} with enable password` : 'No enable passwords set';
+  } else {
+    document.getElementById('stat-creds').textContent = '—';
+    document.getElementById('stat-creds-sub').textContent = 'Could not load';
+  }
+
+  // ── Templates ────────────────────────────────────────────
+  if (templates.status === 'fulfilled') {
+    const ts = templates.value;
+    const grouped = ts.filter(t => t.group_id).length;
+    document.getElementById('stat-templates').textContent = ts.length;
+    document.getElementById('stat-templates-sub').textContent =
+      grouped ? `${grouped} in folders` : 'No folders used';
+  } else {
+    document.getElementById('stat-templates').textContent = '—';
+    document.getElementById('stat-templates-sub').textContent = 'Could not load';
+  }
+
+  // ── Compliance ────────────────────────────────────────────
+  if (compliance.status === 'fulfilled') {
+    const { summary, devices: compDevices } = compliance.value;
+    const total      = parseInt(summary.total)         || 0;
+    const compliant  = parseInt(summary.compliant)     || 0;
+    const nonComp    = parseInt(summary.non_compliant) || 0;
+    const errors     = parseInt(summary.error_count)   || 0;
+    const rate       = total ? Math.round(compliant / total * 100) : 0;
+
+    document.getElementById('stat-compliant').textContent    = compliant;
+    document.getElementById('stat-noncompliant').textContent = nonComp;
+    document.getElementById('stat-errors').textContent       = errors;
+    document.getElementById('stat-rate').textContent         = total ? rate + '%' : '—';
+    document.getElementById('stat-rate-sub').textContent     = total
+      ? `${compliant} of ${total} checks passing`
+      : 'No checks run yet';
+
+    renderBreakdown(compliant, nonComp, errors, total, compDevices || []);
+  } else {
+    ['stat-compliant','stat-noncompliant','stat-errors','stat-rate'].forEach(id => {
+      document.getElementById(id).textContent = '—';
+    });
+    document.getElementById('comp-breakdown').innerHTML =
+      '<div style="color:#94a3b8;font-size:0.83rem;text-align:center;padding:1.5rem">Could not load compliance data.</div>';
   }
 })();
 
-// ── Load template list (group-aware) ──────────────────────────
-async function loadTemplates() {
-  try {
-    [templates, allGroups] = await Promise.all([
-      api('/api/templates'),
-      api('/api/templates/groups'),
-    ]);
-
-    const sel = document.getElementById('tpl-select');
-    sel.innerHTML = '<option value="">— Choose a template —</option>';
-
-    const pathOf = (gid) => {
-      const parts = [];
-      let cur = gid, safety = 0;
-      while (cur && safety++ < 12) {
-        const g = allGroups.find(x => x.id === cur);
-        if (!g) break;
-        parts.unshift(g.name);
-        cur = g.parent_id;
-      }
-      return parts.join(' / ');
-    };
-
-    const sorted = [...templates].sort((a, b) => a.name.localeCompare(b.name));
-
-    if (!allGroups.length) {
-      sorted.forEach(t => {
-        const o = document.createElement('option');
-        o.value = t.template_id;
-        o.textContent = t.name;
-        sel.appendChild(o);
-      });
-      return;
-    }
-
-    const buckets = {};
-    sorted.forEach(t => {
-      const key = t.group_id ? pathOf(t.group_id) : '';
-      (buckets[key] = buckets[key] || []).push(t);
-    });
-
-    const groupedPaths = Object.keys(buckets).filter(k => k).sort();
-    groupedPaths.forEach(path => {
-      const og = document.createElement('optgroup');
-      og.label = '📁 ' + path;
-      buckets[path].forEach(t => {
-        const o = document.createElement('option');
-        o.value = t.template_id;
-        o.textContent = t.name;
-        og.appendChild(o);
-      });
-      sel.appendChild(og);
-    });
-
-    if (buckets[''] && buckets[''].length) {
-      if (groupedPaths.length) {
-        const og = document.createElement('optgroup');
-        og.label = '📄 Ungrouped';
-        buckets[''].forEach(t => {
-          const o = document.createElement('option');
-          o.value = t.template_id;
-          o.textContent = t.name;
-          og.appendChild(o);
-        });
-        sel.appendChild(og);
-      } else {
-        buckets[''].forEach(t => {
-          const o = document.createElement('option');
-          o.value = t.template_id;
-          o.textContent = t.name;
-          sel.appendChild(o);
-        });
-      }
-    }
-  } catch (_) { toast('Could not load templates', true); }
-}
-
-async function onTplChange() {
-  const id = document.getElementById('tpl-select').value;
-
-  document.getElementById('vars-block').classList.remove('visible');
-  document.getElementById('output-block').classList.remove('visible');
-  document.getElementById('output-area').innerHTML = '';
-  document.getElementById('vars-grid').innerHTML   = '';
-  currentTpl = null;
-  updateRunBtn();
-
-  if (!id) return;
-
-  try {
-    currentTpl = await api('/api/templates/' + id);
-  } catch (_) {
-    toast('Could not load template body', true);
+function renderBreakdown(compliant, nonComp, errors, total, devices) {
+  const el = document.getElementById('comp-breakdown');
+  if (!total) {
+    el.innerHTML = `<div style="color:#94a3b8;font-size:0.83rem;text-align:center;padding:1.5rem">
+      No compliance checks have been run yet.
+      <br><a href="/compliance.html" style="color:#2563eb;text-decoration:none;font-weight:600;margin-top:6px;display:inline-block">Go to Compliance →</a>
+    </div>`;
     return;
   }
 
-  const vars = extractVars(currentTpl.template_text);
-  const grid = document.getElementById('vars-grid');
+  const rows = [
+    { label: 'Compliant',      count: compliant, color: '#16a34a', pct: Math.round(compliant / total * 100) },
+    { label: 'Non-compliant',  count: nonComp,   color: '#dc2626', pct: Math.round(nonComp / total * 100) },
+    { label: 'Errors',         count: errors,    color: '#d97706', pct: Math.round(errors / total * 100) },
+  ];
 
-  if (vars.length === 0) {
-    grid.innerHTML = '<p class="no-vars-note">No variables — this template will execute as-is.</p>';
-  } else {
-    grid.innerHTML = vars.map(v => `
-      <div class="var-field">
-        <label for="${vid(v)}">${esc(v)}</label>
-        <input type="text" id="${vid(v)}" placeholder="${esc(v)}" oninput="liveRender()" />
-      </div>`).join('');
-  }
+  const fillClass = { '#16a34a': 'green', '#dc2626': 'red', '#d97706': 'yellow' };
 
-  document.getElementById('vars-block').classList.add('visible');
-  document.getElementById('output-block').classList.add('visible');
-
-  liveRender();
-  updateRunBtn();
-
-  const first = grid.querySelector('input');
-  if (first) first.focus();
+  el.innerHTML = rows.map(r => `
+    <div class="comp-row">
+      <span class="comp-dot" style="background:${r.color}"></span>
+      <span class="comp-label">${r.label}</span>
+      <div class="progress-wrap" style="flex:1;max-width:260px">
+        <div class="progress-track">
+          <div class="progress-fill ${fillClass[r.color]}" style="width:${r.pct}%"></div>
+        </div>
+        <span class="progress-pct">${r.pct}%</span>
+      </div>
+      <span class="comp-count" style="color:${r.color};min-width:28px;text-align:right">${r.count}</span>
+      <span class="comp-sub">of ${total}</span>
+    </div>`).join('');
 }
-
-function liveRender() {
-  if (!currentTpl) return;
-  const vars = extractVars(currentTpl.template_text);
-  let   html = esc(currentTpl.template_text);
-
-  vars.forEach(v => {
-    const el  = document.getElementById(vid(v));
-    const val = el ? el.value : '';
-    const re  = new RegExp('\\{\\{\\s*' + reEsc(v) + '\\s*\\}\\}', 'g');
-    html = val
-      ? html.replace(re, `<span class="filled">${esc(val)}</span>`)
-      : html.replace(re, `<span class="unfilled">{{${esc(v)}}}</span>`);
-  });
-
-  document.getElementById('output-area').innerHTML = html;
-}
-
-function renderedText() {
-  if (!currentTpl) return '';
-  const vars = extractVars(currentTpl.template_text);
-  let   out  = currentTpl.template_text;
-  vars.forEach(v => {
-    const el = document.getElementById(vid(v));
-    out = out.replace(new RegExp('\\{\\{\\s*' + reEsc(v) + '\\s*\\}\\}', 'g'), el ? el.value : '');
-  });
-  return out;
-}
-
-function clearVars() {
-  if (!currentTpl) return;
-  extractVars(currentTpl.template_text).forEach(v => {
-    const el = document.getElementById(vid(v));
-    if (el) el.value = '';
-  });
-  liveRender();
-}
-
-function copyOut() {
-  const t = renderedText();
-  if (!t.trim()) return toast('Nothing to copy', true);
-  navigator.clipboard.writeText(t)
-    .then(() => toast('Copied to clipboard'))
-    .catch(() => toast('Copy failed', true));
-}
-
-async function loadDevsCreds() {
-  try {
-    const [devs, creds] = await Promise.all([
-      api('/api/devices'),
-      api('/api/devices/credentials'),
-    ]);
-
-    const ds = document.getElementById('dev-select');
-    ds.innerHTML = '<option value="">— Select device —</option>';
-    const groups = {};
-    devs.forEach(d => { const g = d.group_name || 'Ungrouped'; (groups[g] = groups[g] || []).push(d); });
-    Object.entries(groups).sort().forEach(([g, list]) => {
-      const og = document.createElement('optgroup');
-      og.label = g;
-      list.forEach(d => {
-        const o = document.createElement('option');
-        o.value       = d.id;
-        o.textContent = `${d.name} (${d.hostname})`;
-        og.appendChild(o);
-      });
-      ds.appendChild(og);
-    });
-
-    const cs = document.getElementById('cred-select');
-    cs.innerHTML = '<option value="">— Use device default —</option>';
-    creds.forEach(c => {
-      const o = document.createElement('option');
-      o.value       = c.id;
-      o.textContent = `${c.name} (${c.username})`;
-      cs.appendChild(o);
-    });
-  } catch (_) {}
-}
-
-function onDevChange() { updateRunBtn(); }
-
-function updateRunBtn() {
-  const ready = !!document.getElementById('dev-select').value && !!currentTpl;
-  document.getElementById('run-btn').disabled = !ready;
-  document.getElementById('step4num').classList.toggle('on', ready);
-}
-
-async function runSsh() {
-  const devId  = document.getElementById('dev-select').value;
-  const credId = document.getElementById('cred-select').value;
-  if (!devId || !currentTpl) return;
-
-  const cmd = renderedText().trim();
-  if (!cmd) return toast('Template output is empty', true);
-
-  clearTerm();
-  setStatus('running', 'Connecting…');
-  setBusy(true);
-
-  let jobId;
-  try {
-    const r = await api('/api/ssh/execute', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        device_id:     parseInt(devId),
-        credential_id: credId ? parseInt(credId) : undefined,
-        command:       cmd,
-        template_id:   currentTpl.template_id,
-      }),
-    });
-    jobId = r.jobId;
-  } catch (e) {
-    termWrite('Error: ' + (e.message || 'unknown') + '\n');
-    setStatus('error', 'Failed to start');
-    setBusy(false);
-    return;
-  }
-
-  pollTimer = setInterval(async () => {
-    try {
-      const p = await api('/api/ssh/poll/' + jobId);
-      if (p.newOutput) termWrite(p.newOutput);
-      if (p.status === 'running') return;
-      clearInterval(pollTimer); pollTimer = null;
-      setStatus(p.status === 'done' ? 'done' : 'error',
-                p.status === 'done' ? 'Done (exit 0)' : `Failed (exit ${p.exitCode ?? '?'})`);
-      setBusy(false);
-    } catch (e) {
-      clearInterval(pollTimer); pollTimer = null;
-      termWrite('\nPoll error: ' + e.message + '\n');
-      setStatus('error', 'Polling failed');
-      setBusy(false);
-    }
-  }, 800);
-}
-
-function termWrite(t) {
-  const el = document.getElementById('terminal');
-  el.textContent += t;
-  el.scrollTop = el.scrollHeight;
-}
-function clearTerm() {
-  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-  document.getElementById('terminal').textContent = '';
-  document.getElementById('status-row').classList.remove('visible');
-}
-function setStatus(type, text) {
-  document.getElementById('status-row').classList.add('visible');
-  document.getElementById('status-dot').className   = 'dot ' + type;
-  document.getElementById('status-text').textContent = text;
-}
-function setBusy(busy) {
-  const btn = document.getElementById('run-btn');
-  btn.disabled    = busy || !document.getElementById('dev-select').value || !currentTpl;
-  btn.textContent = busy ? '⏳ Running…' : '▶ Run on device';
-}
-
-function extractVars(text) {
-  const out = [], re = /{{\s*([^}]+?)\s*}}/g; let m;
-  while ((m = re.exec(text)) !== null) {
-    const v = m[1].trim();
-    if (!out.includes(v)) out.push(v);
-  }
-  return out;
-}
-function vid(name) {
-  return 'v__' + name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
-}
-function esc(s)   { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function reEsc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
 async function api(url, opts) {
   const r = await fetch(url, opts);
@@ -603,13 +412,7 @@ async function api(url, opts) {
   if (!r.ok) throw new Error(d.error || r.statusText);
   return d;
 }
-function toast(msg, err = false) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.style.background = err ? '#7f1d1d' : '#166534';
-  el.style.display = 'block';
-  setTimeout(() => el.style.display = 'none', 3000);
-}
+
 async function doLogout() {
   await fetch('/auth/logout', { method: 'POST' });
   location.href = '/login.html';

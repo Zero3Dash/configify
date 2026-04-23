@@ -72,6 +72,8 @@ app.use('/api/templates',    requireAuth, templateRoutes);
 app.use('/api/compliance',   requireAuth, complianceRoutes);
 
 // ── SPA fallback ───────────────────────────────────────────────
+// Authenticated users land on the dashboard (index.html).
+// The old "Use" page is now at /deploy.html — served as a static file above.
 app.use((req, res) => {
     if (req.isAuthenticated()) return res.sendFile(__dirname + '/public/index.html');
     res.redirect('/login.html');

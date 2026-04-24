@@ -122,7 +122,8 @@
 <aside class="sidebar">
   <div class="sb-brand">cf</div>
   <nav class="sb-nav">
-    <a href="/" class="sb-item"><span class="sb-icon">📋</span><span class="sb-label">Use</span></a>
+    <a href="/" class="sb-item"><span class="sb-icon">🏠</span><span class="sb-label">Home</span></a>
+    <a href="/deploy.html" class="sb-item"><span class="sb-icon">🚀</span><span class="sb-label">Deploy</span></a>
     <a href="/templates.html" class="sb-item"><span class="sb-icon">📂</span><span class="sb-label">Templates</span></a>
     <a href="/devices.html" class="sb-item"><span class="sb-icon">🖥️</span><span class="sb-label">Devices</span></a>
     <a href="/compliance.html" class="sb-item"><span class="sb-icon">🛡️</span><span class="sb-label">Compliance</span></a>
@@ -239,7 +240,6 @@ let allGoldenConfigs = [];
 let isAdmin          = false;
 let schedEnabled     = true;
 
-// ── Boot ──────────────────────────────────────────────────────
 (async () => {
   try {
     const me = await api('/auth/me');
@@ -339,10 +339,7 @@ function fmtLastResult(raw) {
   return parts.join(' · ');
 }
 
-// ── Modal ─────────────────────────────────────────────────────
-
 function openModal(id) {
-  // Populate golden config select
   const gcSel = document.getElementById('s-gc');
   gcSel.innerHTML = '<option value="">— All assignments (full audit) —</option>' +
     allGoldenConfigs.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('');
@@ -368,18 +365,12 @@ function openModal(id) {
   document.getElementById('sched-modal').classList.add('open');
 }
 
-function toggleEnabled() {
-  schedEnabled = !schedEnabled;
-  syncToggleUI();
-}
+function toggleEnabled() { schedEnabled = !schedEnabled; syncToggleUI(); }
 function syncToggleUI() {
   document.getElementById('s-enabled-btn').classList.toggle('on', schedEnabled);
   document.getElementById('s-enabled-lbl').textContent = schedEnabled ? 'Enabled' : 'Paused';
 }
-
-function closeModal() {
-  document.getElementById('sched-modal').classList.remove('open');
-}
+function closeModal() { document.getElementById('sched-modal').classList.remove('open'); }
 
 async function saveSchedule() {
   const id       = document.getElementById('s-id').value;
@@ -387,41 +378,22 @@ async function saveSchedule() {
   const desc     = document.getElementById('s-desc').value.trim();
   const gcId     = document.getElementById('s-gc').value || null;
   const interval = parseInt(document.getElementById('s-interval').value) || 24;
-
   if (!name) return toast('Schedule name is required', true);
-
-  const body = {
-    name,
-    description:      desc || null,
-    golden_config_id: gcId ? parseInt(gcId) : null,
-    interval_hours:   interval,
-    enabled:          schedEnabled
-  };
-
+  const body = { name, description: desc || null, golden_config_id: gcId ? parseInt(gcId) : null, interval_hours: interval, enabled: schedEnabled };
   try {
     if (id) {
-      await api(`/api/compliance/schedules/${id}`, {
-        method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
-      });
+      await api(`/api/compliance/schedules/${id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
     } else {
-      await api('/api/compliance/schedules', {
-        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
-      });
+      await api('/api/compliance/schedules', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
     }
-    closeModal();
-    toast(`Schedule ${id ? 'updated' : 'created'}`);
-    await loadSchedules();
+    closeModal(); toast(`Schedule ${id ? 'updated' : 'created'}`); await loadSchedules();
   } catch (e) { toast(e.message, true); }
 }
 
 async function toggleActive(id, enable) {
   try {
-    await api(`/api/compliance/schedules/${id}`, {
-      method: 'PATCH', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ enabled: enable })
-    });
-    toast(`Schedule ${enable ? 'enabled' : 'paused'}`);
-    await loadSchedules();
+    await api(`/api/compliance/schedules/${id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ enabled: enable }) });
+    toast(`Schedule ${enable ? 'enabled' : 'paused'}`); await loadSchedules();
   } catch (e) { toast(e.message, true); }
 }
 
@@ -430,12 +402,9 @@ async function deleteSched(id) {
   if (!confirm(`Delete schedule "${s?.name}"? This cannot be undone.`)) return;
   try {
     await api(`/api/compliance/schedules/${id}`, { method: 'DELETE' });
-    toast('Schedule deleted');
-    await loadSchedules();
+    toast('Schedule deleted'); await loadSchedules();
   } catch (e) { toast(e.message, true); }
 }
-
-// ── Utilities ─────────────────────────────────────────────────
 
 async function api(url, opts) {
   const r = await fetch(url, opts);
@@ -443,23 +412,13 @@ async function api(url, opts) {
   if (!r.ok) throw new Error(d.error || r.statusText);
   return d;
 }
-
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function toast(msg, isErr = false) {
   const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.style.background = isErr ? '#7f1d1d' : '#166534';
-  el.style.display = 'block';
-  setTimeout(() => el.style.display = 'none', 3500);
+  el.textContent = msg; el.style.background = isErr ? '#7f1d1d' : '#166534';
+  el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 3500);
 }
-
-async function logout() {
-  await fetch('/auth/logout', { method: 'POST' });
-  location.href = '/login.html';
-}
+async function logout() { await fetch('/auth/logout', { method: 'POST' }); location.href = '/login.html'; }
 </script>
 </body>
 </html>

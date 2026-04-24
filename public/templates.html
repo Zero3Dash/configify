@@ -184,8 +184,12 @@
   <div class="sb-brand">cf</div>
   <nav class="sb-nav">
     <a href="/" class="sb-item">
-      <span class="sb-icon">📋</span>
-      <span class="sb-label">Use</span>
+      <span class="sb-icon">🏠</span>
+      <span class="sb-label">Home</span>
+    </a>
+    <a href="/deploy.html" class="sb-item">
+      <span class="sb-icon">🚀</span>
+      <span class="sb-label">Deploy</span>
     </a>
     <a href="/templates.html" class="sb-item active">
       <span class="sb-icon">📂</span>
@@ -556,7 +560,6 @@ function renderList() {
     const firstLine = (t.template_text || '').split('\n')[0];
     const varLabel  = vars.length === 0 ? 'no vars' : `${vars.length} var${vars.length !== 1 ? 's' : ''}`;
     const path      = t.group_id ? getGroupPath(t.group_id) : '';
-    // NOTE: we pass only template_id in onclick to avoid HTML injection from template names
     return `
     <div class="tpl-row">
       <div class="tpl-info">
@@ -566,8 +569,8 @@ function renderList() {
       </div>
       <span class="tpl-vars">${varLabel}</span>
       <div class="tpl-actions">
-        <a href="/?template=${encodeURIComponent(t.template_id)}" style="text-decoration:none">
-          <button class="btn btn-secondary btn-sm">▶ Use</button>
+        <a href="/deploy.html?template=${encodeURIComponent(t.template_id)}" style="text-decoration:none">
+          <button class="btn btn-secondary btn-sm">▶ Deploy</button>
         </a>
         <button class="btn btn-secondary btn-sm" onclick="openEditModal('${t.template_id}')">✏️ Edit</button>
         <button class="btn btn-secondary btn-sm" title="Move to folder"
@@ -671,7 +674,6 @@ async function saveEdit() {
   } catch (e) { toast(e.message || 'Update failed', true); }
 }
 
-// openMoveModal now looks up name from allTemplates — no HTML injection risk
 function openMoveModal(templateId) {
   const t = allTemplates.find(x => x.template_id === templateId);
   if (!t) return toast('Template not found — try refreshing', true);
@@ -772,7 +774,6 @@ async function deleteGroup(id) {
   } catch (e) { toast(e.message || 'Delete failed', true); }
 }
 
-// deleteTemplate now looks up name safely — no HTML injection
 async function deleteTemplate(templateId) {
   const t = allTemplates.find(x => x.template_id === templateId);
   const name = t ? t.name : templateId;

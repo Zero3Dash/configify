@@ -91,8 +91,6 @@
   .badge-pw    { background: #f1f5f9; color: #475569; }
   .badge-key   { background: #ede9fe; color: #5b21b6; }
   .badge-enable { background: #fef3c7; color: #92400e; }
-
-  /* ── Enable password section ── */
   .enable-section {
     border: 1px solid #e2e8f0; border-radius: 10px;
     padding: 0.85rem 1rem; margin-top: 0.9rem; background: #fffbeb;
@@ -102,15 +100,12 @@
     letter-spacing: 0.07em; color: #92400e; margin-bottom: 0.5rem;
     display: flex; align-items: center; gap: 6px;
   }
-  .enable-note {
-    font-size: 0.75rem; color: #78350f; margin-top: 0.35rem; line-height: 1.5;
-  }
+  .enable-note { font-size: 0.75rem; color: #78350f; margin-top: 0.35rem; line-height: 1.5; }
   .enable-clear-btn {
     font-size: 0.72rem; color: #dc2626; background: none; border: none;
     cursor: pointer; padding: 0; text-decoration: underline; margin-top: 0.3rem;
   }
   .enable-clear-btn:hover { color: #991b1b; }
-
   #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #166534; color: white;
            padding: 0.7rem 1.1rem; border-radius: 8px; font-size: 0.85rem;
            display: none; z-index: 300; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
@@ -122,8 +117,12 @@
   <div class="sb-brand">cf</div>
   <nav class="sb-nav">
     <a href="/" class="sb-item">
-      <span class="sb-icon">📋</span>
-      <span class="sb-label">Use</span>
+      <span class="sb-icon">🏠</span>
+      <span class="sb-label">Home</span>
+    </a>
+    <a href="/deploy.html" class="sb-item">
+      <span class="sb-icon">🚀</span>
+      <span class="sb-label">Deploy</span>
     </a>
     <a href="/templates.html" class="sb-item">
       <span class="sb-icon">📂</span>
@@ -271,39 +270,28 @@
   <div class="modal">
     <h3 id="cred-modal-title">Add credential</h3>
     <input type="hidden" id="c-id">
-
     <label>Friendly name</label>
     <input type="text" id="c-name" placeholder="DC Admin" />
-
     <label>Username</label>
     <input type="text" id="c-user" placeholder="admin" />
-
     <label>Auth method</label>
     <select id="c-method" onchange="toggleCredFields()">
       <option value="password">Password</option>
       <option value="key">SSH Private Key</option>
       <option value="key+passphrase">SSH Private Key + Passphrase</option>
     </select>
-
-    <!-- Password auth -->
     <div id="c-password-section">
       <label>Password <span style="font-weight:400;color:#94a3b8">— leave blank to keep existing</span></label>
       <input type="password" id="c-password" placeholder="••••••••" />
     </div>
-
-    <!-- Key auth -->
     <div id="c-key-section" style="display:none">
       <label>Private key (PEM) <span style="font-weight:400;color:#94a3b8">— leave blank to keep</span></label>
       <textarea id="c-key" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;..."></textarea>
     </div>
-
-    <!-- Key passphrase -->
     <div id="c-passphrase-section" style="display:none">
       <label>Key passphrase <span style="font-weight:400;color:#94a3b8">— leave blank to keep</span></label>
       <input type="password" id="c-passphrase" placeholder="••••••••" />
     </div>
-
-    <!-- ── Enable / privilege escalation ── -->
     <div class="enable-section">
       <div class="enable-section-title">⚡ Enable password <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#a16207">(Cisco IOS / NX-OS / JunOS)</span></div>
       <p class="enable-note">
@@ -320,7 +308,6 @@
         ✕ Clear saved enable password
       </button>
     </div>
-
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModals()">Cancel</button>
       <button class="btn btn-primary" onclick="saveCredential()">Save</button>
@@ -333,7 +320,7 @@
 <script>
 'use strict';
 let allDevices=[], allGroups=[], allCreds=[];
-let clearEnableOnSave = false;   // tracks whether the "Clear" button was clicked
+let clearEnableOnSave = false;
 const TYPE_ICONS = { linux:'🐧', cisco_ios:'🔌', cisco_nxos:'🔌', junos:'🛡️', windows:'🪟', other:'🖥️' };
 
 (async function init() {
@@ -342,7 +329,6 @@ const TYPE_ICONS = { linux:'🐧', cisco_ios:'🔌', cisco_nxos:'🔌', junos:'�
     document.getElementById('user-badge').textContent = me.username;
     if (me.role==='admin') document.getElementById('admin-link').classList.remove('hidden');
   } catch(_) {}
-
   document.querySelectorAll('.tabs .tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.tabs .tab, .panel').forEach(el => el.classList.remove('active'));
@@ -350,11 +336,8 @@ const TYPE_ICONS = { linux:'🐧', cisco_ios:'🔌', cisco_nxos:'🔌', junos:'�
       document.getElementById('panel-'+tab.dataset.tab).classList.add('active');
     });
   });
-
   await Promise.all([loadGroups(), loadCreds(), loadDevices()]);
 })();
-
-// ── Devices ───────────────────────────────────────────────────
 
 async function loadDevices() {
   allDevices = await api('/api/devices');
@@ -444,20 +427,15 @@ async function saveDevice() {
     body: JSON.stringify(body),
   });
   if (!res.ok) { const d = await res.json(); return toast(d.error, true); }
-  closeModals();
-  toast('Device saved');
-  await loadDevices();
+  closeModals(); toast('Device saved'); await loadDevices();
 }
 
 async function deleteDevice(id, name) {
   if (!confirm(`Delete device "${name}"?`)) return;
   const res = await fetch(`/api/devices/${id}`, { method: 'DELETE' });
   if (!res.ok) return toast('Delete failed', true);
-  toast('Device deleted');
-  await loadDevices();
+  toast('Device deleted'); await loadDevices();
 }
-
-// ── Groups ────────────────────────────────────────────────────
 
 async function loadGroups() {
   allGroups = await api('/api/devices/groups');
@@ -512,20 +490,15 @@ async function saveGroup() {
     body: JSON.stringify(body),
   });
   if (!res.ok) return toast('Save failed', true);
-  closeModals();
-  toast('Group saved');
-  await loadGroups();
+  closeModals(); toast('Group saved'); await loadGroups();
 }
 
 async function deleteGroup(id, name) {
   if (!confirm(`Delete group "${name}"? Devices will be ungrouped.`)) return;
   const res = await fetch(`/api/devices/groups/${id}`, { method: 'DELETE' });
   if (!res.ok) return toast('Delete failed', true);
-  toast('Group deleted');
-  await Promise.all([loadGroups(), loadDevices()]);
+  toast('Group deleted'); await Promise.all([loadGroups(), loadDevices()]);
 }
-
-// ── Credentials ───────────────────────────────────────────────
 
 async function loadCreds() {
   allCreds = await api('/api/devices/credentials');
@@ -573,7 +546,6 @@ function clearEnablePw() {
 
 async function openCredModal(id) {
   clearEnableOnSave = false;
-
   if (id) {
     const c = allCreds.find(x => x.id === id);
     document.getElementById('cred-modal-title').textContent = 'Edit credential';
@@ -581,11 +553,7 @@ async function openCredModal(id) {
     document.getElementById('c-name').value   = c.name;
     document.getElementById('c-user').value   = c.username;
     document.getElementById('c-method').value = c.auth_method;
-    ['c-password','c-key','c-passphrase','c-enable-pw'].forEach(i =>
-      document.getElementById(i).value = ''
-    );
-
-    // Show enable password status
+    ['c-password','c-key','c-passphrase','c-enable-pw'].forEach(i => document.getElementById(i).value = '');
     const hasEl   = document.getElementById('c-enable-has-label');
     const clearEl = document.getElementById('c-enable-clear-btn');
     if (c.has_enable_password) {
@@ -597,14 +565,11 @@ async function openCredModal(id) {
     }
   } else {
     document.getElementById('cred-modal-title').textContent = 'Add credential';
-    ['c-id','c-name','c-user','c-password','c-key','c-passphrase','c-enable-pw'].forEach(i =>
-      document.getElementById(i).value = ''
-    );
+    ['c-id','c-name','c-user','c-password','c-key','c-passphrase','c-enable-pw'].forEach(i => document.getElementById(i).value = '');
     document.getElementById('c-method').value = 'password';
     document.getElementById('c-enable-has-label').textContent = '';
     document.getElementById('c-enable-clear-btn').style.display = 'none';
   }
-
   toggleCredFields();
   document.getElementById('cred-modal').classList.add('open');
 }
@@ -612,57 +577,39 @@ async function openCredModal(id) {
 async function saveCredential() {
   const id     = document.getElementById('c-id').value;
   const method = document.getElementById('c-method').value;
-
   const body = {
     name:        document.getElementById('c-name').value.trim(),
     username:    document.getElementById('c-user').value.trim(),
     auth_method: method,
   };
-
   if (!body.name || !body.username) return toast('Name and username required', true);
-
-  // Auth secrets — only include if non-empty (blank = keep existing)
   const pw  = document.getElementById('c-password').value;
   const key = document.getElementById('c-key').value;
   const pp  = document.getElementById('c-passphrase').value;
   if (pw)  body.password    = pw;
   if (key) body.private_key = key;
   if (pp)  body.passphrase  = pp;
-
-  // Enable password handling:
-  //   - clearEnableOnSave=true → send empty string (backend sets NULL)
-  //   - field has a value       → send new password
-  //   - field is blank and not clearing → omit (backend leaves existing unchanged)
   const enableVal = document.getElementById('c-enable-pw').value;
   if (clearEnableOnSave) {
-    body.enable_password = '';     // explicit clear
+    body.enable_password = '';
   } else if (enableVal) {
     body.enable_password = enableVal;
   }
-  // Otherwise: field omitted → existing value preserved
-
   const res = await fetch(id ? `/api/devices/credentials/${id}` : '/api/devices/credentials', {
     method: id ? 'PATCH' : 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
   if (!res.ok) { const d = await res.json(); return toast(d.error, true); }
-
-  closeModals();
-  toast('Credential saved');
-  await loadCreds();
-  await loadDevices();  // refresh enable badge on devices tab
+  closeModals(); toast('Credential saved'); await loadCreds(); await loadDevices();
 }
 
 async function deleteCred(id, name) {
   if (!confirm(`Delete credential "${name}"?`)) return;
   const res = await fetch(`/api/devices/credentials/${id}`, { method: 'DELETE' });
   if (!res.ok) return toast('Delete failed', true);
-  toast('Credential deleted');
-  await Promise.all([loadCreds(), loadDevices()]);
+  toast('Credential deleted'); await Promise.all([loadCreds(), loadDevices()]);
 }
-
-// ── Utilities ─────────────────────────────────────────────────
 
 function closeModals() {
   document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));

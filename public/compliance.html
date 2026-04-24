@@ -200,12 +200,34 @@
 <aside class="sidebar">
   <div class="sb-brand">cf</div>
   <nav class="sb-nav">
-    <a href="/" class="sb-item"><span class="sb-icon">📋</span><span class="sb-label">Use</span></a>
-    <a href="/templates.html" class="sb-item"><span class="sb-icon">📂</span><span class="sb-label">Templates</span></a>
-    <a href="/devices.html" class="sb-item"><span class="sb-icon">🖥️</span><span class="sb-label">Devices</span></a>
-    <a href="/compliance.html" class="sb-item active"><span class="sb-icon">🛡️</span><span class="sb-label">Compliance</span></a>
-    <a href="/settings.html" class="sb-item"><span class="sb-icon">🔧</span><span class="sb-label">Settings</span></a>
-    <a href="/admin.html" class="sb-item hidden" id="admin-link"><span class="sb-icon">⚙️</span><span class="sb-label">Admin</span></a>
+    <a href="/" class="sb-item">
+      <span class="sb-icon">🏠</span>
+      <span class="sb-label">Home</span>
+    </a>
+    <a href="/deploy.html" class="sb-item">
+      <span class="sb-icon">🚀</span>
+      <span class="sb-label">Deploy</span>
+    </a>
+    <a href="/templates.html" class="sb-item">
+      <span class="sb-icon">📂</span>
+      <span class="sb-label">Templates</span>
+    </a>
+    <a href="/devices.html" class="sb-item">
+      <span class="sb-icon">🖥️</span>
+      <span class="sb-label">Devices</span>
+    </a>
+    <a href="/compliance.html" class="sb-item active">
+      <span class="sb-icon">🛡️</span>
+      <span class="sb-label">Compliance</span>
+    </a>
+    <a href="/settings.html" class="sb-item">
+      <span class="sb-icon">🔧</span>
+      <span class="sb-label">Settings</span>
+    </a>
+    <a href="/admin.html" class="sb-item hidden" id="admin-link">
+      <span class="sb-icon">⚙️</span>
+      <span class="sb-label">Admin</span>
+    </a>
   </nav>
   <div class="sb-divider"></div>
   <div class="sb-footer">
@@ -267,7 +289,6 @@
         </div>
       </div>
 
-      <!-- Results table -->
       <table>
         <thead><tr>
           <th>Device</th><th>Group</th><th>Golden Config</th><th>Status</th>
@@ -276,7 +297,6 @@
         <tbody id="dashboard-tbody"></tbody>
       </table>
 
-      <!-- Audit log sits BELOW the table -->
       <div class="status-row" id="dash-status-row">
         <div class="dot blue" id="dash-dot"></div>
         <span id="dash-status-text">Running…</span>
@@ -407,7 +427,6 @@ let allGoldenConfigs = [], allAssignments = [], allDevices = [], allGroups = [];
 let dashboardData = [];
 let pollTimer = null;
 
-// ── Boot ──────────────────────────────────────────────────────
 (async () => {
   try {
     const me = await api('/auth/me');
@@ -436,10 +455,6 @@ let pollTimer = null;
 async function loadAll() {
   await Promise.all([loadGoldenConfigs(), loadAssignments(), loadDevicesAndGroups(), loadDashboard()]);
 }
-
-// ════════════════════════════════════════════════════════════════
-// DASHBOARD
-// ════════════════════════════════════════════════════════════════
 
 async function loadDashboard() {
   try {
@@ -524,10 +539,6 @@ function statusBadge(s) {
   if (s === 'error')        return '<span class="badge badge-error">⚠ Error</span>';
   return '<span class="badge badge-running">Running</span>';
 }
-
-// ════════════════════════════════════════════════════════════════
-// GOLDEN CONFIGS
-// ════════════════════════════════════════════════════════════════
 
 async function loadGoldenConfigs() {
   try {
@@ -622,10 +633,6 @@ async function deleteGolden(id) {
   } catch (e) { toast(e.message, true); }
 }
 
-// ════════════════════════════════════════════════════════════════
-// ASSIGNMENTS
-// ════════════════════════════════════════════════════════════════
-
 async function loadAssignments() {
   try {
     allAssignments = await api('/api/compliance/assignments');
@@ -672,13 +679,10 @@ async function openAssignModal() {
 
 function refreshAssignLists() {
   const gcId = parseInt(document.getElementById('am-gc').value) || 0;
-
   const assignedDevIds  = new Set(allAssignments.filter(a => a.golden_config_id === gcId && a.device_id).map(a => a.device_id));
   const assignedGrpIds  = new Set(allAssignments.filter(a => a.golden_config_id === gcId && a.device_group_id).map(a => a.device_group_id));
-
   const eligibleDevices = allDevices.filter(d => d.device_type === 'cisco_ios' || d.device_type === 'cisco_nxos');
 
-  // Devices column
   const devList = document.getElementById('am-device-list');
   if (!gcId) {
     devList.innerHTML = '<div class="check-list-empty">Select a golden config above</div>';
@@ -698,7 +702,6 @@ function refreshAssignLists() {
     }).join('');
   }
 
-  // Groups column
   const grpList = document.getElementById('am-group-list');
   if (!gcId) {
     grpList.innerHTML = '<div class="check-list-empty">Select a golden config above</div>';
@@ -723,13 +726,10 @@ function refreshAssignLists() {
 async function saveAssignments() {
   const gcId = parseInt(document.getElementById('am-gc').value);
   if (!gcId) return toast('Select a golden config', true);
-
   const device_ids       = [...document.querySelectorAll('.am-dev-cb:not(:disabled):checked')].map(cb => parseInt(cb.value));
   const device_group_ids = [...document.querySelectorAll('.am-grp-cb:not(:disabled):checked')].map(cb => parseInt(cb.value));
-
   if (!device_ids.length && !device_group_ids.length)
     return toast('Select at least one device or group', true);
-
   try {
     const r = await api('/api/compliance/assignments/bulk', {
       method: 'POST',
@@ -751,10 +751,6 @@ async function deleteAssignment(id) {
   } catch (e) { toast(e.message, true); }
 }
 
-// ════════════════════════════════════════════════════════════════
-// DEVICES & GROUPS  (for assignment modal)
-// ════════════════════════════════════════════════════════════════
-
 async function loadDevicesAndGroups() {
   try {
     [allDevices, allGroups] = await Promise.all([
@@ -763,10 +759,6 @@ async function loadDevicesAndGroups() {
     ]);
   } catch (_) {}
 }
-
-// ════════════════════════════════════════════════════════════════
-// CHECK EXECUTION
-// ════════════════════════════════════════════════════════════════
 
 async function runAllChecks()        { await startCheck({}); }
 async function checkOne(devId, gcId) { await startCheck({ device_id: devId, golden_config_id: gcId }); }
@@ -780,20 +772,16 @@ async function runGoldenCheck(gcId) {
 
 async function startCheck(body) {
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-
   const runBtn = document.getElementById('run-all-btn');
   runBtn.disabled = true;
   runBtn.textContent = '⏳ Running…';
-
   const logEl = document.getElementById('dash-audit-log');
   logEl.textContent = '';
-  logEl.style.display = 'none';   // hidden until data arrives
-
+  logEl.style.display = 'none';
   const statusRow = document.getElementById('dash-status-row');
   statusRow.classList.add('visible');
   document.getElementById('dash-status-text').textContent = 'Starting…';
   document.getElementById('dash-dot').className = 'dot blue';
-
   let jobId;
   try {
     const r = await api('/api/compliance/check', {
@@ -807,14 +795,10 @@ async function startCheck(body) {
     statusRow.classList.remove('visible');
     return;
   }
-
   pollTimer = setInterval(async () => {
     try {
       const p = await api('/api/compliance/poll/' + jobId);
-      if (p.newLog) {
-        logEl.style.display = 'block';
-        appendAuditLog(logEl, p.newLog);
-      }
+      if (p.newLog) { logEl.style.display = 'block'; appendAuditLog(logEl, p.newLog); }
       document.getElementById('dash-status-text').textContent = `Checking — ${p.completed}/${p.total} complete`;
       if (p.status !== 'running') {
         clearInterval(pollTimer); pollTimer = null;
@@ -840,10 +824,6 @@ function appendAuditLog(el, text) {
   el.innerHTML += coloured;
   el.scrollTop = el.scrollHeight;
 }
-
-// ════════════════════════════════════════════════════════════════
-// DETAIL MODAL
-// ════════════════════════════════════════════════════════════════
 
 async function showDetail(resultId) {
   try {
@@ -881,10 +861,6 @@ async function showDetail(resultId) {
     document.getElementById('detail-modal').classList.add('open');
   } catch (e) { toast('Could not load result: ' + e.message, true); }
 }
-
-// ════════════════════════════════════════════════════════════════
-// UTILITIES
-// ════════════════════════════════════════════════════════════════
 
 function closeModals() {
   document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));

@@ -1,457 +1,273 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>configify · Admin</title>
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root { --sb: 76px; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-         background: #f8fafc; color: #0f172a; padding-left: var(--sb); min-height: 100vh; }
-  .sidebar {
-    position: fixed; left: 0; top: 0; bottom: 0; width: var(--sb);
-    background: #0f172a; display: flex; flex-direction: column;
-    align-items: center; z-index: 100; padding: 10px 0; border-right: 1px solid #1e293b;
-  }
-  .sb-brand { font-size: 1.5rem; color: #38bdf8; padding: 8px 0 12px; font-weight: 800; letter-spacing: -1px; user-select: none; }
-  .sb-nav   { display: flex; flex-direction: column; gap: 3px; width: 100%; padding: 0 7px; flex: 1; }
-  .sb-item  {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    padding: 9px 4px 7px; border-radius: 10px; text-decoration: none;
-    color: #64748b; gap: 4px; border: none; background: none; width: 100%;
-    cursor: pointer; transition: background 0.15s, color 0.15s; min-height: 56px;
-  }
-  .sb-item:hover  { background: #1e293b; color: #cbd5e1; }
-  .sb-item.active { background: #1d4ed8; color: white; }
-  .sb-icon  { font-size: 1.3rem; line-height: 1; }
-  .sb-label { font-size: 0.6rem; font-weight: 600; text-align: center; letter-spacing: 0.03em; text-transform: uppercase; }
-  .sb-divider { width: 44px; height: 1px; background: #1e293b; margin: 6px auto; }
-  .sb-footer  { width: 100%; padding: 0 7px; display: flex; flex-direction: column; gap: 3px; }
-  .sb-user    { font-size: 0.6rem; color: #334155; text-align: center; padding: 4px 2px; word-break: break-all; }
-  .hidden { display: none !important; }
-  .main { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
-  .page-header { padding-bottom: 1rem; }
-  .page-header h1 { font-size: 1.4rem; font-weight: 700; }
-  .page-header p  { font-size: 0.85rem; color: #64748b; margin-top: 3px; }
-  .tabs { display: flex; gap: 3px; margin-bottom: 1.25rem; background: white;
-          border-radius: 10px; padding: 5px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-          border: 1px solid #e2e8f0; width: fit-content; }
-  .tab { padding: 0.5rem 1rem; border: none; background: none; cursor: pointer;
-         font-size: 0.85rem; color: #64748b; border-radius: 7px; font-weight: 500; transition: all 0.15s; }
-  .tab.active { background: #2563eb; color: white; }
-  .tab:not(.active):hover { background: #f1f5f9; color: #374151; }
-  .panel { display: none; }
-  .panel.active { display: block; }
-  .card { background: white; border-radius: 14px; padding: 1.5rem;
-          box-shadow: 0 1px 6px rgba(0,0,0,0.07); border: 1px solid #e2e8f0; margin-bottom: 1.25rem; }
-  .card-title { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; margin-bottom: 1rem; }
-  .section-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-  .section-row .card-title { margin-bottom: 0; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-  th { text-align: left; padding: 0.6rem 0.9rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0;
-       color: #64748b; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; }
-  td { padding: 0.7rem 0.9rem; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
-  tr:hover td { background: #f8fafc; }
-  .badge { display: inline-block; padding: 0.18rem 0.55rem; border-radius: 5px; font-size: 0.72rem; font-weight: 600; }
-  .badge-admin    { background: #fef3c7; color: #92400e; }
-  .badge-user     { background: #e0f2fe; color: #0c4a6e; }
-  .badge-active   { background: #dcfce7; color: #166534; }
-  .badge-inactive { background: #fee2e2; color: #991b1b; }
-  .badge-local    { background: #f1f5f9; color: #475569; }
-  .badge-ldap     { background: #ede9fe; color: #4c1d95; }
-  .badge-saml     { background: #fce7f3; color: #9d174d; }
-  button { border: none; cursor: pointer; font-weight: 500; transition: background 0.15s; border-radius: 7px; }
-  .btn   { padding: 0.5rem 0.9rem; font-size: 0.83rem; }
-  .btn-primary  { background: #2563eb; color: white; }
-  .btn-primary:hover  { background: #1d4ed8; }
-  .btn-secondary { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
-  .btn-secondary:hover { background: #e2e8f0; }
-  .btn-danger  { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
-  .btn-danger:hover  { background: #fecaca; }
-  .btn-sm { padding: 0.28rem 0.65rem; font-size: 0.76rem; }
-  .toggle-row { display: flex; align-items: center; gap: 10px; margin: 0; }
-  .toggle { width: 42px; height: 23px; background: #d1d5db; border-radius: 12px; position: relative;
-            cursor: pointer; transition: background 0.2s; flex-shrink: 0; }
-  .toggle.on { background: #2563eb; }
-  .toggle::after { content:''; position:absolute; width:17px; height:17px; background:white;
-                   border-radius:50%; top:3px; left:3px; transition:transform 0.2s; }
-  .toggle.on::after { transform: translateX(19px); }
-  .toggle-label { font-size: 0.82rem; color: #64748b; }
-  label { display: block; font-size: 0.78rem; font-weight: 600; color: #374151; margin: 0.65rem 0 0.25rem; }
-  input[type="text"], input[type="email"], input[type="password"], select, textarea {
-    width: 100%; padding: 0.6rem 0.8rem; border: 1px solid #d1d5db; border-radius: 8px;
-    font-size: 0.875rem; outline: none; background: white; transition: border-color 0.15s;
-  }
-  input:focus, select:focus, textarea:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
-  textarea { font-family: 'Fira Code', monospace; font-size: 0.76rem; min-height: 80px; resize: vertical; }
-  .form-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
-  .btn-row  { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
-  .note-info { background: #eff6ff; border-left: 3px solid #2563eb; padding: 0.65rem 0.9rem;
-               border-radius: 0 7px 7px 0; font-size: 0.8rem; color: #1e40af; margin: 0.75rem 0; }
-  .note-warn { background: #fffbeb; border-left: 3px solid #f59e0b; padding: 0.65rem 0.9rem;
-               border-radius: 0 7px 7px 0; font-size: 0.8rem; color: #92400e; margin: 0.75rem 0; }
-  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none;
-                    align-items: center; justify-content: center; z-index: 200; }
-  .modal-backdrop.open { display: flex; }
-  .modal { background: white; border-radius: 14px; padding: 1.5rem; width: 100%; max-width: 460px;
-           box-shadow: 0 20px 50px rgba(0,0,0,0.25); }
-  .modal h3 { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; }
-  .modal-footer { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.2rem; }
-  #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #166534; color: white;
-           padding: 0.7rem 1.1rem; border-radius: 8px; font-size: 0.85rem;
-           display: none; z-index: 300; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configify - Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            display: flex;
+            height: 100vh;
+            background-color: #f5f6fa;
+        }
+
+        .sidebar {
+            width: 250px;
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo {
+            padding: 0 20px 30px;
+            font-size: 24px;
+            font-weight: bold;
+            border-bottom: 1px solid #34495e;
+            margin-bottom: 20px;
+        }
+
+        .logo i {
+            margin-right: 10px;
+            color: #3498db;
+        }
+
+        .nav-list {
+            list-style: none;
+        }
+
+        .nav-item {
+            margin-bottom: 5px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: #bdc3c7;
+            text-decoration: none;
+            transition: all 0.3s;
+            font-size: 16px;
+        }
+
+        .nav-link i {
+            width: 25px;
+            margin-right: 10px;
+            text-align: center;
+        }
+
+        .nav-link:hover {
+            background-color: #34495e;
+            color: white;
+        }
+
+        .nav-link.active {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .admin-title {
+            font-size: 28px;
+            color: #2c3e50;
+        }
+
+        .admin-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .admin-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .card-title {
+            font-size: 18px;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title i {
+            color: #3498db;
+        }
+
+        .user-list {
+            margin-top: 15px;
+        }
+
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #2980b9;
+        }
+
+        .btn-danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .alert {
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .alert-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
 </head>
 <body>
-
-<aside class="sidebar">
-  <div class="sb-brand">cf</div>
-  <nav class="sb-nav">
-    <a href="/" class="sb-item">
-      <span class="sb-icon">📋</span>
-      <span class="sb-label">Use</span>
-    </a>
-    <a href="/templates.html" class="sb-item">
-      <span class="sb-icon">📂</span>
-      <span class="sb-label">Templates</span>
-    </a>
-    <a href="/devices.html" class="sb-item">
-      <span class="sb-icon">🖥️</span>
-      <span class="sb-label">Devices</span>
-    </a>
-    <a href="/compliance.html" class="sb-item">
-      <span class="sb-icon">🛡️</span>
-      <span class="sb-label">Compliance</span>
-    </a>
-    <a href="/settings.html" class="sb-item">
-      <span class="sb-icon">🔧</span>
-      <span class="sb-label">Settings</span>
-    </a>
-    <a href="/admin.html" class="sb-item active">
-      <span class="sb-icon">⚙️</span>
-      <span class="sb-label">Admin</span>
-    </a>
-  </nav>
-  <div class="sb-divider"></div>
-  <div class="sb-footer">
-    <div class="sb-user" id="user-badge">…</div>
-    <button class="sb-item" onclick="logout()">
-      <span class="sb-icon">↩️</span>
-      <span class="sb-label">Sign out</span>
-    </button>
-  </div>
-</aside>
-
-<main class="main">
-  <div class="page-header">
-    <h1>Administration</h1>
-    <p>Manage user accounts and configure authentication providers.</p>
-  </div>
-
-  <div class="tabs">
-    <button class="tab active" data-tab="users">👥 Users</button>
-    <button class="tab" data-tab="auth">🔐 Auth Providers</button>
-  </div>
-
-  <div id="panel-users" class="panel active">
-    <div class="card">
-      <div class="section-row">
-        <span class="card-title">User accounts</span>
-        <button class="btn btn-primary" onclick="openCreateUser()">＋ New user</button>
-      </div>
-      <table>
-        <thead><tr>
-          <th>Username</th><th>Email</th><th>Role</th><th>Provider</th><th>Status</th><th>Last login</th><th>Actions</th>
-        </tr></thead>
-        <tbody id="users-tbody">
-          <tr><td colspan="7" style="color:#94a3b8;padding:1.5rem">Loading…</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <div id="panel-auth" class="panel">
-    <div class="card">
-      <div class="section-row">
-        <strong style="font-size:0.95rem">🏢 LDAP / LDAPS (Active Directory)</strong>
-        <div class="toggle-row">
-          <span class="toggle-label" id="ldap-status-label">Disabled</span>
-          <div class="toggle" id="ldap-toggle" onclick="toggleProvider('ldap')"></div>
+    <div class="sidebar">
+        <div class="logo">
+            <i class="fas fa-cogs"></i> Configify
         </div>
-      </div>
-      <div class="note-info">Changes take effect after server restart. Bind credentials are stored encrypted.</div>
-      <div class="form-cols">
-        <div><label>LDAP URL</label><input type="text" id="ldap-url" placeholder="ldap://dc.example.com:389" /></div>
-        <div><label>Bind DN</label><input type="text" id="ldap-binddn" placeholder="cn=svc,dc=example,dc=com" /></div>
-        <div><label>Bind Password</label><input type="password" id="ldap-bindpw" placeholder="leave blank to keep" /></div>
-        <div><label>Search Base</label><input type="text" id="ldap-base" placeholder="ou=Users,dc=example,dc=com" /></div>
-        <div><label>Search Filter</label><input type="text" id="ldap-filter" placeholder="(sAMAccountName={{username}})" /></div>
-        <div><label>Admin Group DN</label><input type="text" id="ldap-admingroup" placeholder="CN=configify-admins,..." /></div>
-        <div><label>Group Search Base</label><input type="text" id="ldap-groupbase" placeholder="ou=Groups,dc=example,dc=com" /></div>
-        <div style="display:flex;align-items:center;gap:8px;margin-top:1.5rem">
-          <input type="checkbox" id="ldap-reject-unauth" style="width:auto" checked>
-          <label for="ldap-reject-unauth" style="margin:0;font-size:0.8rem">Reject unauthorized TLS certs</label>
-        </div>
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-secondary" onclick="loadAuthConfig('ldap')">↺ Reset</button>
-        <button class="btn btn-primary" onclick="saveLdap()">💾 Save LDAP config</button>
-      </div>
+        <ul class="nav-list">
+            <li class="nav-item">
+                <a href="index.html" class="nav-link">
+                    <i class="fas fa-home"></i> Home
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="deploy.html" class="nav-link">
+                    <i class="fas fa-rocket"></i> Deploy
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="templates.html" class="nav-link">
+                    <i class="fas fa-file-alt"></i> Templates
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="devices.html" class="nav-link">
+                    <i class="fas fa-server"></i> Devices
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="compliance.html" class="nav-link">
+                    <i class="fas fa-check-circle"></i> Compliance
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="settings.html" class="nav-link">
+                    <i class="fas fa-cog"></i> Settings
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="admin.html" class="nav-link active">
+                    <i class="fas fa-shield-alt"></i> Admin
+                </a>
+            </li>
+        </ul>
     </div>
-
-    <div class="card">
-      <div class="section-row">
-        <strong style="font-size:0.95rem">🔐 SAML 2.0 (SSO)</strong>
-        <div class="toggle-row">
-          <span class="toggle-label" id="saml-status-label">Disabled</span>
-          <div class="toggle" id="saml-toggle" onclick="toggleProvider('saml')"></div>
+    <div class="main-content">
+        <div class="admin-header">
+            <h1 class="admin-title">Administration</h1>
+            <button class="btn btn-primary"><i class="fas fa-plus"></i> Add User</button>
         </div>
-      </div>
-      <div class="note-warn">SAML requires a restart. Register your SP metadata with your IdP first. Callback URL: <strong id="saml-callback-url">/auth/saml/callback</strong></div>
-      <div class="form-cols">
-        <div><label>IdP Entry Point (SSO URL)</label><input type="text" id="saml-entry" placeholder="https://idp.example.com/saml/sso" /></div>
-        <div><label>Issuer (SP Entity ID)</label><input type="text" id="saml-issuer" placeholder="configify" /></div>
-        <div><label>Callback URL</label><input type="text" id="saml-callback" placeholder="https://configify.yourdomain.com/auth/saml/callback" /></div>
-        <div><label>Name ID Format</label>
-          <select id="saml-nameid">
-            <option value="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress">Email address</option>
-            <option value="urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified">Unspecified</option>
-            <option value="urn:oasis:names:tc:SAML:2.0:nameid-format:persistent">Persistent</option>
-          </select>
+        <div class="admin-cards">
+            <div class="admin-card">
+                <div class="card-title">
+                    <i class="fas fa-users"></i> User Management
+                </div>
+                <div class="user-list">
+                    <div class="user-item">
+                        <span>admin</span>
+                        <button class="btn btn-danger btn-sm">Remove</button>
+                    </div>
+                    <div class="user-item">
+                        <span>operator</span>
+                        <button class="btn btn-danger btn-sm">Remove</button>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <input type="text" class="form-input" placeholder="Username">
+                    <input type="password" class="form-input" placeholder="Password">
+                    <button class="btn btn-primary">Create User</button>
+                </div>
+            </div>
+            <div class="admin-card">
+                <div class="card-title">
+                    <i class="fas fa-database"></i> System Info
+                </div>
+                <div class="alert alert-info">
+                    Connected users: 3<br>
+                    Database status: Online
+                </div>
+            </div>
         </div>
-        <div><label>Email attribute</label><input type="text" id="saml-attr-email" placeholder="...claims/emailaddress" /></div>
-        <div><label>Username attribute</label><input type="text" id="saml-attr-user" placeholder="...claims/name" /></div>
-        <div><label>Role/Group attribute</label><input type="text" id="saml-attr-role" placeholder="...claims/Group" /></div>
-        <div><label>Admin group value</label><input type="text" id="saml-admin-group" placeholder="configify-admins" /></div>
-      </div>
-      <label>IdP Certificate (PEM, without headers)</label>
-      <textarea id="saml-cert" placeholder="MIID..."></textarea>
-      <label>SP Private Key (PEM, optional)</label>
-      <textarea id="saml-privatekey" placeholder="leave blank to keep existing"></textarea>
-      <div class="btn-row">
-        <button class="btn btn-secondary" onclick="loadAuthConfig('saml')">↺ Reset</button>
-        <button class="btn btn-primary" onclick="saveSaml()">💾 Save SAML config</button>
-      </div>
     </div>
-  </div>
-</main>
-
-<div class="modal-backdrop" id="user-modal">
-  <div class="modal">
-    <h3 id="modal-title">Create user</h3>
-    <input type="hidden" id="edit-user-id">
-    <label>Username</label>
-    <input type="text" id="m-username" placeholder="jsmith" />
-    <label>Email</label>
-    <input type="email" id="m-email" placeholder="j.smith@example.com" />
-    <label id="m-password-label">Password (min 8 chars)</label>
-    <input type="password" id="m-password" placeholder="••••••••" />
-    <label>Role</label>
-    <select id="m-role"><option value="user">User</option><option value="admin">Admin</option></select>
-    <label>Status</label>
-    <select id="m-active"><option value="true">Active</option><option value="false">Inactive</option></select>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveUser()">Save</button>
-    </div>
-  </div>
-</div>
-
-<div id="toast"></div>
-
-<script>
-'use strict';
-const API = '/api/users';
-
-(async function() {
-  const me = await (await fetch('/auth/me')).json();
-  if (me.role !== 'admin') { document.body.innerHTML = '<p style="padding:2rem;color:red">Access denied — admin only.</p>'; return; }
-  document.getElementById('user-badge').textContent = me.username;
-  document.getElementById('saml-callback-url').textContent = location.origin + '/auth/saml/callback';
-
-  document.querySelectorAll('.tabs .tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.tabs .tab, .panel').forEach(el => el.classList.remove('active'));
-      tab.classList.add('active');
-      document.getElementById('panel-'+tab.dataset.tab).classList.add('active');
-    });
-  });
-
-  loadUsers();
-  loadAuthConfig('ldap');
-  loadAuthConfig('saml');
-})();
-
-async function loadUsers() {
-  const users = await (await fetch(API)).json();
-  const tbody = document.getElementById('users-tbody');
-  if (!users.length) { tbody.innerHTML='<tr><td colspan="7" style="color:#94a3b8">No users</td></tr>'; return; }
-  tbody.innerHTML = users.map(u => `
-    <tr>
-      <td><strong>${esc(u.username)}</strong></td>
-      <td>${u.email||'<span style="color:#94a3b8">—</span>'}</td>
-      <td><span class="badge badge-${u.role}">${u.role}</span></td>
-      <td><span class="badge badge-${u.auth_provider}">${u.auth_provider}</span></td>
-      <td><span class="badge badge-${u.is_active?'active':'inactive'}">${u.is_active?'Active':'Disabled'}</span></td>
-      <td style="font-size:0.78rem;color:#64748b">${u.last_login?new Date(u.last_login).toLocaleString():'Never'}</td>
-      <td style="display:flex;gap:4px">
-        ${u.auth_provider==='local'?`<button class="btn btn-secondary btn-sm" onclick="openEditUser(${u.id},'${esc(u.username).replace(/'/g,"\\'")}','${(u.email||'').replace(/'/g,"\\'")}','${u.role}',${u.is_active})">Edit</button>`:''}
-        <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id},'${esc(u.username).replace(/'/g,"\\'")}')">Delete</button>
-      </td>
-    </tr>`).join('');
-}
-
-function openCreateUser() {
-  document.getElementById('modal-title').textContent = 'Create user';
-  document.getElementById('edit-user-id').value = '';
-  document.getElementById('m-username').value = '';
-  document.getElementById('m-email').value = '';
-  document.getElementById('m-password').value = '';
-  document.getElementById('m-password-label').textContent = 'Password (min 8 chars)';
-  document.getElementById('m-role').value = 'user';
-  document.getElementById('m-active').value = 'true';
-  document.getElementById('m-username').disabled = false;
-  document.getElementById('user-modal').classList.add('open');
-}
-
-function openEditUser(id, username, email, role, active) {
-  document.getElementById('modal-title').textContent = 'Edit user';
-  document.getElementById('edit-user-id').value = id;
-  document.getElementById('m-username').value = username;
-  document.getElementById('m-username').disabled = true;
-  document.getElementById('m-email').value = email;
-  document.getElementById('m-password').value = '';
-  document.getElementById('m-password-label').textContent = 'New Password (leave blank to keep)';
-  document.getElementById('m-role').value = role;
-  document.getElementById('m-active').value = String(active);
-  document.getElementById('user-modal').classList.add('open');
-}
-
-function closeModal() { document.getElementById('user-modal').classList.remove('open'); }
-
-async function saveUser() {
-  const id = document.getElementById('edit-user-id').value;
-  const body = {
-    username: document.getElementById('m-username').value.trim(),
-    email:    document.getElementById('m-email').value.trim() || null,
-    role:     document.getElementById('m-role').value,
-    is_active: document.getElementById('m-active').value === 'true'
-  };
-  const pwd = document.getElementById('m-password').value;
-  if (pwd) body.password = pwd;
-  if (!id && !body.password) return toast('Password required for new user', true);
-  const res = await fetch(id ? `${API}/${id}` : API, {
-    method: id ? 'PATCH' : 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(body)
-  });
-  const data = await res.json();
-  if (!res.ok) return toast(data.error, true);
-  closeModal(); toast('User saved'); loadUsers();
-}
-
-async function deleteUser(id, name) {
-  if (!confirm(`Delete user "${name}"? Cannot be undone.`)) return;
-  const res = await fetch(`${API}/${id}`, {method:'DELETE'});
-  if (!res.ok) { const d = await res.json(); return toast(d.error, true); }
-  toast('User deleted'); loadUsers();
-}
-
-async function loadAuthConfig(provider) {
-  const res = await fetch(`/api/users/auth-config/${provider}`);
-  if (!res.ok) return;
-  const { enabled, config } = await res.json();
-  const toggle = document.getElementById(`${provider}-toggle`);
-  const label  = document.getElementById(`${provider}-status-label`);
-  toggle.classList.toggle('on', enabled);
-  label.textContent = enabled ? 'Enabled' : 'Disabled';
-  if (provider === 'ldap') {
-    document.getElementById('ldap-url').value        = config.url || '';
-    document.getElementById('ldap-binddn').value     = config.bindDN || '';
-    document.getElementById('ldap-base').value       = config.searchBase || '';
-    document.getElementById('ldap-filter').value     = config.searchFilter || '';
-    document.getElementById('ldap-admingroup').value = config.adminGroup || '';
-    document.getElementById('ldap-groupbase').value  = config.groupSearchBase || '';
-    document.getElementById('ldap-reject-unauth').checked = config.tlsOptions?.rejectUnauthorized !== false;
-  } else {
-    document.getElementById('saml-entry').value       = config.entryPoint || '';
-    document.getElementById('saml-issuer').value      = config.issuer || '';
-    document.getElementById('saml-callback').value    = config.callbackUrl || location.origin+'/auth/saml/callback';
-    document.getElementById('saml-cert').value        = config.cert || '';
-    document.getElementById('saml-nameid').value      = config.identifierFormat || 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress';
-    const am = config.attributeMapping || {};
-    document.getElementById('saml-attr-email').value  = am.email || '';
-    document.getElementById('saml-attr-user').value   = am.username || '';
-    document.getElementById('saml-attr-role').value   = am.role || '';
-    document.getElementById('saml-admin-group').value = am.adminGroupValue || '';
-  }
-}
-
-async function toggleProvider(provider) {
-  const toggle  = document.getElementById(`${provider}-toggle`);
-  const enabled = !toggle.classList.contains('on');
-  const res = await fetch(`/api/users/auth-config/${provider}`, {
-    method:'PUT', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ enabled, config: {} })
-  });
-  if (!res.ok) return toast('Save failed', true);
-  toggle.classList.toggle('on', enabled);
-  document.getElementById(`${provider}-status-label`).textContent = enabled ? 'Enabled' : 'Disabled';
-  toast(`${provider.toUpperCase()} ${enabled?'enabled':'disabled'} — restart server to apply`);
-}
-
-async function saveLdap() {
-  const pw = document.getElementById('ldap-bindpw').value;
-  const cfg = {
-    url: document.getElementById('ldap-url').value,
-    bindDN: document.getElementById('ldap-binddn').value,
-    searchBase: document.getElementById('ldap-base').value,
-    searchFilter: document.getElementById('ldap-filter').value,
-    adminGroup: document.getElementById('ldap-admingroup').value,
-    groupSearchBase: document.getElementById('ldap-groupbase').value,
-    tlsOptions: { rejectUnauthorized: document.getElementById('ldap-reject-unauth').checked }
-  };
-  if (pw) cfg.bindCredentials = pw; else cfg.bindCredentials = '••••••••';
-  const res = await fetch('/api/users/auth-config/ldap', {
-    method:'PUT', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ config: cfg })
-  });
-  if (!res.ok) return toast('Save failed', true);
-  toast('LDAP config saved — restart server to apply');
-}
-
-async function saveSaml() {
-  const pk = document.getElementById('saml-privatekey').value;
-  const cfg = {
-    entryPoint: document.getElementById('saml-entry').value,
-    issuer:     document.getElementById('saml-issuer').value,
-    callbackUrl: document.getElementById('saml-callback').value,
-    cert:       document.getElementById('saml-cert').value,
-    identifierFormat: document.getElementById('saml-nameid').value,
-    attributeMapping: {
-      email:           document.getElementById('saml-attr-email').value,
-      username:        document.getElementById('saml-attr-user').value,
-      role:            document.getElementById('saml-attr-role').value,
-      adminGroupValue: document.getElementById('saml-admin-group').value
-    }
-  };
-  if (pk) cfg.privateKey = pk; else cfg.privateKey = '••••••••';
-  const res = await fetch('/api/users/auth-config/saml', {
-    method:'PUT', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ config: cfg })
-  });
-  if (!res.ok) return toast('Save failed', true);
-  toast('SAML config saved — restart server to apply');
-}
-
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function toast(msg, isErr=false) {
-  const el = document.getElementById('toast');
-  el.textContent=msg; el.style.background=isErr?'#7f1d1d':'#166534';
-  el.style.display='block'; setTimeout(()=>el.style.display='none', 3500);
-}
-async function logout() { await fetch('/auth/logout',{method:'POST'}); location.href='/login.html'; }
-</script>
+    <script>
+        // Placeholder for future admin functionality
+        document.querySelectorAll('.btn-danger').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if(confirm('Remove this user?')) {
+                    e.target.closest('.user-item').remove();
+                }
+            });
+        });
+    </script>
 </body>
 </html>

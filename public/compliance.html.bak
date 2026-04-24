@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>configify · Compliance</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root { --sb: 76px; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+         background: #f8fafc; color: #0f172a; padding-left: var(--sb); min-height: 100vh; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0; width: var(--sb);
+    background: #0f172a; display: flex; flex-direction: column;
+    align-items: center; z-index: 100; padding: 10px 0; border-right: 1px solid #1e293b;
+  }
+  .sb-brand { font-size: 1.5rem; color: #38bdf8; padding: 8px 0 12px; font-weight: 800; letter-spacing: -1px; user-select: none; }
+  .sb-nav   { display: flex; flex-direction: column; gap: 3px; width: 100%; padding: 0 7px; flex: 1; }
+  .sb-item  {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 9px 4px 7px; border-radius: 10px; text-decoration: none;
+    color: #64748b; gap: 4px; border: none; background: none; width: 100%;
+    cursor: pointer; transition: background 0.15s, color 0.15s; min-height: 56px;
+  }
+  .sb-item:hover  { background: #1e293b; color: #cbd5e1; }
+  .sb-item.active { background: #1d4ed8; color: white; }
+  .sb-icon  { font-size: 1.3rem; line-height: 1; }
+  .sb-label { font-size: 0.6rem; font-weight: 600; text-align: center; letter-spacing: 0.03em; text-transform: uppercase; }
+  .sb-divider { width: 44px; height: 1px; background: #1e293b; margin: 6px auto; }
+  .sb-footer  { width: 100%; padding: 0 7px; display: flex; flex-direction: column; gap: 3px; }
+  .sb-user    { font-size: 0.6rem; color: #334155; text-align: center; padding: 4px 2px; word-break: break-all; }
+  .hidden { display: none !important; }
+
+  /* ── Layout ── */
+  .main { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
+  .page-header { padding-bottom: 1rem; display: flex; justify-content: space-between; align-items: flex-start; }
+  .page-header h1 { font-size: 1.4rem; font-weight: 700; }
+  .page-header p  { font-size: 0.85rem; color: #64748b; margin-top: 3px; }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; gap: 3px; margin-bottom: 1.25rem; background: white;
+          border-radius: 10px; padding: 5px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+          border: 1px solid #e2e8f0; width: fit-content; }
+  .tab { padding: 0.5rem 1rem; border: none; background: none; cursor: pointer;
+         font-size: 0.85rem; color: #64748b; border-radius: 7px; font-weight: 500; transition: all 0.15s; }
+  .tab.active { background: #2563eb; color: white; }
+  .tab:not(.active):hover { background: #f1f5f9; color: #374151; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── Stat cards ── */
+  .stats-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-bottom: 1.25rem; }
+  @media (max-width: 900px) { .stats-row { grid-template-columns: repeat(3, 1fr); } }
+  .stat-card {
+    background: white; border-radius: 14px; padding: 1.2rem 1.4rem;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.07); border: 1px solid #e2e8f0;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .stat-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; }
+  .stat-value { font-size: 2rem; font-weight: 800; line-height: 1; }
+  .stat-sub   { font-size: 0.75rem; color: #64748b; }
+  .stat-card.compliant    .stat-value { color: #16a34a; }
+  .stat-card.noncompliant .stat-value { color: #dc2626; }
+  .stat-card.error        .stat-value { color: #d97706; }
+  .stat-card.total        .stat-value { color: #2563eb; }
+
+  /* ── Card ── */
+  .card { background: white; border-radius: 14px; padding: 1.5rem;
+          box-shadow: 0 1px 6px rgba(0,0,0,0.07); border: 1px solid #e2e8f0; margin-bottom: 1.25rem; }
+  .card-title { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; }
+  .section-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+  .section-row .card-title { margin-bottom: 0; }
+
+  /* ── Table ── */
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  th { text-align: left; padding: 0.6rem 0.9rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0;
+       color: #64748b; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; }
+  td { padding: 0.7rem 0.9rem; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f8fafc; }
+  .mono { font-family: 'Fira Code', monospace; font-size: 0.82rem; }
+
+  /* ── Progress bar ── */
+  .progress-wrap { display: flex; align-items: center; gap: 7px; }
+  .progress-bar  { flex: 1; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; max-width: 120px; }
+  .progress-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+  .progress-fill.ok  { background: #16a34a; }
+  .progress-fill.bad { background: #dc2626; }
+  .progress-fill.err { background: #d97706; }
+  .progress-text { font-size: 0.75rem; color: #64748b; white-space: nowrap; }
+
+  /* ── Badge ── */
+  .badge { display: inline-flex; align-items: center; gap: 4px;
+           padding: 0.2rem 0.6rem; border-radius: 5px; font-size: 0.72rem; font-weight: 600; }
+  .badge-compliant    { background: #dcfce7; color: #166534; }
+  .badge-noncompliant { background: #fee2e2; color: #991b1b; }
+  .badge-error        { background: #fef3c7; color: #92400e; }
+  .badge-running      { background: #dbeafe; color: #1e40af; }
+  .badge-ios          { background: #ede9fe; color: #4c1d95; }
+  .badge-nxos         { background: #fce7f3; color: #9d174d; }
+
+  /* ── Dot ── */
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .dot.green  { background: #16a34a; }
+  .dot.red    { background: #dc2626; }
+  .dot.yellow { background: #d97706; }
+  .dot.blue   { background: #2563eb; animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* ── Buttons ── */
+  button { border: none; cursor: pointer; font-weight: 500; transition: background 0.15s; border-radius: 7px; }
+  .btn   { padding: 0.5rem 0.9rem; font-size: 0.83rem; }
+  .btn-primary   { background: #2563eb; color: white; }
+  .btn-primary:hover   { background: #1d4ed8; }
+  .btn-primary:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
+  .btn-secondary { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+  .btn-secondary:hover { background: #e2e8f0; }
+  .btn-danger  { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+  .btn-danger:hover  { background: #fecaca; }
+  .btn-sm { padding: 0.28rem 0.65rem; font-size: 0.76rem; }
+  .btn-success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+  .btn-success:hover { background: #bbf7d0; }
+
+  /* ── Form elements ── */
+  label { display: block; font-size: 0.78rem; font-weight: 600; color: #374151; margin: 0.65rem 0 0.25rem; }
+  input[type="text"], select, textarea {
+    width: 100%; padding: 0.6rem 0.8rem; border: 1px solid #d1d5db; border-radius: 8px;
+    font-size: 0.875rem; outline: none; background: white; transition: border-color 0.15s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
+  textarea { font-family: 'Fira Code', monospace; font-size: 0.8rem; min-height: 200px; resize: vertical; line-height: 1.6; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+  .checkbox-group { display: flex; gap: 1.2rem; margin-top: 0.4rem; }
+  .checkbox-group label { display: flex; align-items: center; gap: 6px; font-weight: 400; font-size: 0.83rem; margin: 0; cursor: pointer; }
+  .checkbox-group input[type="checkbox"] { width: auto; }
+
+  /* ── Bulk assignment check lists ── */
+  .assign-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.75rem; }
+  .assign-col-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+                      letter-spacing: 0.06em; color: #64748b; margin-bottom: 0.4rem; }
+  .check-list { border: 1px solid #d1d5db; border-radius: 8px; max-height: 220px;
+                overflow-y: auto; background: white; }
+  .check-list-item { display: flex; align-items: flex-start; gap: 8px; padding: 0.5rem 0.75rem;
+                     border-bottom: 1px solid #f1f5f9; font-size: 0.82rem; cursor: pointer;
+                     transition: background 0.1s; }
+  .check-list-item:last-child { border-bottom: none; }
+  .check-list-item:hover { background: #f8fafc; }
+  .check-list-item input[type="checkbox"] { width: auto; margin-top: 2px; cursor: pointer; flex-shrink: 0; }
+  .check-list-item.already { color: #94a3b8; }
+  .check-list-empty { padding: 1.2rem; text-align: center; color: #94a3b8; font-size: 0.82rem; }
+
+  /* ── Modal ── */
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none;
+                    align-items: center; justify-content: center; z-index: 200; }
+  .modal-backdrop.open { display: flex; }
+  .modal { background: white; border-radius: 14px; padding: 1.5rem; width: 100%; max-width: 520px;
+           max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.25); }
+  .modal.modal-lg { max-width: 720px; }
+  .modal.modal-xl { max-width: 860px; }
+  .modal h3 { font-size: 1rem; font-weight: 700; margin-bottom: 1.1rem; }
+  .modal-footer { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.2rem; }
+
+  /* ── Detail line list ── */
+  .line-list { font-family: 'Fira Code', monospace; font-size: 0.78rem; line-height: 1.7;
+               background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+               padding: 0.8rem 1rem; max-height: 320px; overflow-y: auto; margin-top: 0.6rem; }
+  .line-ok   { color: #16a34a; }
+  .line-miss { color: #dc2626; font-weight: 600; }
+  .line-prefix-ok   { color: #16a34a; margin-right: 6px; }
+  .line-prefix-miss { color: #dc2626; margin-right: 6px; }
+
+  /* ── Audit log ── */
+  .audit-log { background: #0f172a; color: #94a3b8; padding: 1rem; border-radius: 10px;
+               font-family: 'Fira Code', monospace; font-size: 0.76rem; line-height: 1.6;
+               max-height: 280px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;
+               border: 1px solid #1e293b; margin-top: 0.75rem; }
+  .audit-log .log-ok  { color: #4ade80; }
+  .audit-log .log-err { color: #f87171; }
+  .audit-log .log-hdr { color: #38bdf8; font-weight: 600; }
+
+  /* ── Misc ── */
+  .note-info { background: #eff6ff; border-left: 3px solid #2563eb; padding: 0.65rem 0.9rem;
+               border-radius: 0 7px 7px 0; font-size: 0.8rem; color: #1e40af; margin: 0.75rem 0; }
+  .search-bar { padding: 0.5rem 0.8rem; border: 1px solid #d1d5db; border-radius: 8px;
+                font-size: 0.83rem; outline: none; width: 220px; }
+  .search-bar:focus { border-color: #2563eb; }
+  .empty-note { text-align: center; padding: 2.5rem 1rem; color: #94a3b8; font-size: 0.85rem; }
+  .status-row { display: none; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: #64748b; margin-top: 0.75rem; }
+  .status-row.visible { display: flex; }
+
+  #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #166534; color: white;
+           padding: 0.7rem 1.1rem; border-radius: 8px; font-size: 0.85rem;
+           display: none; z-index: 300; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sb-brand">cf</div>
+  <nav class="sb-nav">
+    <a href="/" class="sb-item"><span class="sb-icon">📋</span><span class="sb-label">Use</span></a>
+    <a href="/templates.html" class="sb-item"><span class="sb-icon">📂</span><span class="sb-label">Templates</span></a>
+    <a href="/devices.html" class="sb-item"><span class="sb-icon">🖥️</span><span class="sb-label">Devices</span></a>
+    <a href="/compliance.html" class="sb-item active"><span class="sb-icon">🛡️</span><span class="sb-label">Compliance</span></a>
+    <a href="/settings.html" class="sb-item"><span class="sb-icon">🔧</span><span class="sb-label">Settings</span></a>
+    <a href="/admin.html" class="sb-item hidden" id="admin-link"><span class="sb-icon">⚙️</span><span class="sb-label">Admin</span></a>
+  </nav>
+  <div class="sb-divider"></div>
+  <div class="sb-footer">
+    <div class="sb-user" id="user-badge">…</div>
+    <button class="sb-item" onclick="logout()"><span class="sb-icon">↩️</span><span class="sb-label">Sign out</span></button>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="page-header">
+    <div>
+      <h1>Configuration Compliance</h1>
+      <p>Validate Cisco IOS &amp; NX-OS running configs against golden configuration standards.</p>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="dashboard">📊 Dashboard</button>
+    <button class="tab" data-tab="golden">📋 Golden Configs</button>
+    <button class="tab" data-tab="assignments">🔗 Assignments</button>
+  </div>
+
+  <!-- ════ DASHBOARD ════ -->
+  <div id="panel-dashboard" class="panel active">
+    <div class="stats-row">
+      <div class="stat-card total">
+        <span class="stat-label">Total checks</span>
+        <span class="stat-value" id="stat-total">—</span>
+        <span class="stat-sub">Latest per device/policy</span>
+      </div>
+      <div class="stat-card compliant">
+        <span class="stat-label">✅ Compliant</span>
+        <span class="stat-value" id="stat-compliant">—</span>
+        <span class="stat-sub">All lines present</span>
+      </div>
+      <div class="stat-card noncompliant">
+        <span class="stat-label">❌ Non-compliant</span>
+        <span class="stat-value" id="stat-noncompliant">—</span>
+        <span class="stat-sub">Lines missing</span>
+      </div>
+      <div class="stat-card error">
+        <span class="stat-label">⚠️ Error</span>
+        <span class="stat-value" id="stat-error">—</span>
+        <span class="stat-sub">SSH / credential failures</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Compliance rate</span>
+        <span class="stat-value" id="stat-rate">—</span>
+        <span class="stat-sub">Across all checks</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-row">
+        <span class="card-title">Device compliance status</span>
+        <div style="display:flex;gap:0.6rem;align-items:center">
+          <input type="text" class="search-bar" id="dash-search" placeholder="🔍 Search devices…" oninput="filterDashboard()" />
+          <button class="btn btn-primary" id="run-all-btn" onclick="runAllChecks()">▶ Run all checks</button>
+        </div>
+      </div>
+
+      <!-- Results table -->
+      <table>
+        <thead><tr>
+          <th>Device</th><th>Group</th><th>Golden Config</th><th>Status</th>
+          <th>Lines matched</th><th>Last checked</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="dashboard-tbody"></tbody>
+      </table>
+
+      <!-- Audit log sits BELOW the table -->
+      <div class="status-row" id="dash-status-row">
+        <div class="dot blue" id="dash-dot"></div>
+        <span id="dash-status-text">Running…</span>
+      </div>
+      <div id="dash-audit-log" class="audit-log" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- ════ GOLDEN CONFIGS ════ -->
+  <div id="panel-golden" class="panel">
+    <div class="card">
+      <div class="section-row">
+        <span class="card-title">Golden configurations</span>
+        <button class="btn btn-primary" onclick="openGoldenModal()">＋ New golden config</button>
+      </div>
+      <div class="note-info">
+        Golden configs define <strong>expected configuration lines</strong> for Cisco IOS &amp; NX-OS devices.
+        Each non-blank, non-comment line must appear verbatim in the device's <code>show running-config</code> output.
+      </div>
+      <table>
+        <thead><tr>
+          <th>Name</th><th>Device types</th><th>Assignments</th><th>Updated</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="golden-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ════ ASSIGNMENTS ════ -->
+  <div id="panel-assignments" class="panel">
+    <div class="card">
+      <div class="section-row">
+        <span class="card-title">Assignments</span>
+        <button class="btn btn-primary" onclick="openAssignModal()">＋ New assignments</button>
+      </div>
+      <p style="font-size:0.8rem;color:#64748b;margin-bottom:1rem">
+        Link a golden config to one or more devices or device groups in a single operation.
+        Group assignments automatically apply to all current and future members of that group.
+      </p>
+      <table>
+        <thead><tr>
+          <th>Golden config</th><th>Target</th><th>Type</th><th>Device type</th><th>Created</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="assign-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<!-- ── Golden Config Modal ── -->
+<div class="modal-backdrop" id="golden-modal">
+  <div class="modal modal-lg">
+    <h3 id="golden-modal-title">New golden config</h3>
+    <input type="hidden" id="gc-id">
+    <div class="row2">
+      <div><label>Name</label><input type="text" id="gc-name" placeholder="NTP &amp; Logging Baseline" /></div>
+      <div><label>Description <span style="font-weight:400;color:#94a3b8">(optional)</span></label>
+        <input type="text" id="gc-desc" /></div>
+    </div>
+    <label>Apply to device types</label>
+    <div class="checkbox-group">
+      <label><input type="checkbox" id="gc-type-ios" checked> Cisco IOS</label>
+      <label><input type="checkbox" id="gc-type-nxos" checked> Cisco NX-OS</label>
+    </div>
+    <label>Expected configuration lines
+      <span style="font-weight:400;color:#94a3b8">— blank lines and lines starting with ! are ignored</span>
+    </label>
+    <textarea id="gc-body" placeholder="ntp server 10.0.0.1&#10;logging host 10.0.0.100&#10;ip ssh version 2"></textarea>
+    <div style="font-size:0.75rem;color:#94a3b8;margin-top:4px" id="gc-line-count">0 active lines</div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModals()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveGolden()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Bulk Assignment Modal ── -->
+<div class="modal-backdrop" id="assign-modal">
+  <div class="modal modal-xl">
+    <h3>New assignments</h3>
+    <label>Golden config to assign</label>
+    <select id="am-gc" onchange="refreshAssignLists()"></select>
+
+    <div class="assign-cols">
+      <div>
+        <div class="assign-col-title">🖥️ Devices (IOS / NX-OS only)</div>
+        <div class="check-list" id="am-device-list">
+          <div class="check-list-empty">Select a golden config above</div>
+        </div>
+      </div>
+      <div>
+        <div class="assign-col-title">📁 Device groups</div>
+        <div class="check-list" id="am-group-list">
+          <div class="check-list-empty">Select a golden config above</div>
+        </div>
+      </div>
+    </div>
+    <p style="font-size:0.75rem;color:#94a3b8;margin-top:0.6rem">
+      Already-assigned targets are shown ticked and greyed out. Check new targets then click Save.
+    </p>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModals()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAssignments()">Save assignments</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Result Detail Modal ── -->
+<div class="modal-backdrop" id="detail-modal">
+  <div class="modal modal-lg">
+    <h3 id="detail-title">Compliance detail</h3>
+    <div id="detail-meta" style="font-size:0.8rem;color:#64748b;margin-bottom:0.75rem"></div>
+    <div id="detail-summary"></div>
+    <label style="margin-top:1rem">Line-by-line results</label>
+    <div class="line-list" id="detail-lines"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModals()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+let allGoldenConfigs = [], allAssignments = [], allDevices = [], allGroups = [];
+let dashboardData = [];
+let pollTimer = null;
+
+// ── Boot ──────────────────────────────────────────────────────
+(async () => {
+  try {
+    const me = await api('/auth/me');
+    document.getElementById('user-badge').textContent = me.username;
+    if (me.role === 'admin') document.getElementById('admin-link').classList.remove('hidden');
+  } catch (_) {}
+
+  document.querySelectorAll('.tabs .tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tabs .tab, .panel').forEach(el => el.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+    });
+  });
+
+  ['golden-modal','assign-modal','detail-modal'].forEach(id => {
+    document.getElementById(id).addEventListener('click', e => {
+      if (e.target === e.currentTarget) closeModals();
+    });
+  });
+
+  document.getElementById('gc-body').addEventListener('input', updateLineCount);
+  await loadAll();
+})();
+
+async function loadAll() {
+  await Promise.all([loadGoldenConfigs(), loadAssignments(), loadDevicesAndGroups(), loadDashboard()]);
+}
+
+// ════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ════════════════════════════════════════════════════════════════
+
+async function loadDashboard() {
+  try {
+    const { summary, devices } = await api('/api/compliance/dashboard');
+    dashboardData = devices;
+    const total     = parseInt(summary.total)         || 0;
+    const compliant = parseInt(summary.compliant)     || 0;
+    const nonComp   = parseInt(summary.non_compliant) || 0;
+    const errors    = parseInt(summary.error_count)   || 0;
+    const rate      = total ? Math.round(compliant / total * 100) : 0;
+    document.getElementById('stat-total').textContent        = total;
+    document.getElementById('stat-compliant').textContent    = compliant;
+    document.getElementById('stat-noncompliant').textContent = nonComp;
+    document.getElementById('stat-error').textContent        = errors;
+    document.getElementById('stat-rate').textContent         = total ? rate + '%' : '—';
+    renderDashboard(devices);
+  } catch (err) { toast('Could not load dashboard: ' + err.message, true); }
+}
+
+function renderDashboard(rows) {
+  const q      = (document.getElementById('dash-search').value || '').toLowerCase();
+  const tbody  = document.getElementById('dashboard-tbody');
+  const filtered = rows.filter(r =>
+    !q || r.device_name.toLowerCase().includes(q) ||
+    r.golden_config_name.toLowerCase().includes(q) ||
+    (r.group_name || '').toLowerCase().includes(q)
+  );
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty-note">
+      ${rows.length ? 'No results match your search.' : 'No compliance checks run yet. Add assignments and click "Run all checks".'}
+    </td></tr>`;
+    return;
+  }
+
+  const order = { non_compliant: 0, error: 1, compliant: 2 };
+  const sorted = [...filtered].sort((a, b) =>
+    (order[a.status] ?? 3) - (order[b.status] ?? 3) || a.device_name.localeCompare(b.device_name));
+
+  tbody.innerHTML = sorted.map(r => {
+    const total   = r.total_lines   || 0;
+    const matched = r.matched_lines || 0;
+    const pct     = total ? Math.round(matched / total * 100) : 100;
+    const fillCls = r.status === 'compliant' ? 'ok' : r.status === 'error' ? 'err' : 'bad';
+    const dtBadge = r.device_type === 'cisco_ios'
+      ? `<span class="badge badge-ios">IOS</span>`
+      : `<span class="badge badge-nxos">NX-OS</span>`;
+    return `<tr>
+      <td>
+        <strong>${esc(r.device_name)}</strong><br>
+        <span class="mono" style="font-size:0.72rem;color:#94a3b8">${esc(r.hostname)}</span>
+        ${dtBadge}
+      </td>
+      <td>${r.group_name
+        ? `<span style="display:inline-flex;align-items:center;gap:5px">
+             <span style="width:10px;height:10px;border-radius:50%;background:${esc(r.group_color||'#94a3b8')};display:inline-block"></span>
+             ${esc(r.group_name)}</span>`
+        : '<span style="color:#94a3b8">—</span>'}</td>
+      <td>${esc(r.golden_config_name)}</td>
+      <td>${statusBadge(r.status)}</td>
+      <td>
+        <div class="progress-wrap">
+          <div class="progress-bar"><div class="progress-fill ${fillCls}" style="width:${pct}%"></div></div>
+          <span class="progress-text">${matched}/${total}</span>
+        </div>
+        ${r.status === 'error' ? `<span style="font-size:0.7rem;color:#d97706">${esc((r.error_message||'').substring(0,60))}</span>` : ''}
+      </td>
+      <td style="font-size:0.78rem;color:#94a3b8">${r.checked_at ? new Date(r.checked_at).toLocaleString() : '—'}</td>
+      <td style="display:flex;gap:4px">
+        <button class="btn btn-secondary btn-sm" onclick="showDetail(${r.result_id})">Detail</button>
+        <button class="btn btn-secondary btn-sm" onclick="checkOne(${r.device_id},${r.golden_config_id})">Re-check</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function filterDashboard() { renderDashboard(dashboardData); }
+
+function statusBadge(s) {
+  if (s === 'compliant')    return '<span class="badge badge-compliant">✓ Compliant</span>';
+  if (s === 'non_compliant') return '<span class="badge badge-noncompliant">✗ Non-compliant</span>';
+  if (s === 'error')        return '<span class="badge badge-error">⚠ Error</span>';
+  return '<span class="badge badge-running">Running</span>';
+}
+
+// ════════════════════════════════════════════════════════════════
+// GOLDEN CONFIGS
+// ════════════════════════════════════════════════════════════════
+
+async function loadGoldenConfigs() {
+  try {
+    allGoldenConfigs = await api('/api/compliance/golden-configs');
+    renderGoldenConfigs();
+  } catch (_) { toast('Could not load golden configs', true); }
+}
+
+function renderGoldenConfigs() {
+  const tbody = document.getElementById('golden-tbody');
+  if (!allGoldenConfigs.length) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-note">No golden configs yet.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = allGoldenConfigs.map(gc => {
+    const types = (gc.device_types || []).map(t =>
+      t === 'cisco_ios' ? '<span class="badge badge-ios">IOS</span>'
+                        : '<span class="badge badge-nxos">NX-OS</span>'
+    ).join(' ');
+    return `<tr>
+      <td>
+        <strong>${esc(gc.name)}</strong>
+        ${gc.description ? `<br><span style="font-size:0.75rem;color:#94a3b8">${esc(gc.description)}</span>` : ''}
+      </td>
+      <td>${types}</td>
+      <td>${gc.assignment_count ? `<strong>${gc.assignment_count}</strong>` : '<span style="color:#94a3b8">0</span>'}</td>
+      <td style="font-size:0.78rem;color:#94a3b8">${new Date(gc.updated_at||gc.created_at).toLocaleDateString()}</td>
+      <td style="display:flex;gap:4px">
+        <button class="btn btn-secondary btn-sm" onclick="openGoldenModal(${gc.id})">Edit</button>
+        <button class="btn btn-success btn-sm" onclick="runGoldenCheck(${gc.id})">▶ Check all</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteGolden(${gc.id})">Delete</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function openGoldenModal(id) {
+  if (id) {
+    try {
+      const gc = await api('/api/compliance/golden-configs/' + id);
+      document.getElementById('golden-modal-title').textContent = 'Edit golden config';
+      document.getElementById('gc-id').value   = gc.id;
+      document.getElementById('gc-name').value = gc.name;
+      document.getElementById('gc-desc').value = gc.description || '';
+      document.getElementById('gc-body').value = gc.config_text || '';
+      document.getElementById('gc-type-ios').checked  = gc.device_types?.includes('cisco_ios');
+      document.getElementById('gc-type-nxos').checked = gc.device_types?.includes('cisco_nxos');
+    } catch (e) { return toast('Could not load golden config', true); }
+  } else {
+    document.getElementById('golden-modal-title').textContent = 'New golden config';
+    ['gc-id','gc-name','gc-desc','gc-body'].forEach(i => document.getElementById(i).value = '');
+    document.getElementById('gc-type-ios').checked  = true;
+    document.getElementById('gc-type-nxos').checked = true;
+  }
+  updateLineCount();
+  document.getElementById('golden-modal').classList.add('open');
+}
+
+function updateLineCount() {
+  const count = document.getElementById('gc-body').value.split('\n')
+    .filter(l => l.trim() && !l.trim().startsWith('!')).length;
+  document.getElementById('gc-line-count').textContent = `${count} active line${count !== 1 ? 's' : ''}`;
+}
+
+async function saveGolden() {
+  const id    = document.getElementById('gc-id').value;
+  const name  = document.getElementById('gc-name').value.trim();
+  const body  = document.getElementById('gc-body').value.trim();
+  const types = [];
+  if (document.getElementById('gc-type-ios').checked)  types.push('cisco_ios');
+  if (document.getElementById('gc-type-nxos').checked) types.push('cisco_nxos');
+  if (!name) return toast('Name required', true);
+  if (!body) return toast('Config text required', true);
+  if (!types.length) return toast('Select at least one device type', true);
+  const payload = { name, description: document.getElementById('gc-desc').value.trim() || null, config_text: body, device_types: types };
+  try {
+    if (id) await api('/api/compliance/golden-configs/' + id, { method: 'PUT',  headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    else    await api('/api/compliance/golden-configs',      { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    closeModals();
+    toast('Golden config saved');
+    await loadGoldenConfigs();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function deleteGolden(id) {
+  const gc = allGoldenConfigs.find(g => g.id === id);
+  if (!confirm(`Delete golden config "${gc?.name}"? All assignments and results will also be removed.`)) return;
+  try {
+    await api('/api/compliance/golden-configs/' + id, { method: 'DELETE' });
+    toast('Golden config deleted');
+    await loadAll();
+  } catch (e) { toast(e.message, true); }
+}
+
+// ════════════════════════════════════════════════════════════════
+// ASSIGNMENTS
+// ════════════════════════════════════════════════════════════════
+
+async function loadAssignments() {
+  try {
+    allAssignments = await api('/api/compliance/assignments');
+    renderAssignments();
+  } catch (_) {}
+}
+
+function renderAssignments() {
+  const tbody = document.getElementById('assign-tbody');
+  if (!allAssignments.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-note">No assignments yet. Click "+ New assignments" to get started.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = allAssignments.map(a => {
+    const isGroup  = !!a.device_group_id;
+    const target   = isGroup ? a.device_group_name : a.device_name;
+    const typeInfo = isGroup
+      ? `<span style="font-size:0.72rem;color:#64748b">All member devices</span>`
+      : (a.device_type === 'cisco_ios'
+          ? '<span class="badge badge-ios">IOS</span>'
+          : '<span class="badge badge-nxos">NX-OS</span>');
+    return `<tr>
+      <td><strong>${esc(a.golden_config_name)}</strong></td>
+      <td>
+        ${isGroup ? '📁 ' : '🖥️ '}<strong>${esc(target||'—')}</strong>
+        ${!isGroup && a.hostname ? `<br><span class="mono" style="font-size:0.72rem;color:#94a3b8">${esc(a.hostname)}</span>` : ''}
+      </td>
+      <td><span class="badge badge-${isGroup ? 'running' : 'ios'}" style="${isGroup?'background:#e0f2fe;color:#0c4a6e':''}">${isGroup ? 'Group' : 'Device'}</span></td>
+      <td>${typeInfo}</td>
+      <td style="font-size:0.78rem;color:#94a3b8">${new Date(a.created_at).toLocaleDateString()}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteAssignment(${a.id})">Remove</button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function openAssignModal() {
+  const gcSel = document.getElementById('am-gc');
+  gcSel.innerHTML = allGoldenConfigs.length
+    ? allGoldenConfigs.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('')
+    : '<option value="">— No golden configs —</option>';
+  refreshAssignLists();
+  document.getElementById('assign-modal').classList.add('open');
+}
+
+function refreshAssignLists() {
+  const gcId = parseInt(document.getElementById('am-gc').value) || 0;
+
+  const assignedDevIds  = new Set(allAssignments.filter(a => a.golden_config_id === gcId && a.device_id).map(a => a.device_id));
+  const assignedGrpIds  = new Set(allAssignments.filter(a => a.golden_config_id === gcId && a.device_group_id).map(a => a.device_group_id));
+
+  const eligibleDevices = allDevices.filter(d => d.device_type === 'cisco_ios' || d.device_type === 'cisco_nxos');
+
+  // Devices column
+  const devList = document.getElementById('am-device-list');
+  if (!gcId) {
+    devList.innerHTML = '<div class="check-list-empty">Select a golden config above</div>';
+  } else if (!eligibleDevices.length) {
+    devList.innerHTML = '<div class="check-list-empty">No eligible devices (need cisco_ios or cisco_nxos)</div>';
+  } else {
+    devList.innerHTML = eligibleDevices.map(d => {
+      const already = assignedDevIds.has(d.id);
+      return `<label class="check-list-item${already ? ' already' : ''}">
+        <input type="checkbox" class="am-dev-cb" value="${d.id}" ${already ? 'checked disabled' : ''} />
+        <span>
+          <strong>${esc(d.name)}</strong>
+          <span style="font-size:0.72rem;color:#94a3b8"> ${esc(d.hostname)} — ${d.device_type}</span>
+          ${already ? ' <span style="font-size:0.7rem;color:#16a34a">✓ assigned</span>' : ''}
+        </span>
+      </label>`;
+    }).join('');
+  }
+
+  // Groups column
+  const grpList = document.getElementById('am-group-list');
+  if (!gcId) {
+    grpList.innerHTML = '<div class="check-list-empty">Select a golden config above</div>';
+  } else if (!allGroups.length) {
+    grpList.innerHTML = '<div class="check-list-empty">No device groups defined</div>';
+  } else {
+    grpList.innerHTML = allGroups.map(g => {
+      const already = assignedGrpIds.has(g.id);
+      return `<label class="check-list-item${already ? ' already' : ''}">
+        <input type="checkbox" class="am-grp-cb" value="${g.id}" ${already ? 'checked disabled' : ''} />
+        <span>
+          <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${esc(g.color||'#94a3b8')};margin-right:4px;vertical-align:middle"></span>
+          <strong>${esc(g.name)}</strong>
+          <span style="font-size:0.72rem;color:#94a3b8"> ${g.device_count || 0} devices</span>
+          ${already ? ' <span style="font-size:0.7rem;color:#16a34a">✓ assigned</span>' : ''}
+        </span>
+      </label>`;
+    }).join('');
+  }
+}
+
+async function saveAssignments() {
+  const gcId = parseInt(document.getElementById('am-gc').value);
+  if (!gcId) return toast('Select a golden config', true);
+
+  const device_ids       = [...document.querySelectorAll('.am-dev-cb:not(:disabled):checked')].map(cb => parseInt(cb.value));
+  const device_group_ids = [...document.querySelectorAll('.am-grp-cb:not(:disabled):checked')].map(cb => parseInt(cb.value));
+
+  if (!device_ids.length && !device_group_ids.length)
+    return toast('Select at least one device or group', true);
+
+  try {
+    const r = await api('/api/compliance/assignments/bulk', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ golden_config_id: gcId, device_ids, device_group_ids })
+    });
+    closeModals();
+    toast(`${r.created} assignment${r.created !== 1 ? 's' : ''} created${r.skipped ? `, ${r.skipped} already existed` : ''}`);
+    await loadAll();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function deleteAssignment(id) {
+  if (!confirm('Remove this assignment?')) return;
+  try {
+    await api('/api/compliance/assignments/' + id, { method: 'DELETE' });
+    toast('Assignment removed');
+    await loadAssignments();
+  } catch (e) { toast(e.message, true); }
+}
+
+// ════════════════════════════════════════════════════════════════
+// DEVICES & GROUPS  (for assignment modal)
+// ════════════════════════════════════════════════════════════════
+
+async function loadDevicesAndGroups() {
+  try {
+    [allDevices, allGroups] = await Promise.all([
+      api('/api/devices'),
+      api('/api/devices/groups')
+    ]);
+  } catch (_) {}
+}
+
+// ════════════════════════════════════════════════════════════════
+// CHECK EXECUTION
+// ════════════════════════════════════════════════════════════════
+
+async function runAllChecks()        { await startCheck({}); }
+async function checkOne(devId, gcId) { await startCheck({ device_id: devId, golden_config_id: gcId }); }
+
+async function runGoldenCheck(gcId) {
+  document.querySelectorAll('.tabs .tab, .panel').forEach(el => el.classList.remove('active'));
+  document.querySelector('[data-tab="dashboard"]').classList.add('active');
+  document.getElementById('panel-dashboard').classList.add('active');
+  await startCheck({ golden_config_id: gcId });
+}
+
+async function startCheck(body) {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+
+  const runBtn = document.getElementById('run-all-btn');
+  runBtn.disabled = true;
+  runBtn.textContent = '⏳ Running…';
+
+  const logEl = document.getElementById('dash-audit-log');
+  logEl.textContent = '';
+  logEl.style.display = 'none';   // hidden until data arrives
+
+  const statusRow = document.getElementById('dash-status-row');
+  statusRow.classList.add('visible');
+  document.getElementById('dash-status-text').textContent = 'Starting…';
+  document.getElementById('dash-dot').className = 'dot blue';
+
+  let jobId;
+  try {
+    const r = await api('/api/compliance/check', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)
+    });
+    jobId = r.jobId;
+    document.getElementById('dash-status-text').textContent = `Checking ${r.total} device(s)…`;
+  } catch (e) {
+    toast(e.message || 'Failed to start check', true);
+    runBtn.disabled = false; runBtn.textContent = '▶ Run all checks';
+    statusRow.classList.remove('visible');
+    return;
+  }
+
+  pollTimer = setInterval(async () => {
+    try {
+      const p = await api('/api/compliance/poll/' + jobId);
+      if (p.newLog) {
+        logEl.style.display = 'block';
+        appendAuditLog(logEl, p.newLog);
+      }
+      document.getElementById('dash-status-text').textContent = `Checking — ${p.completed}/${p.total} complete`;
+      if (p.status !== 'running') {
+        clearInterval(pollTimer); pollTimer = null;
+        document.getElementById('dash-dot').className = 'dot green';
+        document.getElementById('dash-status-text').textContent = `Done — ${p.completed} device(s) checked`;
+        runBtn.disabled = false; runBtn.textContent = '▶ Run all checks';
+        await loadDashboard();
+      }
+    } catch (e) {
+      clearInterval(pollTimer); pollTimer = null;
+      toast('Poll error: ' + e.message, true);
+      runBtn.disabled = false; runBtn.textContent = '▶ Run all checks';
+    }
+  }, 1200);
+}
+
+function appendAuditLog(el, text) {
+  const coloured = text
+    .replace(/\[.*?\] ✓[^\n]*/g, m => `<span class="log-ok">${escHtml(m)}</span>`)
+    .replace(/\[.*?\] ✗[^\n]*/g, m => `<span class="log-err">${escHtml(m)}</span>`)
+    .replace(/▶[^\n]*/g,         m => `<span class="log-hdr">${escHtml(m)}</span>`)
+    .replace(/✔[^\n]*/g,         m => `<span class="log-ok">${escHtml(m)}</span>`);
+  el.innerHTML += coloured;
+  el.scrollTop = el.scrollHeight;
+}
+
+// ════════════════════════════════════════════════════════════════
+// DETAIL MODAL
+// ════════════════════════════════════════════════════════════════
+
+async function showDetail(resultId) {
+  try {
+    const r = await api('/api/compliance/results/' + resultId);
+    document.getElementById('detail-title').textContent = `${r.device_name} — ${r.golden_config_name}`;
+    document.getElementById('detail-meta').innerHTML =
+      `<strong>${r.hostname}</strong> · ${r.device_type} · Checked ${r.checked_at ? new Date(r.checked_at).toLocaleString() : '—'}` +
+      (r.checked_by_name ? ` by ${r.checked_by_name}` : '');
+    const missing = r.missing_lines || [];
+    const total   = r.total_lines   || 0;
+    const matched = r.matched_lines || 0;
+    document.getElementById('detail-summary').innerHTML = `
+      <div style="display:flex;gap:1rem;align-items:center;padding:0.8rem;background:#f8fafc;border-radius:8px;margin-bottom:0.5rem">
+        ${statusBadge(r.status)}
+        <span style="font-size:0.85rem;color:#475569">${matched} of ${total} lines present</span>
+        ${r.error_message ? `<span style="font-size:0.8rem;color:#d97706">Error: ${esc(r.error_message)}</span>` : ''}
+      </div>`;
+    let lineResults = [];
+    try { lineResults = JSON.parse(r.line_results || '[]'); } catch (_) {}
+    if (!lineResults.length && r.golden_config_text) {
+      const missingSet = new Set(missing);
+      lineResults = r.golden_config_text.split('\n')
+        .map(l => l.replace(/\r/g,'').trimEnd())
+        .filter(l => l.trim() && !l.trim().startsWith('!'))
+        .map(line => ({ line, found: !missingSet.has(line) }));
+    }
+    const linesEl = document.getElementById('detail-lines');
+    linesEl.innerHTML = lineResults.length
+      ? lineResults.map(({ line, found }) =>
+          `<div class="${found ? 'line-ok' : 'line-miss'}">` +
+          `<span class="${found ? 'line-prefix-ok' : 'line-prefix-miss'}">${found ? '✓' : '✗'}</span>` +
+          `${escHtml(line)}</div>`
+        ).join('')
+      : '<span style="color:#94a3b8">No line data available</span>';
+    document.getElementById('detail-modal').classList.add('open');
+  } catch (e) { toast('Could not load result: ' + e.message, true); }
+}
+
+// ════════════════════════════════════════════════════════════════
+// UTILITIES
+// ════════════════════════════════════════════════════════════════
+
+function closeModals() {
+  document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.remove('open'));
+}
+
+async function api(url, opts) {
+  const r = await fetch(url, opts);
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || r.statusText);
+  return d;
+}
+
+function esc(s)     { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escHtml(s) { return esc(s); }
+
+function toast(msg, isErr = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = isErr ? '#7f1d1d' : '#166534';
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3500);
+}
+
+async function logout() {
+  await fetch('/auth/logout', { method: 'POST' });
+  location.href = '/login.html';
+}
+</script>
+</body>
+</html>

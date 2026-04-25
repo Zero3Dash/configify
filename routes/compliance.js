@@ -3,6 +3,9 @@
  *
  * Configuration compliance checking for Cisco IOS and NX-OS devices.
  *
+ * All routes carry explicit requireAuth (or requireAdmin) middleware as
+ * defence-in-depth, independent of the mount-level guard in server.js.
+ *
  * Changes vs v2.6:
  *  - fetchRunningConfig now decrypts and uses encrypted_enable_password
  *    from the device's default credential.  If set, the SSH shell sends
@@ -35,7 +38,7 @@ setInterval(() => {
 // GOLDEN CONFIGS
 // ════════════════════════════════════════════════════════════════
 
-router.get('/golden-configs', async (req, res) => {
+router.get('/golden-configs', requireAuth, async (req, res) => {
     try {
         const { rows } = await db.query(`
             SELECT  gc.id, gc.name, gc.description, gc.device_types,
@@ -51,7 +54,7 @@ router.get('/golden-configs', async (req, res) => {
     } catch (err) { console.error(err); res.status(500).json({ error: 'Database error' }); }
 });
 
-router.get('/golden-configs/:id', async (req, res) => {
+router.get('/golden-configs/:id', requireAuth, async (req, res) => {
     try {
         const { rows } = await db.query(
             'SELECT * FROM golden_configs WHERE id = $1', [req.params.id]
@@ -61,7 +64,7 @@ router.get('/golden-configs/:id', async (req, res) => {
     } catch (err) { res.status(500).json({ error: 'Database error' }); }
 });
 
-router.post('/golden-configs', async (req, res) => {
+router.post('/golden-configs', requireAuth, async (req, res) => {
     const { name, description, config_text, device_types } = req.body;
     if (!name || !config_text) return res.status(400).json({ error: 'name and config_text required' });
     const types = (Array.isArray(device_types) && device_types.length)
@@ -78,7 +81,7 @@ router.post('/golden-configs', async (req, res) => {
     } catch (err) { console.error(err); res.status(500).json({ error: 'Database error' }); }
 });
 
-router.put('/golden-configs/:id', async (req, res) => {
+router.put('/golden-configs/:id', requireAuth, async (req, res) => {
     const { name, description, config_text, device_types } = req.body;
     if (!name || !config_text) return res.status(400).json({ error: 'name and config_text required' });
     const types = (Array.isArray(device_types) && device_types.length)
@@ -110,7 +113,7 @@ router.delete('/golden-configs/:id', requireAdmin, async (req, res) => {
 // ASSIGNMENTS
 // ════════════════════════════════════════════════════════════════
 
-router.get('/assignments', async (req, res) => {
+router.get('/assignments', requireAuth, async (req, res) => {
     const gcId   = req.query.golden_config_id || null;
     const devId  = req.query.device_id        || null;
     const params = [];
@@ -137,7 +140,7 @@ router.get('/assignments', async (req, res) => {
     } catch (err) { console.error(err); res.status(500).json({ error: 'Database error' }); }
 });
 
-router.post('/assignments', async (req, res) => {
+router.post('/assignments', requireAuth, async (req, res) => {
     const { golden_config_id, device_id, device_group_id } = req.body;
     if (!golden_config_id)              return res.status(400).json({ error: 'golden_config_id required' });
     if (!device_id && !device_group_id) return res.status(400).json({ error: 'device_id or device_group_id required' });
@@ -152,7 +155,7 @@ router.post('/assignments', async (req, res) => {
     } catch (err) { console.error(err); res.status(500).json({ error: 'Database error' }); }
 });
 
-router.post('/assignments/bulk', async (req, res) => {
+router.post('/assignments/bulk', requireAuth, async (req, res) => {
     const { golden_config_id, device_ids, device_group_ids } = req.body;
     if (!golden_config_id) return res.status(400).json({ error: 'golden_config_id required' });
     const dIds = Array.isArray(device_ids)       ? device_ids.map(Number).filter(Boolean)       : [];
@@ -183,7 +186,7 @@ router.post('/assignments/bulk', async (req, res) => {
     } catch (err) { console.error(err); res.status(500).json({ error: 'Database error' }); }
 });
 
-router.delete('/assignments/:id', async (req, res) => {
+router.delete('/assignments/:id', requireAuth, async (req, res) => {
     try {
         const { rows } = await db.query(
             'DELETE FROM golden_config_assignments WHERE id=$1 RETURNING id', [req.params.id]
@@ -255,7 +258,7 @@ router.patch('/schedules/:id', requireAdmin, async (req, res) => {
         );
         if (!rows.length) return res.status(404).json({ error: 'Schedule not found' });
         res.json(rows[0]);
-    } catch (err) { console.error(err); res.status(500).json({ error: 'Database error' }); }
+    } catch (err) { res.status(500).json({ error: 'Database error' }); }
 });
 
 router.delete('/schedules/:id', requireAdmin, async (req, res) => {
@@ -272,7 +275,7 @@ router.delete('/schedules/:id', requireAdmin, async (req, res) => {
 // DASHBOARD
 // ════════════════════════════════════════════════════════════════
 
-router.get('/dashboard', async (req, res) => {
+router.get('/dashboard', requireAuth, async (req, res) => {
     try {
         const { rows: [summary] } = await db.query(`
             WITH latest AS (
@@ -316,7 +319,7 @@ router.get('/dashboard', async (req, res) => {
     } catch (err) { console.error(err); res.status(500).json({ error: 'Database error' }); }
 });
 
-router.get('/results/:id', async (req, res) => {
+router.get('/results/:id', requireAuth, async (req, res) => {
     try {
         const { rows } = await db.query(`
             SELECT  cr.*,
@@ -338,7 +341,7 @@ router.get('/results/:id', async (req, res) => {
 // CHECK EXECUTION
 // ════════════════════════════════════════════════════════════════
 
-router.post('/check', async (req, res) => {
+router.post('/check', requireAuth, async (req, res) => {
     const { golden_config_id, device_id } = req.body;
     try {
         let pairs = await resolvePairs(golden_config_id || null, device_id || null);
@@ -483,7 +486,6 @@ async function runChecks(jobId, pairs, userId) {
             continue;
         }
 
-        // Indicate enable password usage in log
         const hasEnable = !!cred.encrypted_enable_password;
         log(`[${device.name}] Connecting to ${device.hostname}:${device.port || 22}${hasEnable ? ' (with enable)' : ''}...`);
 
@@ -642,7 +644,6 @@ async function fetchRunningConfig(device, cred) {
         }
     }
 
-    // Decrypt enable password (null if not configured)
     let enablePassword = null;
     if (cred.encrypted_enable_password) {
         try {
@@ -679,22 +680,17 @@ async function fetchRunningConfig(device, cred) {
                 shell.on('close', () => { clearTimeout(hardTimer); finish(); });
                 shell.on('error', err => { clearTimeout(hardTimer); if (!settled) reject(err); });
 
-                // Command sequence with enable support
                 setTimeout(() => {
                     if (enablePassword) {
-                        // Step 1: enter enable mode
                         shell.write('enable\n');
                         setTimeout(() => {
-                            // Step 2: provide enable password
                             shell.write(enablePassword + '\n');
                             setTimeout(() => {
-                                // Step 3: disable paging then fetch config
                                 shell.write('terminal length 0\n');
                                 setTimeout(() => shell.write('show running-config\n'), 600);
                             }, 600);
                         }, 600);
                     } else {
-                        // No enable — go straight to commands
                         shell.write('terminal length 0\n');
                         setTimeout(() => shell.write('show running-config\n'), 600);
                     }

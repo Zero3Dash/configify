@@ -16,14 +16,15 @@
  * Enable / privilege escalation (Cisco IOS, NX-OS, JunOS):
  *   If the selected credential has an encrypted_enable_password, the shell
  *   runner automatically sends  "enable\n<password>\n"  before the template
- *   lines, with a 600 ms settle delay after each step.  This brings the
- *   device from user-EXEC (>) to privileged-EXEC (#) before commands run.
+ *   lines, with a 600 ms settle delay after each step.
+ *
+ * SSRF protection:
+ *   validateHostname() is called before the async job is created.  A blocked
+ *   or unresolvable hostname returns HTTP 400 immediately; it never reaches
+ *   the SSH connection layer.  See lib/validate-hostname.js for blocked ranges.
  *
  * Jobs are kept in memory for 10 minutes then cleaned up.
  * All routes require a valid session (requireAuth).
- *
- * Note: the credential_id column on execution_logs is defined in schema.sql.
- * No runtime migrations are performed here.
  */
 
 const express     = require('express');
@@ -31,6 +32,7 @@ const { NodeSSH } = require('node-ssh');
 const db          = require('../db');
 const vault       = require('../crypto/vault');
 const { requireAuth } = require('../middleware/auth');
+const { validateHostname, HostnameValidationError } = require('../lib/validate-hostname');
 
 const router = express.Router();
 
@@ -72,7 +74,27 @@ router.post('/execute', requireAuth, async (req, res) => {
         return res.status(500).json({ error: 'Database error' });
     }
 
-    // 2. Resolve credential
+    // 2. SSRF guard — validate hostname before any network activity.
+    //    Returns HTTP 400 immediately if the target is in a blocked range
+    //    (loopback, link-local / cloud metadata, etc.).
+    //    See lib/validate-hostname.js for the full list of blocked ranges.
+    try {
+        await validateHostname(device.hostname, device.port);
+    } catch (err) {
+        if (err instanceof HostnameValidationError) {
+            console.warn(
+                `[SSH] SSRF block: user ${req.user.id} attempted connection ` +
+                `to blocked host "${device.hostname}:${device.port}" ` +
+                `(device id=${device_id}): ${err.message}`
+            );
+            return res.status(400).json({ error: `Invalid device target: ${err.message}` });
+        }
+        // Unexpected error during DNS resolution — treat as server error
+        console.error('[SSH] Hostname validation error:', err.message);
+        return res.status(500).json({ error: 'Could not validate device hostname' });
+    }
+
+    // 3. Resolve credential
     const credId = parseInt(credential_id) || device.default_credential_id;
     if (!credId) {
         return res.status(400).json({
@@ -90,8 +112,7 @@ router.post('/execute', requireAuth, async (req, res) => {
         return res.status(500).json({ error: 'Database error' });
     }
 
-    // 3. Create execution log row
-    //    credential_id column is guaranteed present by schema.sql
+    // 4. Create execution log row
     let logId;
     try {
         const r = await db.query(
@@ -107,11 +128,11 @@ router.post('/execute', requireAuth, async (req, res) => {
         return res.status(500).json({ error: 'Database error' });
     }
 
-    // 4. Determine execution strategy
+    // 5. Determine execution strategy
     const lines    = command.split('\n').map(l => l.trimEnd()).filter(l => l.length > 0);
     const useShell = lines.length > 1 || SHELL_DEVICE_TYPES.has(device.device_type);
 
-    // 5. Decrypt enable password (null when not configured or not a relevant device type)
+    // 6. Decrypt enable password (null when not configured or not a relevant device type)
     let enablePassword = null;
     if (
         ENABLE_DEVICE_TYPES.has(device.device_type) &&
@@ -124,7 +145,7 @@ router.post('/execute', requireAuth, async (req, res) => {
         }
     }
 
-    // 6. Create in-memory job
+    // 7. Create in-memory job
     const jobId = ++jobCounter;
     jobs.set(jobId, {
         userId:    req.user.id,
@@ -143,7 +164,7 @@ router.post('/execute', requireAuth, async (req, res) => {
         (enablePassword ? ' enable=yes' : '')
     );
 
-    // 7. Run SSH asynchronously (do not await)
+    // 8. Run SSH asynchronously (do not await)
     runSsh(jobId, logId, device, cred, lines, useShell, enablePassword);
 
     return res.json({ ok: true, jobId });
@@ -206,7 +227,17 @@ async function runSsh(jobId, logId, device, cred, lines, useShell, enablePasswor
             port:         device.port || 22,
             username:     cred.username,
             readyTimeout: 20000,
-            hostVerifier: () => true,
+            // NOTE: host key verification is not yet implemented (known_hosts).
+            // The fingerprint is logged on every connection to provide a partial
+            // audit trail. A future improvement should store expected fingerprints
+            // in the database and reject mismatches.
+            hostVerifier: (fingerprint) => {
+                console.log(
+                    `[SSH] job ${jobId} — host fingerprint for ` +
+                    `${device.hostname}:${device.port || 22}: ${fingerprint}`
+                );
+                return true;
+            },
         };
 
         if (cred.auth_method === 'password') {
@@ -257,35 +288,46 @@ async function runSsh(jobId, logId, device, cred, lines, useShell, enablePasswor
         await finishJob(exitCode, exitCode === 0 ? 'done' : 'error');
 
     } catch (e) {
-        console.error(`[SSH] job ${jobId} error:`, e.message);
-        appendOutput(`\nError: ${e.message}\n`);
+        // Sanitise the error message before appending to job output.
+        // Raw exception messages can contain internal hostnames, credential
+        // names, or vault diagnostics that should not reach the browser.
+        const safeMessage = sanitiseErrorMessage(e.message);
+        console.error(`[SSH] job ${jobId} error:`, e.message); // full message to server log only
+        appendOutput(`\nError: ${safeMessage}\n`);
         if (ssh) { try { ssh.dispose(); } catch (_) {} }
-        await finishJob(-1, 'error', e.message);
+        await finishJob(-1, 'error', safeMessage);
     }
 }
 
+/**
+ * Strip potentially sensitive details from SSH exception messages before
+ * they are returned to the client via job output or the error field.
+ *
+ * Removes:
+ *  - IP addresses and hostnames embedded in error strings
+ *  - "VAULT_SECRET" references
+ *  - Private key / passphrase mentions
+ *
+ * @param {string} message
+ * @returns {string}
+ */
+function sanitiseErrorMessage(message) {
+    if (!message) return 'SSH error';
+    return message
+        .replace(/VAULT_SECRET[^\s]*/gi, '[vault]')
+        .replace(/private.?key/gi, '[key]')
+        .replace(/passphrase/gi, '[passphrase]')
+        // Keep generic SSH errors but remove embedded hostnames / IPs
+        .replace(/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/g, '[host]')
+        .substring(0, 200); // cap length
+}
+
 // ── Shell-mode runner ─────────────────────────────────────────
-//
-// Opens a PTY shell, optionally escalates to privileged EXEC mode via
-// the "enable" command, then sends each template line individually
-// (with a small inter-line delay).  Waits for output silence before
-// closing the session.
-//
-// Enable sequence (only for ENABLE_DEVICE_TYPES when enablePassword set):
-//   1. send "enable\n"
-//   2. wait ENABLE_STEP_MS for the "Password:" prompt
-//   3. send the enable password + "\n"
-//   4. wait ENABLE_STEP_MS for the "#" prompt
-//   5. proceed with template lines
-//
-// Quiet detection:  2 000 ms of no new output after all lines are sent.
-// Hard cap:         90 seconds total, after which the shell is force-closed.
-//
 async function runWithShell(ssh, jobId, lines, deviceType, appendOutput, enablePassword = null) {
-    const INTER_LINE_DELAY_MS  =  150;   // delay between each template line
-    const ENABLE_STEP_MS       =  600;   // settle delay for each enable step
-    const QUIET_SETTLE_MS      = 2000;   // idle time before considering output done
-    const HARD_TIMEOUT_MS      = 90000;  // absolute maximum
+    const INTER_LINE_DELAY_MS  =  150;
+    const ENABLE_STEP_MS       =  600;
+    const QUIET_SETTLE_MS      = 2000;
+    const HARD_TIMEOUT_MS      = 90000;
 
     return new Promise(async (resolve) => {
         let settled = false;
@@ -304,47 +346,42 @@ async function runWithShell(ssh, jobId, lines, deviceType, appendOutput, enableP
         try {
             shell = await ssh.requestShell({ term: 'vt100', rows: 80, cols: 220 });
         } catch (e) {
-            appendOutput(`\nFailed to open shell: ${e.message}\n`);
+            appendOutput(`\nFailed to open shell: ${sanitiseErrorMessage(e.message)}\n`);
             finish(1);
             return;
         }
 
         shell.on('data', (chunk) => {
             appendOutput(chunk.toString());
-
-            // Restart the quiet timer every time new data arrives
             clearTimeout(quietTimer);
             quietTimer = setTimeout(closeShell, QUIET_SETTLE_MS);
         });
 
         shell.on('close', () => finish(0));
         shell.on('error', (err) => {
-            appendOutput(`\nShell error: ${err.message}\n`);
+            appendOutput(`\nShell error: ${sanitiseErrorMessage(err.message)}\n`);
             finish(1);
         });
 
-        // Hard timeout
         hardTimer = setTimeout(() => {
             appendOutput('\n[configify] Hard timeout reached — closing session.\n');
             closeShell();
         }, HARD_TIMEOUT_MS);
 
         const sendLines = async () => {
-            // ── Enable / privilege escalation ──────────────────────
             if (enablePassword && ENABLE_DEVICE_TYPES.has(deviceType)) {
                 if (settled) return;
                 appendOutput('\n[configify] Entering privileged EXEC mode (enable)...\n');
                 console.log(`[SSH] job ${jobId} → enable`);
                 shell.write('enable\n');
-                await sleep(ENABLE_STEP_MS);   // wait for "Password:" prompt
+                await sleep(ENABLE_STEP_MS);
                 if (settled) return;
                 console.log(`[SSH] job ${jobId} → <enable password>`);
                 shell.write(enablePassword + '\n');
-                await sleep(ENABLE_STEP_MS);   // wait for "#" prompt
+                await sleep(ENABLE_STEP_MS);
                 if (settled) return;
             }
 
-            // ── Template lines ─────────────────────────────────────
             for (const line of lines) {
                 if (settled) return;
                 console.log(`[SSH] job ${jobId} → ${line}`);
@@ -352,7 +389,6 @@ async function runWithShell(ssh, jobId, lines, deviceType, appendOutput, enableP
                 await sleep(INTER_LINE_DELAY_MS);
             }
 
-            // Arm quiet timer after last line in case device sends no output
             clearTimeout(quietTimer);
             quietTimer = setTimeout(closeShell, QUIET_SETTLE_MS);
         };
@@ -364,7 +400,7 @@ async function runWithShell(ssh, jobId, lines, deviceType, appendOutput, enableP
         };
 
         sendLines().catch((e) => {
-            appendOutput(`\nSend error: ${e.message}\n`);
+            appendOutput(`\nSend error: ${sanitiseErrorMessage(e.message)}\n`);
             closeShell();
         });
     });

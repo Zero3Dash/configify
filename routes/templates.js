@@ -2,12 +2,30 @@
  * routes/templates.js
  * Template CRUD + template group (folder) tree management.
  *
+ * Auth policy (defence-in-depth — applied here in addition to the
+ * mount-level requireAuth guard in server.js):
+ *
+ *   READ   GET  /groups            → any authenticated user
+ *   READ   GET  /                  → any authenticated user
+ *   READ   GET  /:template_id      → any authenticated user
+ *
+ *   WRITE  POST /groups            → any authenticated user  (creator logged)
+ *   WRITE  POST /                  → any authenticated user  (creator logged)
+ *   WRITE  PUT  /:template_id      → any authenticated user  (last editor logged)
+ *   WRITE  PATCH /groups/:id       → any authenticated user  (editor logged)
+ *
+ *   DELETE DELETE /groups/:id      → ADMIN ONLY  (cascades — templates ungrouped,
+ *                                                 child folders promoted)
+ *   DELETE DELETE /:template_id    → ADMIN ONLY  (permanent data loss)
+ *
  * Route order matters: /groups/* must come before /:template_id so Express
  * doesn't treat "groups" as a template_id parameter.
  */
 const express = require('express');
 const db      = require('../db');
-const router  = express.Router();
+const { requireAuth, requireAdmin } = require('../middleware/auth');
+
+const router = express.Router();
 
 // ══════════════════════════════════════════════════════════════
 // TEMPLATE GROUPS  (folder tree)
@@ -17,7 +35,7 @@ const router  = express.Router();
  * GET /api/templates/groups
  * Returns a flat array; the client builds the tree using parent_id.
  */
-router.get('/groups', async (req, res) => {
+router.get('/groups', requireAuth, async (req, res) => {
     try {
         const { rows } = await db.query(`
             SELECT  g.id, g.name, g.parent_id, g.sort_order, g.created_at,
@@ -39,8 +57,9 @@ router.get('/groups', async (req, res) => {
 /**
  * POST /api/templates/groups
  * Body: { name, parent_id? }
+ * Any authenticated user can create folders; creator is recorded.
  */
-router.post('/groups', async (req, res) => {
+router.post('/groups', requireAuth, async (req, res) => {
     const { name, parent_id } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'name required' });
     try {
@@ -49,6 +68,7 @@ router.post('/groups', async (req, res) => {
              VALUES ($1, $2, $3) RETURNING *`,
             [name.trim(), parent_id || null, req.user.id]
         );
+        console.log(`[templates] user ${req.user.id} created folder "${name.trim()}" (id=${rows[0].id})`);
         res.status(201).json(rows[0]);
     } catch (err) {
         console.error(err);
@@ -59,8 +79,10 @@ router.post('/groups', async (req, res) => {
 /**
  * PATCH /api/templates/groups/:id
  * Body: { name?, parent_id? }  — partial update (rename / reparent)
+ * Any authenticated user can rename or reparent a folder.
+ * Editor is logged for audit purposes.
  */
-router.patch('/groups/:id', async (req, res) => {
+router.patch('/groups/:id', requireAuth, async (req, res) => {
     const gid = parseInt(req.params.id);
     const { name, parent_id } = req.body;
 
@@ -81,6 +103,7 @@ router.patch('/groups/:id', async (req, res) => {
             vals
         );
         if (!rows.length) return res.status(404).json({ error: 'Folder not found' });
+        console.log(`[templates] user ${req.user.id} updated folder id=${gid}`);
         res.json(rows[0]);
     } catch (err) {
         console.error(err);
@@ -90,10 +113,12 @@ router.patch('/groups/:id', async (req, res) => {
 
 /**
  * DELETE /api/templates/groups/:id
- * Templates inside become ungrouped; child groups are reparented to the
- * deleted group's own parent (i.e. promoted one level up).
+ * ADMIN ONLY — deleting a folder has cascading side-effects:
+ *   • All templates inside become ungrouped (group_id → NULL)
+ *   • Child groups are promoted one level up (parent_id → deleted group's parent)
+ * This is a destructive, hard-to-reverse operation and must be gated on admin role.
  */
-router.delete('/groups/:id', async (req, res) => {
+router.delete('/groups/:id', requireAdmin, async (req, res) => {
     const gid = parseInt(req.params.id);
     try {
         const { rows } = await db.query(
@@ -102,10 +127,11 @@ router.delete('/groups/:id', async (req, res) => {
         if (!rows.length) return res.status(404).json({ error: 'Folder not found' });
         const parentId = rows[0].parent_id;
 
-        await db.query('UPDATE templates      SET group_id  = NULL     WHERE group_id  = $1', [gid]);
-        await db.query('UPDATE template_groups SET parent_id = $1      WHERE parent_id = $2', [parentId, gid]);
+        await db.query('UPDATE templates       SET group_id  = NULL  WHERE group_id  = $1', [gid]);
+        await db.query('UPDATE template_groups SET parent_id = $1    WHERE parent_id = $2', [parentId, gid]);
         await db.query('DELETE FROM template_groups WHERE id = $1', [gid]);
 
+        console.log(`[templates] admin user ${req.user.id} deleted folder id=${gid} (parent_id was ${parentId})`);
         res.status(204).send();
     } catch (err) {
         console.error(err);
@@ -117,7 +143,11 @@ router.delete('/groups/:id', async (req, res) => {
 // TEMPLATES
 // ══════════════════════════════════════════════════════════════
 
-router.get('/', async (req, res) => {
+/**
+ * GET /api/templates
+ * List all templates. Any authenticated user.
+ */
+router.get('/', requireAuth, async (req, res) => {
     try {
         const { rows } = await db.query(`
             SELECT  t.id, t.template_id, t.name, t.template_text,
@@ -134,7 +164,11 @@ router.get('/', async (req, res) => {
     }
 });
 
-router.get('/:template_id', async (req, res) => {
+/**
+ * GET /api/templates/:template_id
+ * Fetch a single template. Any authenticated user.
+ */
+router.get('/:template_id', requireAuth, async (req, res) => {
     try {
         const { rows } = await db.query(
             `SELECT t.*, g.name AS group_name
@@ -151,7 +185,11 @@ router.get('/:template_id', async (req, res) => {
     }
 });
 
-router.post('/', async (req, res) => {
+/**
+ * POST /api/templates
+ * Create a template. Any authenticated user; creator is recorded.
+ */
+router.post('/', requireAuth, async (req, res) => {
     const { name, template_text, group_id } = req.body;
     if (!name || !template_text)
         return res.status(400).json({ error: 'name and template_text are required' });
@@ -163,6 +201,7 @@ router.post('/', async (req, res) => {
              RETURNING id, template_id, name, created_at, group_id`,
             [template_id, name, template_text, group_id || null]
         );
+        console.log(`[templates] user ${req.user.id} created template "${name}" (${template_id})`);
         res.status(201).json(rows[0]);
     } catch (err) {
         console.error(err);
@@ -174,14 +213,14 @@ router.post('/', async (req, res) => {
  * PUT /api/templates/:template_id
  * Body: { name, template_text, group_id? }
  * group_id: omit to leave unchanged; pass null to ungroup; pass id to move.
+ * Any authenticated user can edit; editor is logged.
  */
-router.put('/:template_id', async (req, res) => {
+router.put('/:template_id', requireAuth, async (req, res) => {
     const { template_id } = req.params;
     const { name, template_text, group_id } = req.body;
     if (!name || !template_text)
         return res.status(400).json({ error: 'name and template_text are required' });
     try {
-        // Build query dynamically so omitting group_id leaves it unchanged
         let query, params;
         if (group_id !== undefined) {
             query  = `UPDATE templates
@@ -200,6 +239,7 @@ router.put('/:template_id', async (req, res) => {
         }
         const { rows } = await db.query(query, params);
         if (!rows.length) return res.status(404).json({ error: 'Template not found' });
+        console.log(`[templates] user ${req.user.id} updated template "${template_id}"`);
         res.json(rows[0]);
     } catch (err) {
         console.error(err);
@@ -207,13 +247,19 @@ router.put('/:template_id', async (req, res) => {
     }
 });
 
-router.delete('/:template_id', async (req, res) => {
+/**
+ * DELETE /api/templates/:template_id
+ * ADMIN ONLY — permanent deletion, cannot be undone.
+ * Regular users can edit and move templates but not permanently destroy them.
+ */
+router.delete('/:template_id', requireAdmin, async (req, res) => {
     try {
         const { rows } = await db.query(
-            'DELETE FROM templates WHERE template_id = $1 RETURNING id',
+            'DELETE FROM templates WHERE template_id = $1 RETURNING id, name',
             [req.params.template_id]
         );
         if (!rows.length) return res.status(404).json({ error: 'Template not found' });
+        console.log(`[templates] admin user ${req.user.id} deleted template "${req.params.template_id}" ("${rows[0].name}")`);
         res.status(204).send();
     } catch (err) {
         console.error(err);

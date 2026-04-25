@@ -21,6 +21,9 @@
  *
  * Jobs are kept in memory for 10 minutes then cleaned up.
  * All routes require a valid session (requireAuth).
+ *
+ * Note: the credential_id column on execution_logs is defined in schema.sql.
+ * No runtime migrations are performed here.
  */
 
 const express     = require('express');
@@ -87,16 +90,8 @@ router.post('/execute', requireAuth, async (req, res) => {
         return res.status(500).json({ error: 'Database error' });
     }
 
-    // 3. Ensure credential_id column exists (safe no-op if already present)
-    try {
-        await db.query(`
-            ALTER TABLE execution_logs
-            ADD COLUMN IF NOT EXISTS credential_id
-            INTEGER REFERENCES credentials(id) ON DELETE SET NULL
-        `);
-    } catch (_) {}
-
-    // 4. Create execution log row
+    // 3. Create execution log row
+    //    credential_id column is guaranteed present by schema.sql
     let logId;
     try {
         const r = await db.query(
@@ -112,11 +107,11 @@ router.post('/execute', requireAuth, async (req, res) => {
         return res.status(500).json({ error: 'Database error' });
     }
 
-    // 5. Determine execution strategy
+    // 4. Determine execution strategy
     const lines    = command.split('\n').map(l => l.trimEnd()).filter(l => l.length > 0);
     const useShell = lines.length > 1 || SHELL_DEVICE_TYPES.has(device.device_type);
 
-    // 6. Decrypt enable password (null when not configured or not a relevant device type)
+    // 5. Decrypt enable password (null when not configured or not a relevant device type)
     let enablePassword = null;
     if (
         ENABLE_DEVICE_TYPES.has(device.device_type) &&
@@ -129,7 +124,7 @@ router.post('/execute', requireAuth, async (req, res) => {
         }
     }
 
-    // 7. Create in-memory job
+    // 6. Create in-memory job
     const jobId = ++jobCounter;
     jobs.set(jobId, {
         userId:    req.user.id,
@@ -148,7 +143,7 @@ router.post('/execute', requireAuth, async (req, res) => {
         (enablePassword ? ' enable=yes' : '')
     );
 
-    // 8. Run SSH asynchronously (do not await)
+    // 7. Run SSH asynchronously (do not await)
     runSsh(jobId, logId, device, cred, lines, useShell, enablePassword);
 
     return res.json({ ok: true, jobId });
